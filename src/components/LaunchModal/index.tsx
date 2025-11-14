@@ -17,14 +17,14 @@
  * - react-i18next
  */
 
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import TimerIcon from "@mui/icons-material/Timer";
-import Button from "@mui/material/Button";
-import { isTauri } from "@tauri-apps/api/core";
-import { useTranslation } from "react-i18next";
 import { useStore } from "@/store";
 import { useGamePlayStore } from "@/store/gamePlayStore";
-
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import StopIcon from "@mui/icons-material/Stop";
+import Button from "@mui/material/Button";
+import { isTauri } from "@tauri-apps/api/core";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
 /**
  * LaunchModal 组件
  * 判断游戏是否可启动、是否正在运行，并渲染启动按钮。
@@ -35,8 +35,8 @@ import { useGamePlayStore } from "@/store/gamePlayStore";
 export const LaunchModal = () => {
 	const { t } = useTranslation();
 	const { selectedGameId, getGameById, isLocalGame, allGames } = useStore();
-	const { launchGame, isGameRunning } = useGamePlayStore();
-
+	const { launchGame, isGameRunning, stopGame } = useGamePlayStore();
+	const [stopping, setStopping] = useState(false);
 	// 检查这个特定游戏是否在运行
 	const isThisGameRunning = isGameRunning(
 		selectedGameId === null ? undefined : selectedGameId,
@@ -77,12 +77,40 @@ export const LaunchModal = () => {
 			console.error(t("components.LaunchModal.launchFailed"), error);
 		}
 	};
+	const handleStopGame = async () => {
+		if (!selectedGameId) return;
 
+		try {
+			// 使用游戏停止函数
+			setStopping(true);
+			const res = await stopGame(selectedGameId);
+			setStopping(false);
+			if (!res) {
+				console.error(t("components.LaunchModal.stopFailed"));
+			}
+		} catch (error) {
+			console.error(t("components.LaunchModal.stopFailed"), error);
+		}
+	};
 	// 渲染不同状态的按钮
+	if (stopping) {
+		return (
+			<Button startIcon={<StopIcon />} disabled>
+				{t("components.LaunchModal.stoppingGame")}
+			</Button>
+		);
+	}
 	if (isThisGameRunning) {
 		return (
-			<Button startIcon={<TimerIcon />} disabled>
-				{t("components.LaunchModal.playing")}
+			// <Button startIcon={<TimerIcon />} disabled>
+			// 	{t("components.LaunchModal.playing")}
+			// </Button>
+			<Button
+				startIcon={<StopIcon />}
+				onClick={handleStopGame}
+				// disabled={!isThisGameRunning}
+			>
+				{t("components.LaunchModal.stopGame")}
 			</Button>
 		);
 	}

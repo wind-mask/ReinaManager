@@ -18,8 +18,6 @@
  * - @/utils
  */
 
-import { isTauri } from "@tauri-apps/api/core";
-import { create } from "zustand";
 import { useStore } from "@/store";
 import type { GameSession, GameTimeStats } from "@/types";
 import { getLocalDateString, launchGameWithTracking } from "@/utils";
@@ -29,6 +27,8 @@ import {
 	getGameStatistics,
 	initGameTimeTracking,
 } from "@/utils/gameStats";
+import { invoke, isTauri } from "@tauri-apps/api/core";
+import { create } from "zustand";
 
 /**
  * 游戏启动结果类型
@@ -82,6 +82,7 @@ interface GamePlayState {
 	getTotalPlayTime: () => Promise<number>;
 	getWeekPlayTime: () => Promise<number>;
 	getTodayPlayTime: () => Promise<number>;
+	stopGame: (gameId: number) => Promise<boolean>;
 }
 
 // ====== 统计缓存优化：全局作用域 ======
@@ -224,7 +225,19 @@ export const useGamePlayStore = create<GamePlayState>((set, get) => ({
 			return { success: false, message: errorMessage };
 		}
 	},
-
+	stopGame: async (gameId: number): Promise<boolean> => {
+		if (!isTauri()) {
+			return false;
+		}
+		try {
+			// 调用 Tauri 后端停止游戏
+			const res = await invoke<boolean>("stop_game", { gameId });
+			return res;
+		} catch (error) {
+			console.error("停止游戏失败:", error);
+			return false;
+		}
+	},
 	/**
 	 * 加载指定游戏的统计数据
 	 * @param gameId 游戏ID

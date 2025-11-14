@@ -1,9 +1,3 @@
-import { path } from "@tauri-apps/api";
-import { convertFileSrc, invoke, isTauri } from "@tauri-apps/api/core";
-import { resourceDir } from "@tauri-apps/api/path";
-import { open as openDirectory } from "@tauri-apps/plugin-dialog";
-import { open } from "@tauri-apps/plugin-shell";
-import i18next, { t } from "i18next";
 import { fetchBgmByIds } from "@/api/bgm";
 import { fetchVNDBByIds } from "@/api/vndb";
 import { snackbar } from "@/components/Snackbar";
@@ -16,6 +10,12 @@ import type {
 	RawGameData,
 	VndbData,
 } from "@/types";
+import { path } from "@tauri-apps/api";
+import { convertFileSrc, invoke, isTauri } from "@tauri-apps/api/core";
+import { resourceDir } from "@tauri-apps/api/path";
+import { open as openDirectory } from "@tauri-apps/plugin-dialog";
+import { open } from "@tauri-apps/plugin-shell";
+import i18next, { t } from "i18next";
 import { getDisplayGameData } from "./dataTransform";
 
 // 缓存资源目录路径
@@ -198,11 +198,25 @@ export function formatPlayTime(minutes: number): string {
 	}
 	return i18next.t("utils.formatPlayTime.hours", { count: hours });
 }
-
-export const handleDirectory = async () => {
+export const handleFolder = async () => {
+	const path = await openDirectory({
+		multiple: false,
+		directory: true,
+		filters: [
+			{
+				name: t("utils.handleDirectory.folder"),
+				extensions: ["*"],
+			},
+		],
+	});
+	if (path === null) return null;
+	return path;
+};
+export const handleExeFile = async (defaultPath: string = "") => {
 	const path = await openDirectory({
 		multiple: false,
 		directory: false,
+		defaultPath: defaultPath,
 		filters: [
 			{
 				name: t("utils.handleDirectory.executable"),
@@ -767,3 +781,46 @@ export {
 	rawGameDataToDisplay,
 	timestampToDate,
 } from "./dataTransform";
+
+/**
+ * 从目录名中移除括号内容，提取搜索用的游戏名
+ * 例如: "[社团名] 游戏名 (版本)" -> "游戏名"
+ */
+export function trimDirnameToSearchName(dirName: string): string {
+	/**
+	 * 尝试移除一对括号及其内容
+	 */
+	function trimOnce(name: string, open: string, close: string): string {
+		const trimmed = name.trim();
+		if (trimmed.startsWith(open)) {
+			const pos = trimmed.indexOf(close);
+			if (pos !== -1) {
+				return trimmed.slice(pos + close.length).trim();
+			}
+		}
+		return trimmed;
+	}
+
+	/**
+	 * 循环移除所有括号直到没有变化
+	 */
+	function trim(name: string): string {
+		let currentName = name;
+
+		while (true) {
+			let trimmed = trimOnce(currentName, "[", "]");
+			trimmed = trimOnce(trimmed, "(", ")");
+			trimmed = trimOnce(trimmed, "【", "】");
+
+			// 如果没有变化则退出循环
+			if (trimmed === currentName) {
+				break;
+			}
+			currentName = trimmed;
+		}
+
+		return currentName.trim();
+	}
+
+	return trim(dirName);
+}

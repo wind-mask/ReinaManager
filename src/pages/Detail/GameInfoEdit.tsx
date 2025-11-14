@@ -1,3 +1,13 @@
+import { snackbar } from "@/components/Snackbar";
+import type { FullGameData, GameData } from "@/types";
+import { getGameCover, getGameDisplayName, handleExeFile } from "@/utils";
+import {
+	deleteCustomCoverFile,
+	getPreviewUrlFromPath,
+	selectImageFile,
+	uploadSelectedImage,
+} from "@/utils/customCover";
+import i18n from "@/utils/i18n";
 import DeleteIcon from "@mui/icons-material/Delete";
 import FolderOpenIcon from "@mui/icons-material/FolderOpen";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
@@ -15,16 +25,6 @@ import {
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { snackbar } from "@/components/Snackbar";
-import type { FullGameData, GameData } from "@/types";
-import { getGameCover, getGameDisplayName, handleDirectory } from "@/utils";
-import {
-	deleteCustomCoverFile,
-	getPreviewUrlFromPath,
-	selectImageFile,
-	uploadSelectedImage,
-} from "@/utils/customCover";
-import i18n from "@/utils/i18n";
 
 interface GameInfoEditProps {
 	selectedGame: GameData | null;
@@ -95,7 +95,7 @@ export const GameInfoEdit: React.FC<GameInfoEditProps> = ({
 	// 处理选择可执行文件路径
 	const handleSelectLocalPath = async () => {
 		try {
-			const selectedPath = await handleDirectory();
+			const selectedPath = await handleExeFile(localPath);
 			if (selectedPath) {
 				setLocalPath(selectedPath);
 			}
