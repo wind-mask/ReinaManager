@@ -101,15 +101,14 @@ pub fn run() {
             collection_exists,
             add_game_to_collection,
             remove_game_from_collection,
-            remove_collection_link_by_id,
             get_games_in_collection,
-            get_collections_for_game,
             count_games_in_collection,
-            add_games_to_collection,
-            update_game_sort_order_in_collection,
+            update_category_games,
             is_game_in_collection,
-            get_all_collection_links,
-            clear_collection_games
+            batch_count_games_in_groups,
+            count_games_in_group,
+            get_collection_tree,
+            get_categories_with_count,
         ])
         .setup(|app| {
             #[cfg(debug_assertions)] // only include this code on debug builds
@@ -146,7 +145,7 @@ pub fn run() {
                 app.handle().plugin(
                     tauri_plugin_log::Builder::default()
                         .timezone_strategy(TimezoneStrategy::UseLocal)
-                        .level(log::LevelFilter::Info)
+                        .level(log::LevelFilter::Debug)
                         .targets([
                             Target::new(TargetKind::LogDir {
                                 // set custom log file name for debug

@@ -8,6 +8,7 @@
  * 主要导出：
  * - Toolbars：主工具栏组件
  * - Buttongroup：按钮组组件（根据页面类型切换）
+ * - Group：分组选择组件
  * - useModal：通用弹窗控制 Hook
  * - ToLibraries：返回游戏库按钮
  * - DeleteModal：删除游戏弹窗
@@ -61,7 +62,7 @@ import ScanLib from "../ScanLib";
 interface ButtonGroupProps {
 	isLibraries: boolean;
 	isDetail: boolean;
-	isCategory: boolean;
+	isCollection: boolean;
 }
 
 /**
@@ -292,7 +293,7 @@ const MoreButton = () => {
 export const Buttongroup = ({
 	isLibraries,
 	isDetail,
-	// isCategory,
+	isCollection,
 }: ButtonGroupProps) => {
 	const id = Number(useLocation().pathname.split("/").pop());
 	const { getGameById, isLocalGame, allGames } = useStore();
@@ -334,6 +335,12 @@ export const Buttongroup = ({
 					<ThemeSwitcher />
 				</>
 			)}
+			{isCollection && (
+				<>
+					<CollectionToolbar />
+					<ThemeSwitcher />
+				</>
+			)}
 		</>
 	);
 };
@@ -346,15 +353,15 @@ export const Toolbars = () => {
 	const path = useLocation().pathname;
 	const isLibraries = path === "/libraries";
 	const isDetail = path.startsWith("/libraries/") && path !== "/libraries/";
-	const isCategory = path === "/category";
+	const isCollection = path === "/collection";
 	return (
 		<Stack direction="row">
 			<Buttongroup
 				isLibraries={isLibraries}
 				isDetail={isDetail}
-				isCategory={isCategory}
+				isCollection={isCollection}
 			/>
-			{!isLibraries && !isDetail && !isCategory && <ThemeSwitcher />}
+			{!isLibraries && !isDetail && !isCollection && <ThemeSwitcher />}
 		</Stack>
 	);
 };

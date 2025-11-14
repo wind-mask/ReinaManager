@@ -90,9 +90,10 @@ mod win_elevated_launch {
 pub struct LaunchResult {
     success: bool,
     message: String,
+
+    process_id: Option<u32>, // 添加进程ID字段
     #[cfg(target_os = "linux")]
     systemd_scope: Option<String>, // 添加 systemd scope 字段
-    process_id: Option<u32>, // 添加进程ID字段
 }
 
 /// 启动游戏

@@ -3,6 +3,7 @@
  * @description 封装所有合集相关的后端调用
  */
 
+import type { Category, Group, GroupWithCategories } from "@/types/collection";
 import { BaseService } from "./base";
 
 export interface Collection {
@@ -41,6 +42,7 @@ class CollectionService extends BaseService {
 		});
 	}
 
+	// 暂时无用开始
 	/**
 	 * 根据 ID 查询合集
 	 */
@@ -68,6 +70,7 @@ class CollectionService extends BaseService {
 	async getChildCollections(parentId: number): Promise<Collection[]> {
 		return this.invoke<Collection[]>("find_child_collections", { parentId });
 	}
+	// 暂时无用结束
 
 	/**
 	 * 更新合集
@@ -96,14 +99,14 @@ class CollectionService extends BaseService {
 	}
 
 	/**
-	 * 检查合集是否存在
+	 * 检查合集是否存在 暂时无用
 	 */
 	async collectionExists(id: number): Promise<boolean> {
 		return this.invoke<boolean>("collection_exists", { id });
 	}
 
 	/**
-	 * 将游戏添加到合集
+	 * 将游戏添加到合集 暂时无用
 	 */
 	async addGameToCollection(
 		gameId: number,
@@ -131,13 +134,6 @@ class CollectionService extends BaseService {
 	}
 
 	/**
-	 * 根据关联 ID 删除
-	 */
-	async removeCollectionLinkById(linkId: number): Promise<number> {
-		return this.invoke<number>("remove_collection_link_by_id", { linkId });
-	}
-
-	/**
 	 * 获取合集中的所有游戏 ID
 	 */
 	async getGamesInCollection(collectionId: number): Promise<number[]> {
@@ -145,50 +141,28 @@ class CollectionService extends BaseService {
 	}
 
 	/**
-	 * 获取游戏所属的所有合集 ID
-	 */
-	async getCollectionsForGame(gameId: number): Promise<number[]> {
-		return this.invoke<number[]>("get_collections_for_game", { gameId });
-	}
-
-	/**
-	 * 获取合集中的游戏数量
+	 * 获取合集中的游戏数量 暂时无用
 	 */
 	async countGamesInCollection(collectionId: number): Promise<number> {
 		return this.invoke<number>("count_games_in_collection", { collectionId });
 	}
 
 	/**
-	 * 批量添加游戏到合集
+	 * 批量更新分类中的游戏列表
+	 * 完全替换分类中的游戏
 	 */
-	async addGamesToCollection(
+	async updateCategoryGames(
 		gameIds: number[],
 		collectionId: number,
 	): Promise<void> {
-		return this.invoke<void>("add_games_to_collection", {
+		return this.invoke<void>("update_category_games", {
 			gameIds,
 			collectionId,
 		});
 	}
 
 	/**
-	 * 更新游戏在合集中的排序
-	 */
-	async updateGameSortOrderInCollection(
-		linkId: number,
-		newSortOrder: number,
-	): Promise<GameCollectionLink> {
-		return this.invoke<GameCollectionLink>(
-			"update_game_sort_order_in_collection",
-			{
-				linkId,
-				newSortOrder,
-			},
-		);
-	}
-
-	/**
-	 * 检查游戏是否在合集中
+	 * 检查游戏是否在合集中 暂时无用
 	 */
 	async isGameInCollection(
 		gameId: number,
@@ -200,18 +174,46 @@ class CollectionService extends BaseService {
 		});
 	}
 
+	// ==================== 前端友好的组合 API ====================
+
 	/**
-	 * 获取所有游戏-合集关联
+	 * 批量获取多个分组的游戏数量（优化版）
+	 * 解决 N+1 查询问题
 	 */
-	async getAllCollectionLinks(): Promise<GameCollectionLink[]> {
-		return this.invoke<GameCollectionLink[]>("get_all_collection_links");
+	async batchCountGamesInGroups(
+		groupIds: number[],
+	): Promise<Record<number, number>> {
+		return this.invoke<Record<number, number>>("batch_count_games_in_groups", {
+			groupIds,
+		});
 	}
 
 	/**
-	 * 清空合集中的所有游戏
+	 * 获取分组中的游戏总数
 	 */
-	async clearCollectionGames(collectionId: number): Promise<number> {
-		return this.invoke<number>("clear_collection_games", { collectionId });
+	async countGamesInGroup(groupId: number): Promise<number> {
+		return this.invoke<number>("count_games_in_group", { groupId });
+	}
+
+	/**
+	 * 获取完整的分组-分类树（一次性返回所有数据）
+	 */
+	async getCollectionTree(): Promise<GroupWithCategories[]> {
+		return this.invoke<GroupWithCategories[]>("get_collection_tree");
+	}
+
+	/**
+	 * 获取所有分组（不含分类）
+	 */
+	async getGroups(): Promise<Group[]> {
+		return this.invoke<Group[]>("find_root_collections");
+	}
+
+	/**
+	 * 获取指定分组的分类列表（带游戏数量）
+	 */
+	async getCategoriesWithCount(groupId: number): Promise<Category[]> {
+		return this.invoke<Category[]>("get_categories_with_count", { groupId });
 	}
 }
 

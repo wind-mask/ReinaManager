@@ -1,3 +1,4 @@
+import CategoryIcon from "@mui/icons-material/Category";
 import GamesIcon from "@mui/icons-material/Games";
 import HomeIcon from "@mui/icons-material/Home";
 import SettingsIcon from "@mui/icons-material/Settings";
@@ -22,9 +23,15 @@ const Libraries = lazy(() =>
 const Detail = lazy(() =>
 	import("@/pages/Detail").then((module) => ({ default: module.Detail })),
 );
+const Collection = lazy(() =>
+	import("@/pages/Collection").then((module) => ({
+		default: module.Collection,
+	})),
+);
 const Settings = lazy(() =>
 	import("@/pages/Settings").then((module) => ({ default: module.Settings })),
 );
+
 // 加载指示器组件
 const PageLoader = () => (
 	<Box
@@ -76,6 +83,12 @@ export const appRoutes: AppRoute[] = [
 		title: "Game Detail",
 		component: Detail,
 		hideInMenu: true, // 详情页，不在侧边栏显示
+	},
+	{
+		path: "collection",
+		title: "app.NAVIGATION.collection",
+		icon: <CategoryIcon />,
+		component: Collection,
 	},
 	{
 		path: "settings",

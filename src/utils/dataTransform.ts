@@ -4,7 +4,6 @@
  */
 
 import { convertFileSrc } from "@tauri-apps/api/core";
-import i18next from "i18next";
 import type { FullGameData, GameData, RawGameData } from "@/types";
 import { getResourceDirPath } from "@/utils";
 
@@ -18,10 +17,9 @@ import { getResourceDirPath } from "@/utils";
  */
 export function getDisplayGameData(
 	fullData: FullGameData,
-	language?: string,
+	_language?: string,
 ): GameData {
 	const { game, bgm_data, vndb_data, other_data } = fullData;
-	const currentLanguage = language || i18next.language;
 
 	// 基础数据
 	const baseData: GameData = {
@@ -98,9 +96,9 @@ export function getDisplayGameData(
 				// 评分: BGM 优先
 				baseData.score = bgm_data?.score || vndb_data?.score || undefined;
 
-				// 开发商: BGM 优先
+				// 开发商: VNDB 优先
 				baseData.developer =
-					bgm_data?.developer || vndb_data?.developer || undefined;
+					vndb_data?.developer || bgm_data?.developer || undefined;
 
 				// VNDB 特有字段
 				baseData.all_titles = vndb_data?.all_titles || [];
@@ -139,18 +137,10 @@ export function getDisplayGameData(
 		}
 	}
 
-	// 处理自定义名称和封面
-	if (game.custom_name) {
-		baseData.name = game.custom_name;
-	}
-
 	// 处理自定义封面
 	if (game.custom_cover && game.id) {
 		baseData.image = getCustomCoverUrl(game.id, game.custom_cover);
 	}
-
-	// 处理显示名称 (根据语言)
-	baseData.name = getGameDisplayName(baseData, currentLanguage);
 
 	return baseData;
 }
@@ -185,23 +175,6 @@ function getCustomCoverUrl(
 	} catch (error) {
 		console.error("转换自定义封面路径失败:", error);
 	}
-}
-
-/**
- * 获取游戏显示名称
- * 优先级: custom_name > name_cn (中文环境) > name
- */
-function getGameDisplayName(game: GameData, language: string): string {
-	if (game.custom_name) {
-		return game.custom_name;
-	}
-
-	// 只有当语言为zh-CN时才使用name_cn
-	if (language === "zh-CN" && game.name_cn) {
-		return game.name_cn;
-	}
-
-	return game.name || "";
 }
 
 /**
