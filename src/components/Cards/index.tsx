@@ -132,9 +132,9 @@ const CardItem = memo(
 					onMouseUp={handleMouseUp}
 					onMouseLeave={handleMouseLeave}
 					className={`
-                    duration-100 
-                    hover:shadow-lg hover:scale-105 
-                    active:shadow-sm active:scale-95 
+                    duration-100
+                    hover:shadow-lg hover:scale-105
+                    active:shadow-sm active:scale-95
                     ${isLongPressing ? "ring-2 ring-blue-500 shadow-lg" : ""}
                 `}
 				>

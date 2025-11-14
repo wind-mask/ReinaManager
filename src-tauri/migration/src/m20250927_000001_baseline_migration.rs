@@ -309,7 +309,7 @@ async fn run_legacy_migration_001(pool: &sqlx::SqlitePool) -> Result<(), DbErr> 
 
     // 记录迁移
     sqlx::query(
-        "INSERT INTO _sqlx_migrations (version, description, installed_on, success, checksum, execution_time) 
+        "INSERT INTO _sqlx_migrations (version, description, installed_on, success, checksum, execution_time)
          VALUES (1, 'database_initialization', datetime('now'), 1, 0, 0)"
     )
     .execute(pool)
@@ -349,7 +349,7 @@ async fn run_legacy_migration_002(pool: &sqlx::SqlitePool) -> Result<(), DbErr> 
 
     // 记录迁移
     sqlx::query(
-        "INSERT INTO _sqlx_migrations (version, description, installed_on, success, checksum, execution_time) 
+        "INSERT INTO _sqlx_migrations (version, description, installed_on, success, checksum, execution_time)
          VALUES (2, 'add_custom_fields', datetime('now'), 1, 0, 0)"
     )
     .execute(pool)

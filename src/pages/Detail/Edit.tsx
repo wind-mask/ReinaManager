@@ -1,12 +1,12 @@
-import { Box, Card, CardContent, Stack, Typography } from "@mui/material";
-import { useState } from "react";
-import { useTranslation } from "react-i18next";
-import { useLocation } from "react-router";
 import { ViewUpdateGameBox } from "@/components/AlertBox";
 import { snackbar } from "@/components/Snackbar";
 import { gameService } from "@/services/gameService";
 import { useStore } from "@/store";
 import type { FullGameData } from "@/types";
+import { Box, Card, CardContent, Stack, Typography } from "@mui/material";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { useLocation } from "react-router-dom";
 import { DataSourceUpdate } from "./DataSourceUpdate";
 import { GameInfoEdit } from "./GameInfoEdit";
 

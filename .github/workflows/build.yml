@@ -16,7 +16,7 @@ jobs:
     environment: TAURI_KEY  # 指定使用这个环境
     permissions:
       contents: read
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -57,7 +57,7 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
-      
+
       - name: Get version
         id: get_version
         shell: bash

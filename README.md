@@ -115,6 +115,3 @@ This project is licensed under the [AGPL-3.0 license](https://github.com/huoshen
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=huoshen80/ReinaManager&type=Date)](https://star-history.com/#huoshen80/ReinaManager&Date)
-
-
-

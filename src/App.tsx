@@ -1,4 +1,6 @@
-import "./App.css";
+import { SnackbarUtilsConfigurator } from "@/components/Snackbar";
+import WindowsHandler from "@/components/Window";
+import { appRoutes } from "@/routes"; // 引入新的统一配置
 import "@/utils/i18n";
 import { isTauri } from "@tauri-apps/api/core";
 import type { Navigation } from "@toolpad/core/AppProvider";
@@ -7,9 +9,7 @@ import { SnackbarProvider } from "notistack";
 import { AliveScope } from "react-activation";
 import { useTranslation } from "react-i18next";
 import { Outlet } from "react-router-dom";
-import { SnackbarUtilsConfigurator } from "@/components/Snackbar";
-import WindowsHandler from "@/components/Window";
-import { appRoutes } from "@/routes"; // 引入新的统一配置
+import "./App.css";
 
 const App: React.FC = () => {
 	const { t } = useTranslation();

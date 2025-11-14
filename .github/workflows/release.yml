@@ -36,7 +36,7 @@ jobs:
           echo "Looking for version: $VERSION"
           CHANGELOG_FILE=$(mktemp)
           awk "/^## \\[?v?${VERSION//./\\.}\]?/ {flag=1; next} /^## / && flag {flag=0} flag {print}" CHANGELOG.md > "$CHANGELOG_FILE"
-          
+
           if [ -s "$CHANGELOG_FILE" ]; then
             {
               echo "CHANGELOG_CONTENT<<EOF"
@@ -94,7 +94,7 @@ jobs:
           releaseDraft: true
           prerelease: false
           includeUpdaterJson: true
-          includeRelease: true 
+          includeRelease: true
           tauriScript: pnpm tauri
           args: --target ${{ matrix.rust_target }}
 
@@ -127,17 +127,17 @@ jobs:
           TAG_NAME="${{ github.ref_name }}"
           # 从 GitHub API 获取草稿 release 的所有资源文件名
           ASSETS_JSON=$(gh release view "$TAG_NAME" --json assets --jq '.assets | .[] | .name')
-          
+
           # 查找 MSI 和 EXE 文件
           X64_MSI=$(echo "$ASSETS_JSON" | grep -E "_x64_.*\.msi$" || echo "")
           ARM64_MSI=$(echo "$ASSETS_JSON" | grep -E "_arm64_.*\.msi$" || echo "")
-          
+
           CHANGELOG="${{ needs.prepare.outputs.changelog }}"
-          
+
           # 为所有文件创建 URL
           X64_MSI_URL="https://github.com/${{ github.repository }}/releases/download/$TAG_NAME/$X64_MSI"
           ARM64_MSI_URL="https://github.com/${{ github.repository }}/releases/download/$TAG_NAME/$ARM64_MSI"
-          
+
           DOWNLOAD_SECTION=$(cat <<EOF
           ---
           ### 📥 下载地址 (Download)
@@ -146,14 +146,14 @@ jobs:
             - [**ARM64**]($ARM64_MSI_URL)
           EOF
           )
-            
+
           FINAL_BODY=$(cat <<EOF
           $CHANGELOG
 
           $DOWNLOAD_SECTION
           EOF
           )
-          
+
           {
             echo "body<<EOF"
             echo "$FINAL_BODY"
@@ -199,7 +199,6 @@ jobs:
 
           jq '.platforms |= with_entries(.value.url |= "https://gh.huoshen80.top/\(.)")' latest.json > latest_modified.json
           mv -f latest_modified.json latest.json
-          
+
           gh release upload $TAG_NAME "latest.json" --clobber
           echo "Successfully updated latest.json with CDN URLs"
-

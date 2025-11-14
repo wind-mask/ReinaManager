@@ -19,6 +19,13 @@
  * - react-i18next
  */
 
+import { fetchBgmById, fetchBgmByName } from "@/api/bgm";
+import { fetchMixedData } from "@/api/mixed";
+import { fetchVndbById, fetchVndbByName } from "@/api/vndb";
+import { useModal } from "@/components/Toolbar";
+import { useStore } from "@/store/";
+import type { FullGameData } from "@/types";
+import { handleExeFile } from "@/utils";
 import AddIcon from "@mui/icons-material/Add";
 import FileOpenIcon from "@mui/icons-material/FileOpen";
 import { FormControlLabel, Radio, RadioGroup } from "@mui/material";
@@ -32,24 +39,37 @@ import DialogTitle from "@mui/material/DialogTitle";
 import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import { isTauri } from "@tauri-apps/api/core";
+import path from "node:path/posix";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { fetchBgmById, fetchBgmByName } from "@/api/bgm";
-import { fetchMixedData } from "@/api/mixed";
-import { fetchVndbById, fetchVndbByName } from "@/api/vndb";
-import { useModal } from "@/components/Toolbar";
-import { useStore } from "@/store/";
-import type { FullGameData } from "@/types";
-import { handleDirectory } from "@/utils";
 
 /**
- * 从文件路径中提取文件夹名称（纯函数，置于组件外以保证稳定引用）
- * @param path 文件路径
- * @returns 文件夹名称
+ * 从文件路径中提取其父文件夹的名称，支持多系统路径。
+ *
+ * @param filePath - 完整的文件路径 (例如 'C:\\Users\\file.txt' 或 '/home/user/file.txt')
+ * @returns 父文件夹的名称 (例如 'Users' 或 'user')
  */
-function extractFolderName(path: string): string {
-	const parts = path.split("\\");
-	return parts.length > 1 ? parts[parts.length - 2] : "";
+function getParentFolderName(filePath: string): string {
+	if (!filePath) {
+		return ".";
+	}
+
+	// 1. 规范化：将所有 Windows 分隔符 (\\) 替换为 POSIX 分隔符 (/)
+	const normalizedPath = filePath.replace(/\\/g, "/");
+
+	// 2. 获取父目录的完整路径
+	//    path.dirname('/home/user/file.txt') => '/home/user'
+	//    path.dirname('C:/Users/file.txt') => 'C:/Users'
+	//    path.dirname('file.txt') => '.'
+	const dirPath = path.dirname(normalizedPath);
+
+	// 3. 从父目录路径中提取最后一个组件（即文件夹名称）
+	//    path.basename('/home/user') => 'user'
+	//    path.basename('C:/Users') => 'Users'
+	//    path.basename('.') => '.'
+	const folderName = path.basename(dirPath);
+
+	return folderName;
 }
 
 /**
@@ -80,7 +100,7 @@ const AddModal: React.FC = () => {
 
 	useEffect(() => {
 		if (path) {
-			setFormText(extractFolderName(path));
+			setFormText(getParentFolderName(path));
 		}
 	}, [path]);
 
@@ -286,7 +306,7 @@ const AddModal: React.FC = () => {
 						className="w-md"
 						variant="contained"
 						onClick={async () => {
-							const result = await handleDirectory();
+							const result = await handleExeFile();
 							if (result) setPath(result);
 						}}
 						startIcon={<FileOpenIcon />}
