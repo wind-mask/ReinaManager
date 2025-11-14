@@ -13,6 +13,8 @@ use utils::{
     launch::launch_game,
 };
 
+use crate::utils::{launch::stop_game, scan::scan_game_library};
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -34,6 +36,8 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             // 工具类 commands
+            scan_game_library,
+            stop_game,
             launch_game,
             open_directory,
             move_backup_folder,
@@ -108,6 +112,12 @@ pub fn run() {
             clear_collection_games
         ])
         .setup(|app| {
+            #[cfg(debug_assertions)] // only include this code on debug builds
+            {
+                let window = app.get_webview_window("main").unwrap();
+                window.open_devtools();
+                window.close_devtools();
+            }
             // 执行 SeaORM 数据库迁移并注册到状态管理
             let app_handle = app.handle().clone();
             tauri::async_runtime::block_on(async move {

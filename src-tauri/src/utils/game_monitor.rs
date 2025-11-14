@@ -1,10 +1,10 @@
 use serde_json::json;
 use std::{
-    path::Path,
+    thread,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 // 导入 sysinfo 相关类型和 trait
-use sysinfo::{ProcessesToUpdate, System};
+use sysinfo::System;
 use tauri::{AppHandle, Emitter, Runtime};
 
 #[cfg(target_os = "windows")]
@@ -39,6 +39,7 @@ pub async fn monitor_game<R: Runtime>(
     app_handle: AppHandle<R>,
     game_id: u32,
     process_id: u32,
+    #[cfg(target_os = "linux")] systemd_scope: String,
     executable_path: String,
 ) {
     // 使用 Tauri 的异步运行时启动监控任务，与事件循环深度集成
@@ -53,6 +54,8 @@ pub async fn monitor_game<R: Runtime>(
             app_handle_clone,
             game_id,
             process_id,
+            #[cfg(target_os = "linux")]
+            &systemd_scope,
             executable_path,
             &mut sys,
         )
@@ -75,21 +78,32 @@ async fn run_game_monitor<R: Runtime>(
     app_handle: AppHandle<R>,
     game_id: u32,
     process_id: u32, // 初始监控的进程 PID，可能会在检测后改变。
+    #[cfg(target_os = "linux")] systemd_scope: &str,
     executable_path: String,
-    sys: &mut System,
+    _sys: &mut System,
 ) -> Result<(), String> {
     let mut accumulated_seconds = 0u64; // 使用 u64 避免溢出
     let start_time = get_timestamp();
     tokio::time::sleep(Duration::from_secs(1)).await;
-
-    // 使用智能选择函数获取最佳的 PID
+    #[cfg(target_os = "linux")]
+    tokio::time::sleep(Duration::from_secs(10)).await; // Linux 下多等几秒，确保 systemd scope 启动 wine 进程完成
+                                                       // 使用智能选择函数获取最佳的 PID
+    #[cfg(target_os = "windows")]
     let mut process_id = select_best_pid(process_id, &executable_path, sys);
-
+    #[cfg(target_os = "linux")]
+    let mut process_id = select_best_pid(process_id, systemd_scope);
+    #[cfg(target_os = "linux")]
+    {
+        println!(
+            "监控游戏 (systemd scope: {}): ID={}, Path={}",
+            systemd_scope, game_id, executable_path
+        );
+    }
+    #[cfg(target_os = "windows")]
     println!(
         "开始监控游戏: ID={}, 最终 PID={}, Path={}",
         game_id, process_id, executable_path
     );
-
     // 通知前端会话开始。
     app_handle
         .emit(
@@ -97,84 +111,84 @@ async fn run_game_monitor<R: Runtime>(
             json!({ "gameId": game_id, "processId": process_id, "startTime": start_time }),
         )
         .map_err(|e| format!("无法发送 game-session-started 事件: {}", e))?;
-
     let mut consecutive_failures = 0u32;
     // 连续 N 次检查进程失败后，才认为进程已结束或需要切换。
     // 注意：这个值可能需要根据实际情况调整，原版为2，这里是3。
     let max_failures = 3u32;
-    let original_process_id = process_id; // 保存最初启动时传入的 PID。
-    let mut switched_process = false; // 标记是否已经从 original_process_id 切换到了按路径找到的新进程。
+    #[cfg(target_os = "windows")]
+    {
+        let original_process_id = process_id; // 保存最初启动时传入的 PID。
+        let mut switched_process = false; // 标记是否已经从 original_process_id 切换到了按路径找到的新进程。
+        loop {
+            let process_running = is_process_running(process_id);
 
-    loop {
-        let process_running = is_process_running(process_id);
+            if !process_running {
+                consecutive_failures += 1;
+                // println!("进程 {} 运行检查失败次数: {}", process_id, consecutive_failures); // Debug 日志
 
-        if !process_running {
-            consecutive_failures += 1;
-            // println!("进程 {} 运行检查失败次数: {}", process_id, consecutive_failures); // Debug 日志
+                if consecutive_failures >= max_failures {
+                    println!(
+                        "进程 {} (原始 PID: {}) 被认为已结束或连续 {} 次检查失败。",
+                        process_id, original_process_id, max_failures
+                    );
 
-            if consecutive_failures >= max_failures {
-                println!(
-                    "进程 {} (原始 PID: {}) 被认为已结束或连续 {} 次检查失败。",
-                    process_id, original_process_id, max_failures
-                );
-
-                // 尝试根据可执行文件路径查找是否有新的进程实例在运行。
-                let available_pids = get_process_id_by_path(&executable_path, sys);
-                if !available_pids.is_empty() {
-                    // 从可用进程中选择最佳的 PID
-                    let matched_pid = select_best_pid(process_id, &executable_path, sys);
-                    // 检查找到的 PID 是否与当前认为已结束的 PID 不同，
-                    // 或者虽然 PID 相同但我们之前从未切换过进程 (说明可能是原始进程重启)。
-                    if process_id != matched_pid || !switched_process {
-                        println!(
-                            "通过路径 '{}' 找到潜在的新进程实例 PID: {}",
-                            executable_path, matched_pid
-                        );
-                        // 再次确认这个找到的 PID 当前是否真的在运行。
-                        if is_process_running(matched_pid) {
-                            println!("确认 PID {} 正在运行。切换监控目标。", matched_pid);
-                            process_id = matched_pid; // 更新当前监控的 PID。
-                            switched_process = true; // 标记已经发生过切换。
-                            consecutive_failures = 0; // 重置失败计数器。
-                                                      // (可选) 通知前端 PID 发生变化。
-                            app_handle
-                                .emit(
-                                    "game-process-switched",
-                                    json!({ "gameId": game_id, "newProcessId": matched_pid }),
-                                )
-                                .ok(); // .ok() 忽略发送错误
-                            continue; // 继续下一轮循环，监控新的 PID。
+                    // 尝试根据可执行文件路径查找是否有新的进程实例在运行。
+                    let available_pids = get_process_id_by_path(&executable_path, sys);
+                    if !available_pids.is_empty() {
+                        // 从可用进程中选择最佳的 PID
+                        let matched_pid = select_best_pid(process_id, &executable_path, sys);
+                        // 检查找到的 PID 是否与当前认为已结束的 PID 不同，
+                        // 或者虽然 PID 相同但我们之前从未切换过进程 (说明可能是原始进程重启)。
+                        if process_id != matched_pid || !switched_process {
+                            println!(
+                                "通过路径 '{}' 找到潜在的新进程实例 PID: {}",
+                                executable_path, matched_pid
+                            );
+                            // 再次确认这个找到的 PID 当前是否真的在运行。
+                            if is_process_running(matched_pid) {
+                                println!("确认 PID {} 正在运行。切换监控目标。", matched_pid);
+                                process_id = matched_pid; // 更新当前监控的 PID。
+                                switched_process = true; // 标记已经发生过切换。
+                                consecutive_failures = 0; // 重置失败计数器。
+                                                          // (可选) 通知前端 PID 发生变化。
+                                app_handle
+                                    .emit(
+                                        "game-process-switched",
+                                        json!({ "gameId": game_id, "newProcessId": matched_pid }),
+                                    )
+                                    .ok(); // .ok() 忽略发送错误
+                                continue; // 继续下一轮循环，监控新的 PID。
+                            } else {
+                                println!(
+                                    "路径匹配找到的 PID {} 当前并未运行，无法切换。",
+                                    matched_pid
+                                );
+                            }
                         } else {
                             println!(
-                                "路径匹配找到的 PID {} 当前并未运行，无法切换。",
-                                matched_pid
-                            );
-                        }
-                    } else {
-                        println!(
                             "路径匹配找到的 PID {} 与当前已结束的 PID 相同，且已切换过，不再切换。",
                             matched_pid
                         );
+                        }
+                    } else {
+                        println!("未通过路径 '{}' 找到匹配的进程。", executable_path);
                     }
-                } else {
-                    println!("未通过路径 '{}' 找到匹配的进程。", executable_path);
+
+                    // 如果执行到这里，说明没有找到可以切换到的新进程实例。
+                    println!("未找到可切换的活动进程，结束监控会话。");
+                    break; // 退出监控循环。
                 }
+            } else {
+                // 进程正在运行，重置连续失败计数器。
+                consecutive_failures = 0;
 
-                // 如果执行到这里，说明没有找到可以切换到的新进程实例。
-                println!("未找到可切换的活动进程，结束监控会话。");
-                break; // 退出监控循环。
-            }
-        } else {
-            // 进程正在运行，重置连续失败计数器。
-            consecutive_failures = 0;
-
-            // 检查游戏窗口是否在前台，是则累加活动时间。
-            if is_window_foreground_for_pid(process_id) {
-                accumulated_seconds += 1;
-                // 大约每 30 秒向前端发送一次累计时间更新。
-                if accumulated_seconds > 0 && accumulated_seconds.is_multiple_of(30) {
-                    let minutes = accumulated_seconds / 60;
-                    app_handle
+                // 检查游戏窗口是否在前台，是则累加活动时间。
+                if is_window_foreground_for_pid(process_id) {
+                    accumulated_seconds += 1;
+                    // 大约每 30 秒向前端发送一次累计时间更新。
+                    if accumulated_seconds > 0 && accumulated_seconds.is_multiple_of(30) {
+                        let minutes = accumulated_seconds / 60;
+                        app_handle
                         .emit(
                             "game-time-update",
                             json!({
@@ -183,14 +197,70 @@ async fn run_game_monitor<R: Runtime>(
                             }),
                         )
                         .map_err(|e| format!("无法发送 game-time-update 事件: {}", e))?;
+                    }
                 }
             }
-        }
 
-        // 每次循环等待 1 秒，以降低 CPU 占用。使用异步等待避免阻塞事件循环。
-        tokio::time::sleep(Duration::from_secs(1)).await;
+            // 每次循环等待 1 秒，以降低 CPU 占用。使用异步等待避免阻塞事件循环。
+            tokio::time::sleep(Duration::from_secs(1)).await;
+        }
     }
 
+    #[cfg(target_os = "linux")]
+    {
+        loop {
+            let game_running = is_game_running(systemd_scope);
+
+            if !game_running {
+                consecutive_failures += 1;
+                // println!("进程 {} 运行检查失败次数: {}", process_id, consecutive_failures); // Debug 日志
+
+                if consecutive_failures >= max_failures {
+                    println!(
+                        "游戏 {} (scope: {} ) 被认为已结束或连续 {} 次检查失败。",
+                        game_id, systemd_scope, max_failures
+                    );
+
+                    break; // 退出监控循环。
+                }
+            } else {
+                // 进程正在运行，重置连续失败计数器。
+                consecutive_failures = 0;
+
+                // 检查游戏窗口是否在前台，是则累加活动时间。
+                if is_window_foreground_for_pid(process_id) {
+                    accumulated_seconds += 1;
+                    // 大约每 30 秒向前端发送一次累计时间更新。
+                    if accumulated_seconds > 0 && accumulated_seconds.is_multiple_of(30) {
+                        let minutes = accumulated_seconds / 60;
+                        app_handle
+                        .emit(
+                            "game-time-update",
+                            json!({
+                                "gameId": game_id, "totalMinutes": minutes, "totalSeconds": accumulated_seconds,
+                                "startTime": start_time, "currentTime": get_timestamp(), "processId": process_id
+                            }),
+                        )
+                        .map_err(|e| format!("无法发送 game-time-update 事件: {}", e))?;
+                    }
+                } else {
+                    // 每次确认游戏仍在运行时，尝试重新选择最佳 PID。
+                    #[cfg(target_os = "windows")]
+                    {
+                        process_id =
+                            select_best_pid(process_id, &executable_path, sys,);
+                    }
+                    #[cfg(target_os = "linux")]
+                    {
+                        process_id = select_best_pid(process_id, systemd_scope);
+                    }
+                }
+            }
+
+            // 每次循环等待 1 秒，以降低 CPU 占用。使用异步等待避免阻塞事件循环。
+            tokio::time::sleep(Duration::from_secs(1)).await;
+        }
+    }
     // 监控循环结束后的处理逻辑。
     let end_time = get_timestamp();
     let total_minutes = accumulated_seconds / 60;
@@ -201,10 +271,15 @@ async fn run_game_monitor<R: Runtime>(
     } else {
         total_minutes
     };
-
+    #[cfg(target_os = "windows")]
     println!(
         "游戏会话结束: ID={}, 最终 PID={}, 总活动时间={}秒 (计为 {} 分钟)",
         game_id, process_id, accumulated_seconds, final_minutes
+    );
+    #[cfg(target_os = "linux")]
+    println!(
+        "游戏会话结束: ID={}, scope={}, 总活动时间={}秒 (计为 {} 分钟)",
+        game_id, systemd_scope, accumulated_seconds, final_minutes
     );
 
     // 发送会话结束事件到前端。
@@ -248,14 +323,26 @@ fn is_process_running(pid: u32) -> bool {
     }
 }
 
-#[cfg(not(target_os = "windows"))]
-fn is_process_running(pid: u32) -> bool {
-    // 临时的非 Windows 实现。
-    // 注意：这个实现效率不高，因为它每次都创建新的 System 对象。
-    // 理想情况下，如果需要跨平台支持，应该也将共享的 `sys` 实例传递到这里。
-    let mut s = System::new();
-    s.refresh_processes(ProcessesToUpdate::All, true);
-    s.process(Pid::from_u32(pid)).is_some()
+#[cfg(target_os = "linux")]
+fn is_game_running(systemd_scope: &str) -> bool {
+    use std::process::Command;
+
+    // 使用 systemctl is-active 命令检查 systemd scope 的状态
+    //TODO: 考虑使用 D-Bus 直接查询 systemd 状态
+    let output = Command::new("systemctl")
+        .args(["--user", "is-active", systemd_scope])
+        .output();
+
+    if let Ok(output) = output {
+        // 如果命令执行成功，检查输出是否为 "active"
+        if output.status.success() {
+            let status = String::from_utf8_lossy(&output.stdout);
+            return status.trim() == "active";
+        }
+    }
+
+    // 如果命令执行失败或状态不是 active，则认为游戏未运行
+    false
 }
 
 /// 检查目标目录下的任意进程是否拥有前台窗口 (仅 Windows)。
@@ -336,6 +423,7 @@ fn has_window_for_pid(_pid: u32) -> bool {
 ///
 /// # Returns
 /// 返回该目录及子目录下所有正在运行进程的 PID 列表。
+#[cfg(target_os = "windows")]
 fn get_processes_in_directory(executable_path: &str, sys: &mut System) -> Vec<u32> {
     sys.refresh_processes(ProcessesToUpdate::All, true);
     let target_dir = Path::new(executable_path).parent();
@@ -367,44 +455,67 @@ fn get_processes_in_directory(executable_path: &str, sys: &mut System) -> Vec<u3
 ///
 /// # Returns
 /// 返回最佳的 PID
-fn select_best_pid(original_pid: u32, executable_path: &str, sys: &mut System) -> u32 {
+fn select_best_pid(
+    original_pid: u32,
+    #[cfg(target_os = "windows")] executable_path: &str,
+    #[cfg(target_os = "windows")] sys: &mut System,
+    #[cfg(target_os = "linux")] systemd_scope: &str,
+) -> u32 {
     // 先检查原始 PID 是否有聚焦
     if is_window_foreground_for_pid(original_pid) {
         println!("原始 PID {} 拥有聚焦，直接使用", original_pid);
         return original_pid;
     }
+    let mut pids;
+    #[cfg(target_os = "windows")]
+    {
+        // 获取目录下所有进程
 
-    // 获取目录下所有进程
-    let pids = get_process_id_by_path(executable_path, sys);
-    if pids.is_empty() {
-        println!("未找到目录下的进程，使用原始 PID: {}", original_pid);
-        return original_pid;
-    }
-
-    // 优先查找聚焦的进程
-    for &pid in &pids {
-        if is_window_foreground_for_pid(pid) {
-            println!("找到聚焦的进程 PID: {}", pid);
-            return pid;
+        pids = get_process_id_by_path(executable_path, sys);
+        if pids.is_empty() {
+            println!("未找到目录下的进程，使用原始 PID: {}", original_pid);
+            return original_pid;
         }
     }
 
-    // 查找有窗口的进程
-    for &pid in &pids {
-        if has_window_for_pid(pid) {
-            println!("找到有窗口的进程 PID: {}", pid);
-            return pid;
+    loop {
+        #[cfg(target_os = "linux")]
+        {
+            if !is_game_running(systemd_scope) {
+                println!("游戏未运行，使用原始 PID: {}", original_pid);
+                return original_pid;
+            }
+            thread::sleep(Duration::from_secs(1));
+            // 查看scope下的进程
+            pids = get_process_id_by_scope(systemd_scope);
+            if pids.is_empty() {
+                println!("未找到 scope 下的进程，使用原始 PID: {}", original_pid);
+                return original_pid;
+            }
         }
-    }
+        // 优先查找聚焦的进程
+        for &pid in &pids {
+            if is_window_foreground_for_pid(pid) {
+                println!("找到聚焦的进程 PID: {}", pid);
+                return pid;
+            }
+        }
 
-    // 如果没有找到更好的，返回第一个找到的进程
-    if let Some(&first_pid) = pids.first() {
-        println!("使用第一个找到的进程 PID: {}", first_pid);
-        return first_pid;
+        // 查找有窗口的进程
+        for &pid in &pids {
+            if has_window_for_pid(pid) {
+                println!("找到有窗口的进程 PID: {}", pid);
+                return pid;
+            }
+        }
+        #[cfg(target_os = "windows")]
+        break;
     }
-
-    println!("回退到原始 PID: {}", original_pid);
-    original_pid
+    #[cfg(target_os = "windows")]
+    {
+        println!("回退到原始 PID: {}", original_pid);
+        original_pid
+    }
 }
 
 /// 根据可执行文件的完整路径查找所有正在运行的进程 PID 列表 (已优化 sysinfo 使用)。
@@ -415,8 +526,65 @@ fn select_best_pid(original_pid: u32, executable_path: &str, sys: &mut System) -
 ///
 /// # Returns
 /// 返回目录下所有正在运行的进程 PID 列表。
+#[cfg(target_os = "windows")]
 fn get_process_id_by_path(executable_path: &str, sys: &mut System) -> Vec<u32> {
     let pids = get_processes_in_directory(executable_path, sys);
     println!("找到进程目录下的进程 PID 列表: {:?}", pids);
+    pids
+}
+/// 根据 systemd user scope 名称查找所有正在运行的进程 PID 列表 (仅 Linux)。
+#[cfg(target_os = "linux")]
+fn get_process_id_by_scope(systemd_scope: &str) -> Vec<u32> {
+    use std::process::Command;
+    let mut pids = Vec::new();
+    // 等到有在exe_dir下的进程为止
+
+    // 使用 systemctl 命令获取 scope 的进程信息
+    let output_control_group = Command::new("systemctl")
+        .args([
+            "--user",
+            "show",
+            "--property",
+            "ControlGroup",
+            "--value",
+            systemd_scope,
+        ])
+        .output();
+    if let Ok(output) = output_control_group {
+        if output.status.success() {
+            let control_group = String::from_utf8_lossy(&output.stdout);
+            if control_group.trim().is_empty() {
+                println!("systemd scope '{}' 的 ControlGroup 信息为空", systemd_scope);
+                return pids;
+            }
+            let control_group_path = format!("/sys/fs/cgroup{}", control_group.trim());
+            // 读取 cgroup 目录下的 cgroup.procs 文件，获取所有进程 PID
+            let procs_path = format!("{}/cgroup.procs", control_group_path);
+            let procs_content = std::fs::read_to_string(&procs_path);
+            if let Ok(content) = procs_content {
+                for line in content.lines() {
+                    if let Ok(pid) = line.trim().parse::<u32>() {
+                        pids.push(pid);
+                    }
+                }
+                println!(
+                    "找到 systemd scope '{}' 下的进程 PID 列表: {:?}",
+                    systemd_scope, pids
+                );
+                return pids;
+            } else {
+                println!(
+                    "无法读取 systemd scope '{}' 的 cgroup.procs 文件",
+                    procs_path
+                );
+                return pids;
+            }
+        }
+    } else {
+        println!("无法获取 systemd scope 的 ControlGroup 信息");
+        return pids;
+    }
+    thread::sleep(Duration::from_secs(1));
+
     pids
 }
