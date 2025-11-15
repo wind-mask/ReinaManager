@@ -1,6 +1,6 @@
 [tool.commitizen]
 name = "cz_conventional_commits"
-tag_format = "v$version-linux"
+tag_format = "v$major.$minor.$patch-linux-$patch"
 version_scheme = "semver"
 version_provider = "npm"
 major_version_zero = true
