@@ -1,11 +1,11 @@
+#![allow(unused_imports)]
 use log::{debug, error, info, warn};
 use serde_json::json;
 use std::{
-    thread,
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    path::Path, thread, time::{Duration, SystemTime, UNIX_EPOCH}
 };
 // 导入 sysinfo 相关类型和 trait
-use sysinfo::System;
+use sysinfo::{ProcessesToUpdate, System};
 use tauri::{AppHandle, Emitter, Runtime};
 
 // 监控配置常量
