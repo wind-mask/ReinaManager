@@ -212,12 +212,10 @@ async fn run_game_monitor<R: Runtime>(
         let original_process_id = process_id; // 保存最初启动时传入的 PID。
         let mut switched_process = false; // 标记是否已经从 original_process_id 切换到了按路径找到的新进程。
         loop {
-            let process_running = if cfg!(target_os = "windows") {
-                is_process_running(process_id)
-            } else {
-                is_game_running(systemd_scope)
-            };
-
+            #[cfg(target_os = "windows")]
+            let process_running = is_process_running(process_id);
+            #[cfg(target_os = "linux")]
+            let process_running = is_game_running(systemd_scope);
             if !process_running {
                 consecutive_failures += 1;
                 debug!(
