@@ -20,6 +20,16 @@
  * - react-router
  */
 
+import { useStore } from "@/store";
+import { useGamePlayStore } from "@/store/gamePlayStore";
+import type { GameData } from "@/types";
+import {
+	formatPlayTime,
+	formatRelativeTime,
+	getGameCover,
+	getGameDisplayName,
+} from "@/utils";
+import { getRecentSessionsForAllGames } from "@/utils/gameStats";
 import {
 	Notifications as ActivityIcon,
 	EmojiEvents as CompletedIcon,
@@ -48,16 +58,6 @@ import {
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-import { useStore } from "@/store";
-import { useGamePlayStore } from "@/store/gamePlayStore";
-import type { GameData } from "@/types";
-import {
-	formatPlayTime,
-	formatRelativeTime,
-	getGameCover,
-	getGameDisplayName,
-} from "@/utils";
-import { getRecentSessionsForAllGames } from "@/utils/gameStats";
 
 /**
  * 最近游玩会话类型

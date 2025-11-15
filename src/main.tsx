@@ -10,17 +10,17 @@
  * - 防止后来加载的样式(如 @mui/x-charts)覆盖 MUI 基础样式
  */
 
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import { RouterProvider } from "react-router-dom";
+import { initTray } from "@/components/Tray";
 import { routers } from "@/routes";
-import "./index.css";
-import "virtual:uno.css";
+import { initResourceDirPath } from "@/utils";
 import createCache from "@emotion/cache";
 import { CacheProvider } from "@emotion/react";
 import { isTauri } from "@tauri-apps/api/core";
-import { initTray } from "@/components/Tray";
-import { initResourceDirPath } from "@/utils";
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { RouterProvider } from "react-router-dom";
+import "virtual:uno.css";
+import "./index.css";
 import { initializeStores } from "./store";
 
 // 创建 Emotion 缓存,确保样式注入顺序正确

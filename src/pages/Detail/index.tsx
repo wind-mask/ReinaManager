@@ -17,6 +17,10 @@
  * - react-router
  */
 
+import { useStore } from "@/store";
+import { getGameCover, getGameDisplayName } from "@/utils";
+import i18n from "@/utils/i18n";
+import { translateTags } from "@/utils/tagTranslation";
 import {
 	Box,
 	Chip,
@@ -31,10 +35,6 @@ import { useActivePage } from "@toolpad/core/useActivePage";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
-import { useStore } from "@/store";
-import { getGameCover, getGameDisplayName } from "@/utils";
-import i18n from "@/utils/i18n";
-import { translateTags } from "@/utils/tagTranslation";
 
 // 使用 React.lazy 懒加载 Tab 内容组件
 const Backup = lazy(() =>

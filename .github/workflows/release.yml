@@ -51,18 +51,24 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Setup bun
-        id: setup-bun
-        uses: oven-sh/setup-bun@v2
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
         with:
-          bun-version: latest
-      - name: Setup bun cache
+          version: 10
+          run_install: false
+      - name: Get pnpm store directory
+        id: pnpm-store
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
+
+      - name: Setup pnpm cache
         uses: actions/cache@v4
         with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-${{ steps.setup-bun.outputs.bun_version }}-bun-${{ hashFiles('**/bun.lock') }}
+          path: ${{ steps.pnpm-store.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-${{ steps.setup-bun.outputs.bun_version }}-bun-
+            ${{ runner.os }}-pnpm-store-
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -75,7 +81,7 @@ jobs:
           workspaces: "./src-tauri -> target"
 
       - name: Install dependencies
-        run: bun install
+        run: pnpm install
       - name: install dependencies for build
         run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libsoup-3.0-dev libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
       - name: Get version
@@ -111,7 +117,7 @@ jobs:
           includeUpdaterJson: false
           includeDebug: false
           includeRelease: true
-          tauriScript: bun tauri
+          tauriScript: pnpm tauri
           args:
             --target ${{ matrix.out.rust_target }}
             # Upload build artifacts for testings
