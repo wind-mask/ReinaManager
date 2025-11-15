@@ -55,6 +55,7 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 import ScanLib from "../ScanLib";
+import { CollectionToolbar } from "./Collection";
 
 /**
  * 按钮组属性类型
