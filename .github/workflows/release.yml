@@ -150,10 +150,10 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           tag: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
+          name: Release ${{ inputs.tag_name == '' && github.ref_name || inputs.tag_name }}
           immutableCreate: true
           body: ${{ needs.prepare.outputs.changelog }}
-          artifacts: release-artifacts/ReinaManager-*
+          artifacts: "release-artifacts/ReinaManager*.deb,release-artifacts,ReinaManager*.rpm,release-artifacts/ReinaManager*.AppImage"
           makeLatest: true
   # finalize-release:
   #   name: Finalize Release
