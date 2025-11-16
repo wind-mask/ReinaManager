@@ -80,8 +80,10 @@ jobs:
         shell: bash
         run: |
           case "${{ matrix.rust_target }}" in
-            *x86_64*) SHORT=win_x64 ;;
-            *aarch64*) SHORT=win_arm64 ;;
+            *x86_64-pc-windows*) SHORT=win_x64 ;;
+            *aarch64-pc-windows*) SHORT=win_arm64 ;;
+            *x86_64-unknown-linux-gnu*) SHORT=linux_x64 ;;
+            *aarch64-unknown-linux-gnu*) SHORT=linux_arm64 ;;
             *) SHORT=unknown ;;
           esac
           echo "SHORT=$SHORT" >> $GITHUB_OUTPUT
