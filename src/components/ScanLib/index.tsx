@@ -1,10 +1,3 @@
-import { fetchBgmByName } from "@/api/bgm";
-import { fetchMixedData } from "@/api/mixed";
-import { fetchVndbByName } from "@/api/vndb";
-import { useModal } from "@/components/Toolbar";
-import { useStore } from "@/store/";
-import type { FullGameData } from "@/types";
-import { handleFolder, trimDirnameToSearchName } from "@/utils";
 import AddIcon from "@mui/icons-material/Add";
 import FileOpenIcon from "@mui/icons-material/FileOpen";
 import {
@@ -20,8 +13,14 @@ import {
 } from "@mui/material";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { useState } from "react";
-
 import { useTranslation } from "react-i18next";
+import { fetchBgmByName } from "@/api/bgm";
+import { fetchMixedData } from "@/api/mixed";
+import { fetchVndbByName } from "@/api/vndb";
+import { useModal } from "@/components/Toolbar";
+import { useStore } from "@/store/";
+import type { FullGameData } from "@/types";
+import { handleFolder, trimDirnameToSearchName } from "@/utils";
 
 const ScanLib: React.FC = () => {
 	const { t } = useTranslation();
@@ -51,10 +50,17 @@ const ScanLib: React.FC = () => {
 				setLoading(false);
 				return;
 			}
+			console.log("Found game paths:", gamePaths);
+			console.log(
+				"Existing games in library:",
+				games.map((g) => g.localpath),
+			);
 			gamePaths = gamePaths.filter((p) => {
-				games.some((game) => game.localpath === p) === false;
+				// 过滤掉已存在的游戏路径
+				return !games.some((game) => game.localpath === p);
 			});
 			setTotalGames(gamePaths.length);
+			console.log("Found game paths:", gamePaths);
 
 			// 批量处理游戏 - 每批处理 3 个
 			const batchSize = 3;

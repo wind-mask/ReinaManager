@@ -186,12 +186,12 @@ pub async fn launch_game<R: Runtime>(
                 process_id: Some(process_id),
             })
         }
-        Err(_e) => {
+        Err(e) => {
             #[cfg(target_os = "windows")]
             {
                 // 如果为 Windows 的 740 错误（需要提升权限），尝试使用 ShellExecuteExW("runas") 再启动
 
-                let needs_elevation = _e.raw_os_error() == Some(740);
+                let needs_elevation = e.raw_os_error() == Some(740);
                 if needs_elevation {
                     match win_elevated_launch::shell_execute_runas(
                         &game_path,
