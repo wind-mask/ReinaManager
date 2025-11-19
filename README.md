@@ -9,6 +9,10 @@
 
 ![Status](https://img.shields.io/badge/status-active-brightgreen) ![Stage](https://img.shields.io/badge/stage-beta-blue) ![Build Status](https://github.com/huoshen80/ReinaManager/actions/workflows/build.yml/badge.svg) ![Release](https://img.shields.io/github/v/release/huoshen80/ReinaManager) ![Downloads](https://img.shields.io/github/downloads/huoshen80/ReinaManager/total)
 
+[![wakatime](https://wakatime.com/badge/user/36a51c62-bf3b-4b81-9993-0e5b0e7ed309/project/efb3bd00-20c2-40de-98b6-e2f4a24bc120.svg)](https://wakatime.com/badge/user/36a51c62-bf3b-4b81-9993-0e5b0e7ed309/project/efb3bd00-20c2-40de-98b6-e2f4a24bc120)
+
+Development time tracked since v0.9.0
+
 <p align="center">English|<a href="./README.zh_CN.md">中文</a>|<a href="./README.zh_TW.md">繁體中文</a>|<a href="./README.ja_JP.md">日本語</a></p>
 
 <h5>A lightweight galgame/visual-novel manager,Under development...</h5>
@@ -42,7 +46,7 @@ The `Reina` in the name is the character <a href="https://vndb.org/c64303"><b>�
 - 📚 **Collection Management** - Organize games with hierarchical groups and categories for better library management
 - 🎮 **Play Time Tracking** - Automatic gameplay session recording with detailed play time statistics and history
 - 🎨 **Customization** - Set custom covers and names for personalized game library
-- 🔄 **Batch Operations** - Bulk update game metadata from APIs 
+- 🔄 **Batch Operations** - Bulk update game metadata from APIs
 - 🌍 **Multi-language Support** - i18n support with multiple language interfaces
 - 🔒 **NSFW Filter** - Hide or cover NFSW content with a simple toggle
 - 💾 **Auto Savedata Backup** - Configurable automatic backup to protect your savedata

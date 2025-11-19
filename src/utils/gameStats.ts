@@ -10,7 +10,11 @@ import {
 import type { GameSession, GameStatistics, GameTimeStats } from "../types";
 
 // 类型定义
-export type TimeUpdateCallback = (gameId: number, minutes: number) => void;
+export type TimeUpdateCallback = (
+	gameId: number,
+	minutes: number,
+	seconds: number,
+) => void;
 export type SessionEndCallback = (gameId: number, minutes: number) => void;
 
 // 记录游戏会话 - 使用后端统计服务
@@ -279,8 +283,9 @@ export async function getRecentSessionsForAllGames(
 export async function getFormattedGameStats(
 	gameId: number,
 ): Promise<GameTimeStats> {
+	// 只调用一次 getGameStatistics
 	const stats = await getGameStatistics(gameId);
-	const todayMinutes = await getTodayGameTime(gameId);
+	const today = getLocalDateString();
 
 	// 确保 daily_stats 始终是有效数组
 	let dailyStats = stats?.daily_stats || [];
@@ -297,10 +302,13 @@ export async function getFormattedGameStats(
 		}
 	}
 
+	// 从统计数据中查找今天的记录，避免重复调用
+	const todayRecord = dailyStats.find((record) => record.date === today);
+	const todayMinutes = todayRecord?.playtime || 0;
+
 	// 确保今天有记录
-	const today = getLocalDateString();
-	if (!dailyStats.some((item) => item.date === today)) {
-		dailyStats.unshift({ date: today, playtime: todayMinutes || 0 });
+	if (!todayRecord) {
+		dailyStats.unshift({ date: today, playtime: 0 });
 	}
 
 	return {
@@ -349,12 +357,9 @@ export function initGameTimeTracking(
 		const totalMinutes = Math.floor(totalSeconds / 60);
 
 		try {
-			// 只记录游戏正在运行，不更新统计数据
-			console.log(`游戏 ${gameId} 正在运行，已运行 ${totalMinutes} 分钟`);
-
-			// 调用回调函数通知前端
+			// 调用回调函数通知前端，传递分钟数和秒数
 			if (onTimeUpdate) {
-				onTimeUpdate(gameId, totalMinutes);
+				onTimeUpdate(gameId, totalMinutes, totalSeconds);
 			}
 		} catch (error) {
 			console.error("处理游戏时间更新失败:", error);
