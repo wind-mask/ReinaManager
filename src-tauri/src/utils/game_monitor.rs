@@ -45,30 +45,6 @@ fn get_timestamp() -> u64 {
         .expect("系统时间错误: 时间回溯")
         .as_secs()
 }
-/// 获取游戏进程 pidss
-/// linux实现
-#[cfg(target_os = "linux")]
-fn get_all_candidate_pids(systemd_scope: &str) -> Vec<u32> {
-    let manager_pid = std::process::id();
-
-    // Linux 下通过 systemd scope 查找进程
-    let available_pids: Vec<u32> = get_process_id_by_scope(systemd_scope)
-        .into_iter()
-        .filter(|&pid| pid != manager_pid) // 过滤掉管理器自身
-        .collect();
-
-    if available_pids.is_empty() {
-        debug!("未通过 systemd scope '{}' 找到匹配的进程", systemd_scope);
-    } else {
-        debug!(
-            "找到 {} 个候选进程: {:?}",
-            available_pids.len(),
-            available_pids
-        );
-    }
-
-    available_pids
-}
 /// 获取当前所有候选的游戏进程 PID 列表。
 ///
 /// 从游戏目录下扫描所有进程，自动过滤掉管理器自身。
@@ -243,28 +219,6 @@ fn select_best_from_candidates(candidate_pids: &[u32]) -> Option<u32> {
     Some(first_pid)
 }
 
-#[cfg(target_os = "linux")]
-fn select_best_from_candidates(candidate_pids: &[u32]) -> Option<u32> {
-    if let Some(p) = check_any_foreground(candidate_pids) {
-        info!("从候选列表中找到聚焦进程 PID: {}", p);
-        return Some(p);
-    } else if let Some(p) = check_any_has_window(candidate_pids) {
-        info!("从候选列表中找到有窗口的进程 PID: {}", p);
-        return Some(p);
-    } else if !candidate_pids.is_empty() {
-        let first_pid = candidate_pids[0];
-        info!("使用候选列表中的第一个进程 PID: {}", first_pid);
-        return Some(first_pid);
-    } else {
-        None
-    }
-}
-#[cfg(target_os = "linux")]
-fn check_any_has_window(_candidate_pids: &[u32]) -> Option<u32> {
-    // Linux 下暂无实现此功能
-    None
-}
-
 /// 启动指定游戏进程的监控。
 ///
 /// # Arguments
@@ -277,8 +231,8 @@ pub async fn monitor_game<R: Runtime>(
     app_handle: AppHandle<R>,
     game_id: u32,
     process_id: u32,
-    #[cfg(target_os = "linux")] systemd_scope: String,
     executable_path: String,
+    #[cfg(target_os = "linux")] systemd_scope: String,
 ) {
     // 使用 Tauri 的异步运行时启动监控任务，与事件循环深度集成
     let app_handle_clone = app_handle.clone();
@@ -292,10 +246,10 @@ pub async fn monitor_game<R: Runtime>(
             app_handle_clone,
             game_id,
             process_id,
-            #[cfg(target_os = "linux")]
-            &systemd_scope,
             executable_path,
             &mut sys,
+            #[cfg(target_os = "linux")]
+            &systemd_scope,
         )
         .await
         {
@@ -303,7 +257,6 @@ pub async fn monitor_game<R: Runtime>(
         }
     });
 }
-
 /// 实际执行游戏监控的核心循环。
 ///
 /// 策略：平时追踪「最佳 PID」，失活时触发目录扫描获取所有候选 PID，
@@ -315,13 +268,15 @@ pub async fn monitor_game<R: Runtime>(
 /// * `initial_pid` - 初始监控的进程 PID。
 /// * `executable_path` - 游戏主可执行文件路径。
 /// * `sys` - 对 `sysinfo::System` 的可变引用，用于进程信息查询。
+///
+///TODO: 对于linux上实现考虑分离，暂定
 async fn run_game_monitor<R: Runtime>(
     app_handle: AppHandle<R>,
     game_id: u32,
     initial_pid: u32, // 初始监控的进程 PID，可能会在检测后改变。
-    #[cfg(target_os = "linux")] systemd_scope: &str,
     executable_path: String,
     sys: &mut System,
+    #[cfg(target_os = "linux")] systemd_scope: &str,
 ) -> Result<(), String> {
     let mut accumulated_seconds = 0u64;
     let start_time = get_timestamp();
@@ -509,39 +464,9 @@ fn is_process_running(pid: u32) -> bool {
         }
     }
 }
-#[cfg(target_os = "linux")]
-fn is_process_running(pid: u32) -> bool {
-    // 在 Linux 上，可以通过检查 /proc/<pid> 目录是否存在来判断进程是否运行
-
-    use std::fs::exists;
-    let proc_path = format!("/proc/{}", pid);
-    exists(&proc_path).unwrap_or(false)
-}
-#[cfg(target_os = "linux")]
-fn is_game_running(systemd_scope: &str) -> bool {
-    use std::process::Command;
-
-    // 使用 systemctl is-active 命令检查 systemd scope 的状态
-    //TODO: 考虑使用 D-Bus 直接查询 systemd 状态
-    let output = Command::new("systemctl")
-        .args(["--user", "is-active", systemd_scope])
-        .output();
-
-    if let Ok(output) = output {
-        // 如果命令执行成功，检查输出是否为 "active"
-        if output.status.success() {
-            let status = String::from_utf8_lossy(&output.stdout);
-            return status.trim() == "active";
-        }
-    }
-
-    // 如果命令执行失败或状态不是 active，则认为游戏未运行
-    false
-}
 
 // is_window_foreground_for_pid 函数已移除
 // 其功能已整合到 select_best_from_candidates 和 check_any_foreground 中
-
 /// 检查候选 PID 列表中是否有任何进程拥有前台窗口。
 ///
 /// 这是前台判定的核心函数，提供了比单 PID 检查更强的容错性。
@@ -579,14 +504,8 @@ fn check_any_foreground(candidate_pids: &[u32]) -> Option<u32> {
     None
 }
 
-#[cfg(not(target_os = "windows"))]
-fn check_any_foreground(_candidate_pids: &[u32]) -> Option<u32> {
-    None
-}
-
 // has_window_for_pid 函数已移除，其功能已整合到 select_best_from_candidates 中
 // 这样可以避免多次调用 EnumWindows（O(N*M) -> O(M)），提升性能
-
 /// 根据可执行文件所在目录获取该目录及子目录下所有正在运行的进程 PID 列表。
 ///
 /// 此函数会刷新进程信息，然后扫描所有进程，找出可执行文件路径在目标目录或其子目录中的进程。
@@ -726,4 +645,88 @@ fn get_process_id_by_scope(systemd_scope: &str) -> Vec<u32> {
     thread::sleep(Duration::from_secs(1));
 
     pids
+}
+/// 获取游戏进程 pidss
+#[cfg(target_os = "linux")]
+fn get_all_candidate_pids(systemd_scope: &str) -> Vec<u32> {
+    let manager_pid = std::process::id();
+
+    // Linux 下通过 systemd scope 查找进程
+    let available_pids: Vec<u32> = get_process_id_by_scope(systemd_scope)
+        .into_iter()
+        .filter(|&pid| pid != manager_pid) // 过滤掉管理器自身
+        .collect();
+
+    if available_pids.is_empty() {
+        debug!("未通过 systemd scope '{}' 找到匹配的进程", systemd_scope);
+    } else {
+        debug!(
+            "找到 {} 个候选进程: {:?}",
+            available_pids.len(),
+            available_pids
+        );
+    }
+
+    available_pids
+}
+/// Linux 下的前台判定暂未实现，直接返回 None。
+/// TODO: 未来可考虑集成 x11 或 wayland 合成器特定功能实现。
+#[cfg(not(target_os = "windows"))]
+fn check_any_foreground(_candidate_pids: &[u32]) -> Option<u32> {
+    None
+}
+#[cfg(target_os = "linux")]
+fn is_process_running(pid: u32) -> bool {
+    use std::fs::exists;
+    // 在 Linux 上，可以通过检查 /proc/<pid> 目录是否存在来判断进程是否运行
+    let proc_path = format!("/proc/{}", pid);
+    exists(&proc_path).unwrap_or(false)
+}
+/// 检查指定的 systemd user scope 是否处于活动状态（仅 Linux）。
+///# Arguments
+/// * `systemd_scope` - systemd user scope 的名称。
+/// # Returns
+/// 如果 scope 处于活动状态，返回 true；否则返回 false。
+#[cfg(target_os = "linux")]
+fn is_game_running(systemd_scope: &str) -> bool {
+    use std::process::Command;
+
+    // 使用 systemctl is-active 命令检查 systemd scope 的状态
+    //TODO: 考虑使用 D-Bus 直接查询 systemd 状态
+    let output = Command::new("systemctl")
+        .args(["--user", "is-active", systemd_scope])
+        .output();
+
+    if let Ok(output) = output {
+        // 如果命令执行成功，检查输出是否为 "active"
+        if output.status.success() {
+            let status = String::from_utf8_lossy(&output.stdout);
+            return status.trim() == "active";
+        }
+    }
+
+    // 如果命令执行失败或状态不是 active，则认为游戏未运行
+    false
+}
+#[cfg(target_os = "linux")]
+fn select_best_from_candidates(candidate_pids: &[u32]) -> Option<u32> {
+    if let Some(p) = check_any_foreground(candidate_pids) {
+        info!("从候选列表中找到聚焦进程 PID: {}", p);
+        return Some(p);
+    } else if let Some(p) = check_any_has_window(candidate_pids) {
+        info!("从候选列表中找到有窗口的进程 PID: {}", p);
+        return Some(p);
+    } else if !candidate_pids.is_empty() {
+        let first_pid = candidate_pids[0];
+        info!("使用候选列表中的第一个进程 PID: {}", first_pid);
+        return Some(first_pid);
+    } else {
+        None
+    }
+}
+/// TODO: 未来可考虑集成 x11 或 wayland 合成器特定功能实现。
+#[cfg(target_os = "linux")]
+fn check_any_has_window(_candidate_pids: &[u32]) -> Option<u32> {
+    // Linux 下暂无实现此功能
+    None
 }
