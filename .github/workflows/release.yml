@@ -19,6 +19,7 @@ jobs:
       changelog: ${{ steps.changelog.outputs.content }}
     steps:
       - name: Checkout repository
+
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -80,6 +81,19 @@ jobs:
         with:
           workspaces: "./src-tauri -> target"
 
+      # 配置 Windows lld 链接器
+      - name: Configure Rust linker (Windows lld)
+        shell: bash
+        run: |
+          mkdir -p .cargo
+          echo "Configuring lld for Windows..."
+          cat >> .cargo/config.toml <<EOF
+          [target.x86_64-pc-windows-msvc]
+          linker = "lld-link"
+
+          [target.aarch64-pc-windows-msvc]
+          linker = "lld-link"
+          EOF
       - name: Install dependencies
         run: pnpm install
       - name: install dependencies for build
