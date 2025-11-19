@@ -224,11 +224,13 @@ fn finalize_session<R: Runtime>(
 /// * `game_id` - 游戏的唯一标识符。
 /// * `process_id` - 要开始监控的游戏进程的初始 PID。
 /// * `executable_path` - 游戏主可执行文件的完整路径，用于在进程重启或切换后重新查找。
+/// * `systemd_unit_name` - （仅 Linux）与游戏进程关联的 systemd unit 名称。
 pub async fn monitor_game<R: Runtime>(
     app_handle: AppHandle<R>,
     game_id: u32,
     process_id: u32,
     executable_path: String,
+    #[cfg(target_os = "linux")] systemd_unit_name: String,
 ) {
     // 使用 Tauri 的异步运行时启动监控任务，与事件循环深度集成
     let app_handle_clone = app_handle.clone();
