@@ -14,7 +14,7 @@ use tokio::time;
 mod keyboard_simulator {
     use windows::Win32::UI::Input::KeyboardAndMouse::{
         SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYBD_EVENT_FLAGS,
-        KEYEVENTF_EXTENDEDKEY, KEYEVENTF_KEYUP, VIRTUAL_KEY
+        KEYEVENTF_EXTENDEDKEY, KEYEVENTF_KEYUP, VIRTUAL_KEY,
     };
 
     /// 创建键盘输入事件
@@ -28,8 +28,8 @@ mod keyboard_simulator {
                     dwFlags: flags,
                     time: 0,
                     dwExtraInfo: 0,
-                }
-            }
+                },
+            },
         }
     }
 
@@ -38,10 +38,10 @@ mod keyboard_simulator {
         unsafe {
             // 定义按键序列：Win按下, Shift按下, A按下, A释放, Shift释放, Win释放
             let inputs = [
-                create_keyboard_input(VIRTUAL_KEY(0x5B), KEYEVENTF_EXTENDEDKEY),        // Win按下
-                create_keyboard_input(VIRTUAL_KEY(0xA0), KEYEVENTF_EXTENDEDKEY),        // Shift按下
-                create_keyboard_input(VIRTUAL_KEY(0x41), KEYBD_EVENT_FLAGS(0)),         // A按下
-                create_keyboard_input(VIRTUAL_KEY(0x41), KEYEVENTF_KEYUP),              // A释放
+                create_keyboard_input(VIRTUAL_KEY(0x5B), KEYEVENTF_EXTENDEDKEY), // Win按下
+                create_keyboard_input(VIRTUAL_KEY(0xA0), KEYEVENTF_EXTENDEDKEY), // Shift按下
+                create_keyboard_input(VIRTUAL_KEY(0x41), KEYBD_EVENT_FLAGS(0)),  // A按下
+                create_keyboard_input(VIRTUAL_KEY(0x41), KEYEVENTF_KEYUP),       // A释放
                 create_keyboard_input(VIRTUAL_KEY(0xA0), KEYEVENTF_KEYUP | KEYEVENTF_EXTENDEDKEY), // Shift释放
                 create_keyboard_input(VIRTUAL_KEY(0x5B), KEYEVENTF_KEYUP | KEYEVENTF_EXTENDEDKEY), // Win释放
             ];
@@ -51,7 +51,11 @@ mod keyboard_simulator {
             if result == inputs.len() as u32 {
                 Ok(())
             } else {
-                Err(format!("键盘模拟失败，只发送了{}个事件中的{}个", result, inputs.len()))
+                Err(format!(
+                    "键盘模拟失败，只发送了{}个事件中的{}个",
+                    result,
+                    inputs.len()
+                ))
             }
         }
     }
@@ -154,13 +158,6 @@ mod win_elevated_launch {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct LaunchResult {
-    success: bool,
-    message: String,
-    process_id: Option<u32>, // 添加进程ID字段
-}
-
 /// 启动游戏
 ///
 /// # Arguments
@@ -183,8 +180,14 @@ pub async fn launch_game<R: Runtime>(
     launch_options: Option<GameLaunchOptions>,
 ) -> Result<LaunchResult, String> {
     // 处理启动选项
-    let use_le = launch_options.as_ref().map(|opt| opt.le_launch.unwrap_or(false)).unwrap_or(false);
-    let use_magpie = launch_options.as_ref().map(|opt| opt.magpie.unwrap_or(false)).unwrap_or(false);
+    let use_le = launch_options
+        .as_ref()
+        .map(|opt| opt.le_launch.unwrap_or(false))
+        .unwrap_or(false);
+    let use_magpie = launch_options
+        .as_ref()
+        .map(|opt| opt.magpie.unwrap_or(false))
+        .unwrap_or(false);
 
     // 获取游戏可执行文件的目录
     let game_dir = match Path::new(&game_path).parent() {
@@ -198,14 +201,17 @@ pub async fn launch_game<R: Runtime>(
         None => return Err("无法获取游戏可执行文件名".to_string()),
     };
 
+    let mut command;
+    let systemd_unit_name = format!("reina_game_{}.scope", game_id);
+
     // 根据启动选项决定启动方式
+    #[cfg(target_os = "windows")]
     let mut command = if use_le {
         // LE转区启动
-        let path_manager = app_handle
-            .state::<PathManager>()
-            .inner();
+        let path_manager = app_handle.state::<PathManager>().inner();
 
-        let le_path = path_manager.get_le_path()
+        let le_path = path_manager
+            .get_le_path()
             .map_err(|e| format!("获取LE路径失败: {}", e))?;
 
         if le_path.is_empty() {
@@ -222,7 +228,29 @@ pub async fn launch_game<R: Runtime>(
         cmd.current_dir(game_dir);
         cmd
     };
+    #[cfg(target_os = "linux")]
+    {
+        //TODO: 使用dbus接口交互systemd
+        command = Command::new("systemd-run"); // 使用 systemd-run 启动游戏进程
+        command.arg("--scope"); // 使用 scope 模式
+        command.arg("--user"); // 以用户身份运行
+        command.arg("-p");
+        command.arg("Delegate=yes"); // 允许子进程
+        command.arg("--unit");
 
+        command.arg(&systemd_unit_name); // 设置 systemd unit 名称
+        if exe_name.to_string_lossy().ends_with(".exe") {
+            // Windows 可执行文件需要使用 wine 启动
+            //TODO: 可配置exe文件的运行方式
+            command.arg("wine");
+            // 如果在 Wayland 环境下，清除 DISPLAY 变量以优先使用 Wayland
+            if std::env::var("WAYLAND_DISPLAY").is_ok() {
+                command.env("DISPLAY", "");
+            }
+        }
+        command.arg(&game_path); // 添加游戏可执行文件路径
+        command.current_dir(game_dir);
+    }
     // 克隆一份参数用于普通启动与可能的提权回退
     let args_clone = args.clone();
     if let Some(arguments) = &args_clone {
@@ -237,13 +265,15 @@ pub async fn launch_game<R: Runtime>(
             monitor_game(app_handle.clone(), game_id, process_id, game_path.clone()).await;
 
             // 如果需要Magpie放大，在后台启动
+            #[cfg(target_os = "windows")]
             if use_magpie {
                 let game_path_clone = game_path.clone();
                 let app_handle_clone = app_handle.clone();
 
                 tokio::spawn(async move {
                     tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-                    if let Err(e) = start_magpie_for_game(&game_path_clone, &app_handle_clone).await {
+                    if let Err(e) = start_magpie_for_game(&game_path_clone, &app_handle_clone).await
+                    {
                         error!("启动Magpie失败: {}", e);
                     }
                 });
@@ -258,6 +288,8 @@ pub async fn launch_game<R: Runtime>(
                     if use_le { " (LE转区)" } else { "" }
                 ),
                 process_id: Some(process_id),
+                #[cfg(target_os = "linux")]
+                systemd_scope: Some(systemd_unit_name),
             })
         }
         Err(e) => {
@@ -266,11 +298,10 @@ pub async fn launch_game<R: Runtime>(
             if needs_elevation {
                 // 对于LE启动，需要用LE路径作为执行文件，游戏路径作为参数
                 let (exec_path, exec_args) = if use_le {
-                    let path_manager = app_handle
-                        .state::<PathManager>()
-                        .inner();
+                    let path_manager = app_handle.state::<PathManager>().inner();
 
-                    let le_path = path_manager.get_le_path()
+                    let le_path = path_manager
+                        .get_le_path()
                         .map_err(|_| "获取LE路径失败".to_string())?;
 
                     if le_path.is_empty() {
@@ -303,7 +334,9 @@ pub async fn launch_game<R: Runtime>(
 
                             tokio::spawn(async move {
                                 time::sleep(time::Duration::from_secs(1)).await;
-                                if let Err(e) = start_magpie_for_game(&game_path_clone, &app_handle_clone).await {
+                                if let Err(e) =
+                                    start_magpie_for_game(&game_path_clone, &app_handle_clone).await
+                                {
                                     error!("启动Magpie失败: {}", e);
                                 }
                             });
@@ -318,6 +351,8 @@ pub async fn launch_game<R: Runtime>(
                                 game_dir
                             ),
                             process_id: Some(pid),
+                            #[cfg(target_os = "linux")]
+                            systemd_scope: None, // 提权启动不使用 systemd scope
                         })
                     }
                     Err(err2) => Err(format!("普通启动失败且提权启动失败: {} | {}", e, err2)),
@@ -367,11 +402,10 @@ async fn start_magpie_for_game(
     app_handle: &AppHandle<impl Runtime>,
 ) -> Result<(), String> {
     // 获取Magpie路径
-    let path_manager = app_handle
-        .state::<PathManager>()
-        .inner();
+    let path_manager = app_handle.state::<PathManager>().inner();
 
-    let magpie_path = path_manager.get_magpie_path()
+    let magpie_path = path_manager
+        .get_magpie_path()
         .map_err(|e| format!("获取Magpie路径失败: {}", e))?;
 
     if magpie_path.is_empty() {
@@ -425,14 +459,107 @@ async fn start_magpie_for_game(
 /// 检查进程是否在运行（使用sysinfo，性能优于tasklist命令）
 fn is_process_running(process_name: &str) -> bool {
     let mut system = System::new_with_specifics(
-        RefreshKind::nothing().with_processes(ProcessRefreshKind::everything())
+        RefreshKind::nothing().with_processes(ProcessRefreshKind::everything()),
     );
 
     // 刷新进程信息
     system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
 
     // 检查是否有匹配的进程
-    system.processes().values().any(|process| {
-        process.name().eq_ignore_ascii_case(process_name)
-    })
+    system
+        .processes()
+        .values()
+        .any(|process| process.name().eq_ignore_ascii_case(process_name))
+}
+
+// ================= Windows 提权启动（ShellExecuteExW with "runas"）支持 =================
+// 仅在 Windows 下编译，其他平台不包含该实现
+#[cfg(target_os = "windows")]
+mod win_elevated_launch {
+    use std::ffi::OsStr;
+    use std::os::windows::ffi::OsStrExt;
+    use std::path::Path;
+
+    use windows::core::PCWSTR;
+    use windows::Win32::Foundation::CloseHandle;
+    use windows::Win32::System::Threading::GetProcessId;
+    use windows::Win32::UI::Shell::{
+        ShellExecuteExW, SEE_MASK_FLAG_NO_UI, SEE_MASK_NOCLOSEPROCESS, SHELLEXECUTEINFOW,
+    };
+    use windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
+
+    fn wide_null(s: &str) -> Vec<u16> {
+        OsStr::new(s)
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect()
+    }
+
+    fn needs_quotes(s: &str) -> bool {
+        s.chars().any(|c| c.is_whitespace()) || s.contains('"')
+    }
+
+    fn quote_arg(arg: &str) -> String {
+        if !needs_quotes(arg) {
+            return arg.to_string();
+        }
+        // 简单转义内部引号
+        let escaped = arg.replace('"', "\\\"");
+        format!("\"{}\"", escaped)
+    }
+
+    /// 使用 ShellExecuteExW("runas") 启动进程，并返回进程 PID
+    pub fn shell_execute_runas(
+        path: &str,
+        args: Option<&[String]>,
+        work_dir: &Path,
+    ) -> Result<u32, String> {
+        let params_str = if let Some(a) = args {
+            a.iter().map(|s| quote_arg(s)).collect::<Vec<_>>().join(" ")
+        } else {
+            String::new()
+        };
+
+        let w_verb = wide_null("runas");
+        let w_path = wide_null(path);
+        let w_params = wide_null(&params_str);
+        let dir_str = work_dir.to_string_lossy();
+        let w_dir = wide_null(&dir_str);
+
+        let mut sei = SHELLEXECUTEINFOW {
+            cbSize: std::mem::size_of::<SHELLEXECUTEINFOW>() as u32,
+            fMask: SEE_MASK_NOCLOSEPROCESS | SEE_MASK_FLAG_NO_UI,
+            hwnd: Default::default(),
+            lpVerb: PCWSTR(w_verb.as_ptr()),
+            lpFile: PCWSTR(w_path.as_ptr()),
+            lpParameters: PCWSTR(w_params.as_ptr()),
+            lpDirectory: PCWSTR(w_dir.as_ptr()),
+            nShow: SW_SHOWNORMAL.0,
+            ..Default::default()
+        };
+
+        unsafe { ShellExecuteExW(&mut sei) }
+            .map_err(|e| format!("ShellExecuteExW(runAs) failed: {}", e))?;
+
+        // 获取 PID 并关闭句柄以避免句柄泄漏
+        let pid = unsafe { GetProcessId(sei.hProcess) };
+        unsafe {
+            let _ = CloseHandle(sei.hProcess);
+        } // 忽略关闭错误
+
+        if pid == 0 {
+            return Err("Failed to obtain elevated process id".to_string());
+        }
+        Ok(pid)
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LaunchResult {
+    success: bool,
+    message: String,
+
+    process_id: Option<u32>, // 添加进程ID字段
+    #[cfg(target_os = "linux")]
+    systemd_scope: Option<String>, // 添加 systemd scope 字段
 }
