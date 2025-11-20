@@ -188,9 +188,10 @@ pub fn scan_game_library(path: String) -> Result<Vec<String>, String> {
     let scan_path = path::PathBuf::from(path);
     if !scan_path.exists() || !scan_path.is_dir() {
         Err("Provided path does not exist or is not a directory".to_string())
-    } else {
-        let path = scan_path.to_str().unwrap();
+    } else if let Some(path) = scan_path.to_str() {
         let v = scantogaldirs(path);
         Ok(v)
+    } else {
+        Err("Invalid path string".to_string())
     }
 }
