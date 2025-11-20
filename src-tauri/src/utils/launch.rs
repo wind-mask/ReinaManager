@@ -230,7 +230,6 @@ pub async fn launch_game<R: Runtime>(
     };
     #[cfg(target_os = "linux")]
     {
-        //TODO: 使用dbus接口交互systemd
         command = Command::new("systemd-run"); // 使用 systemd-run 启动游戏进程
         command.arg("--scope"); // 使用 scope 模式
         command.arg("--user"); // 以用户身份运行
