@@ -240,6 +240,7 @@ pub async fn monitor_game<R: Runtime>(
     // 使用 System::new() 可避免首次加载所有系统信息，按需刷新。
     let mut sys = System::new();
 
+    #[cfg(target_os = "windows")]
     tauri::async_runtime::spawn(async move {
         // 将 System 实例的可变引用传递给实际的监控循环
         if let Err(e) = run_game_monitor(
@@ -248,11 +249,16 @@ pub async fn monitor_game<R: Runtime>(
             process_id,
             executable_path,
             &mut sys,
-            #[cfg(target_os = "linux")]
-            &systemd_scope,
         )
         .await
         {
+            error!("游戏监控任务 (game_id: {}) 出错: {}", game_id, e);
+        }
+    });
+    #[cfg(target_os = "linux")]
+    tauri::async_runtime::spawn(async move {
+        // 将 System 实例的可变引用传递给实际的监控循环
+        if let Err(e) = run_game_monitor(app_handle_clone, game_id, systemd_scope.as_str()).await {
             error!("游戏监控任务 (game_id: {}) 出错: {}", game_id, e);
         }
     });
@@ -268,25 +274,20 @@ pub async fn monitor_game<R: Runtime>(
 /// * `initial_pid` - 初始监控的进程 PID。
 /// * `executable_path` - 游戏主可执行文件路径。
 /// * `sys` - 对 `sysinfo::System` 的可变引用，用于进程信息查询。
-///
-///TODO: 对于linux上实现考虑分离，暂定
+#[cfg(target_os = "windows")]
 async fn run_game_monitor<R: Runtime>(
     app_handle: AppHandle<R>,
     game_id: u32,
     initial_pid: u32, // 初始监控的进程 PID，可能会在检测后改变。
     executable_path: String,
     #[allow(unused_variables)] sys: &mut System,
-    #[cfg(target_os = "linux")] systemd_scope: &str,
 ) -> Result<(), String> {
     let mut accumulated_seconds = 0u64;
     let start_time = get_timestamp();
     tokio::time::sleep(Duration::from_secs(MONITOR_CHECK_INTERVAL_SECS)).await;
 
     // 初始扫描：获取所有候选 PID
-    #[cfg(target_os = "windows")]
     let mut candidate_pids = get_all_candidate_pids(&executable_path, sys);
-    #[cfg(target_os = "linux")]
-    let mut candidate_pids = get_all_candidate_pids(systemd_scope).await;
     // 如果初始 PID 不在候选列表中，手动添加（容错）
     if !candidate_pids.contains(&initial_pid) && is_process_running(initial_pid) {
         candidate_pids.push(initial_pid);
@@ -314,10 +315,7 @@ async fn run_game_monitor<R: Runtime>(
     tokio::time::sleep(Duration::from_secs(MONITOR_CHECK_INTERVAL_SECS * 3)).await;
 
     // 等待后重新扫描，获取最新的进程状态
-    #[cfg(target_os = "windows")]
     let mut candidate_pids = get_all_candidate_pids(&executable_path, sys);
-    #[cfg(target_os = "linux")]
-    let mut candidate_pids = get_all_candidate_pids(systemd_scope).await;
     if let Some(new_best) = select_best_from_candidates(&candidate_pids) {
         if new_best != best_pid {
             info!(
@@ -338,8 +336,6 @@ async fn run_game_monitor<R: Runtime>(
         // 1. 检查最佳 PID 是否还活着
         #[cfg(target_os = "windows")]
         let best_pid_running = is_process_running(best_pid);
-        #[cfg(target_os = "linux")]
-        let best_pid_running = is_game_running(systemd_scope).await;
         if !best_pid_running {
             consecutive_failures += 1;
             debug!(
@@ -351,14 +347,7 @@ async fn run_game_monitor<R: Runtime>(
                 warn!("最佳进程 {} 已失活，触发重新扫描", best_pid);
 
                 // 触发目录扫描，获取最新的候选 PID 列表
-                #[cfg(target_os = "windows")]
-                {
-                    candidate_pids = get_all_candidate_pids(&executable_path, sys);
-                }
-                #[cfg(target_os = "linux")]
-                {
-                    candidate_pids = get_all_candidate_pids(systemd_scope).await;
-                }
+                candidate_pids = get_all_candidate_pids(&executable_path, sys);
 
                 // 从新的候选列表中选择最佳 PID
                 if let Some(new_best_pid) = select_best_from_candidates(&candidate_pids) {
@@ -590,19 +579,150 @@ fn get_process_id_by_path(executable_path: &str, sys: &mut System) -> Vec<u32> {
     debug!("找到进程目录下的进程 PID 列表: {:?}", pids);
     pids
 }
+///TODO: 对于linux上实现考虑分离，暂定
+#[cfg(target_os = "linux")]
+async fn run_game_monitor(
+    app_handle: AppHandle<impl Runtime>,
+    game_id: u32,
+    systemd_scope: &str,
+) -> Result<(), String> {
+    // Linux 版本的监控逻辑实现
+    // {
+    let mut accumulated_seconds = 0u64;
+    let start_time = get_timestamp();
+    tokio::time::sleep(Duration::from_secs(MONITOR_CHECK_INTERVAL_SECS * 3)).await;
 
-#[cfg(target_os="linux")]
+    // 初始扫描：获取所有候选 PID
+    let candidate_pids = get_all_candidate_pids(systemd_scope).await;
+
+    // 从候选中选择最佳 PID 作为主监控对象
+    let mut best_pid = match select_best_from_candidates(&candidate_pids) {
+        Some(p) => p,
+        None => {
+            return Err("未找到任何候选进程进行监控".to_string());
+        }
+    };
+
+    info!(
+        "开始监控游戏: ID={}, 最佳 PID={}, 候选进程组={:?}",
+        game_id, best_pid, candidate_pids
+    );
+
+    // 通知前端会话开始
+    app_handle
+        .emit(
+            "game-session-started",
+            json!({ "gameId": game_id, "processId": best_pid, "startTime": start_time }),
+        )
+        .map_err(|e| format!("无法发送 game-session-started 事件: {}", e))?;
+    let mut consecutive_failures = 0u32;
+
+    // 等待 3 秒让游戏进程充分启动（例如 Launcher -> Game 的切换）
+    info!("等待 9 秒以便游戏进程充分启动...");
+    tokio::time::sleep(Duration::from_secs(MONITOR_CHECK_INTERVAL_SECS * 9)).await;
+
+    // 等待后重新扫描，获取最新的进程状态
+    let mut candidate_pids = get_all_candidate_pids(systemd_scope).await;
+    if let Some(new_best) = select_best_from_candidates(&candidate_pids) {
+        if new_best != best_pid {
+            info!(
+                "等待期间发现更优进程，切换 PID: {} -> {}",
+                best_pid, new_best
+            );
+            best_pid = new_best;
+        }
+    }
+
+    // 创建精确的 1 秒间隔定时器
+    let mut tick_interval = interval(Duration::from_secs(MONITOR_CHECK_INTERVAL_SECS));
+    tick_interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
+
+    loop {
+        tick_interval.tick().await;
+
+        #[cfg(target_os = "linux")]
+        let game_running = is_game_running(systemd_scope).await;
+        if !game_running {
+            consecutive_failures += 1;
+            debug!(
+                "最佳进程 {} 检查失败次数: {}/{}",
+                best_pid, consecutive_failures, MAX_CONSECUTIVE_FAILURES
+            );
+
+            if consecutive_failures >= MAX_CONSECUTIVE_FAILURES {
+                info!("游戏scope {} 已失活，结束监控会话", systemd_scope);
+                break;
+            }
+        } else {
+            // 最佳 PID 仍在运行，重置失败计数
+            consecutive_failures = 0;
+
+            // 2. 清理候选列表中已失活的 PID（轻量级维护）
+
+            // 3. 前台判定：检查候选列表中是否有任何进程在前台
+            //    这是关键优化点 - 即使最佳 PID 不在前台，其他候选 PID 在前台也算数
+            if let Some(foreground_pid) = check_any_foreground(&candidate_pids) {
+                accumulated_seconds += 1;
+
+                // 如果前台进程不是当前的最佳 PID，考虑切换
+                if foreground_pid != best_pid {
+                    debug!(
+                        "前台进程 {} 不是最佳 PID {}，考虑调整",
+                        foreground_pid, best_pid
+                    );
+                    best_pid = foreground_pid;
+                }
+
+                // 发送时间更新
+                if accumulated_seconds > 0
+                    && accumulated_seconds.is_multiple_of(TIME_UPDATE_INTERVAL_SECS)
+                {
+                    let minutes = accumulated_seconds / 60;
+                    // debug!(
+                    //     "发送时间更新事件: {} 分钟 ({} 秒)",
+                    //     minutes, accumulated_seconds
+                    // );
+                    app_handle
+                        .emit(
+                            "game-time-update",
+                            json!({
+                                "gameId": game_id,
+                                "totalMinutes": minutes,
+                                "totalSeconds": accumulated_seconds,
+                                "startTime": start_time,
+                                "currentTime": get_timestamp(),
+                                "processId": best_pid
+                            }),
+                        )
+                        .map_err(|e| format!("无法发送 game-time-update 事件: {}", e))?;
+                }
+            } else {
+                candidate_pids = get_all_candidate_pids(systemd_scope).await;
+            }
+        }
+    }
+
+    finalize_session(
+        &app_handle,
+        game_id,
+        best_pid,
+        start_time,
+        accumulated_seconds,
+    )
+}
+
+#[cfg(target_os = "linux")]
 static SESSION_CONN: tokio::sync::OnceCell<zbus::Connection> = tokio::sync::OnceCell::const_new();
-#[cfg(target_os="linux")]
+#[cfg(target_os = "linux")]
 static MANAGER_PROXY: tokio::sync::OnceCell<zbus_systemd::systemd1::ManagerProxy<'static>> =
     tokio::sync::OnceCell::const_new();
-#[cfg(target_os="linux")]
+#[cfg(target_os = "linux")]
 pub async fn get_connection() -> Result<&'static zbus::Connection, zbus::Error> {
     SESSION_CONN
         .get_or_try_init(|| async { zbus::Connection::session().await })
         .await
 }
-#[cfg(target_os="linux")]
+#[cfg(target_os = "linux")]
 pub async fn get_manager_proxy(
 ) -> Result<&'static zbus_systemd::systemd1::ManagerProxy<'static>, zbus::Error> {
     MANAGER_PROXY
@@ -672,9 +792,10 @@ async fn get_all_candidate_pids(systemd_scope: &str) -> Vec<u32> {
 /// TODO: 未来可考虑集成 x11 或 wayland 合成器特定功能实现。
 #[cfg(not(target_os = "windows"))]
 fn check_any_foreground(_candidate_pids: &[u32]) -> Option<u32> {
-    None
+    Some(_candidate_pids[0])
 }
 #[cfg(target_os = "linux")]
+#[allow(unused)]
 fn is_process_running(pid: u32) -> bool {
     use std::fs::exists;
     // 在 Linux 上，可以通过检查 /proc/<pid> 目录是否存在来判断进程是否运行
