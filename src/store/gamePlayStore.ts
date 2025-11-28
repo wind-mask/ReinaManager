@@ -18,17 +18,22 @@
  * - @/utils
  */
 
+import { invoke, isTauri } from "@tauri-apps/api/core";
+import { create } from "zustand";
 import { useStore } from "@/store";
 import type { GameSession, GameTimeStats } from "@/types";
-import { getLocalDateString, launchGameWithTracking } from "@/utils";
+import {
+	getLocalDateString,
+	launchGameWithTracking,
+	type StopGameResult,
+	stopGameWithTracking,
+} from "@/utils";
 import {
 	getFormattedGameStats,
 	getGameSessions,
 	getGameStatistics,
 	initGameTimeTracking,
 } from "@/utils/gameStats";
-import { invoke, isTauri } from "@tauri-apps/api/core";
-import { create } from "zustand";
 
 /**
  * 游戏启动结果类型
@@ -68,6 +73,7 @@ interface GamePlayState {
 		gameId: number,
 		args?: string[],
 	) => Promise<LaunchGameResult>;
+	stopGame: (gameId: number) => Promise<StopGameResult>;
 	loadGameStats: (
 		gameId: number,
 		forceRefresh?: boolean,
@@ -82,7 +88,6 @@ interface GamePlayState {
 	getTotalPlayTime: () => Promise<number>;
 	getWeekPlayTime: () => Promise<number>;
 	getTodayPlayTime: () => Promise<number>;
-	stopGame: (gameId: number) => Promise<boolean>;
 }
 
 // ====== 统计缓存优化：全局作用域 ======
@@ -225,19 +230,61 @@ export const useGamePlayStore = create<GamePlayState>((set, get) => ({
 			return { success: false, message: errorMessage };
 		}
 	},
-	stopGame: async (gameId: number): Promise<boolean> => {
+
+	/**
+	 * 停止游戏
+	 * @param gameId 游戏ID
+	 */
+	stopGame: async (gameId: number): Promise<StopGameResult> => {
 		if (!isTauri()) {
-			return false;
+			return {
+				success: false,
+				message: "游戏停止功能仅在桌面应用中可用",
+				terminated_count: 0,
+			};
 		}
+
 		try {
-			// 调用 Tauri 后端停止游戏
-			const res = await invoke<boolean>("stop_game", { gameId });
-			return res;
+			if (!get().isGameRunning(gameId)) {
+				return {
+					success: false,
+					message: "该游戏未在运行中",
+					terminated_count: 0,
+				};
+			}
+
+			// 调用工具函数停止游戏
+			const result = await stopGameWithTracking(gameId);
+
+			// 停止成功后，清除运行状态（后端会触发 game-session-ended 事件，前端自动处理）
+			// 这里做一个保险的清理
+			if (result.success) {
+				set((state) => {
+					const newRunningGames = new Set(state.runningGameIds);
+					newRunningGames.delete(gameId);
+
+					const newRealTimeStates = { ...state.gameRealTimeStates };
+					delete newRealTimeStates[gameId];
+
+					return {
+						runningGameIds: newRunningGames,
+						gameRealTimeStates: newRealTimeStates,
+					};
+				});
+			}
+
+			return result;
 		} catch (error) {
-			console.error("停止游戏失败:", error);
-			return false;
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
+			return {
+				success: false,
+				message: errorMessage,
+				terminated_count: 0,
+			};
 		}
 	},
+
 	/**
 	 * 加载指定游戏的统计数据
 	 * @param gameId 游戏ID

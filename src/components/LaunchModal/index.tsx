@@ -20,6 +20,7 @@
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import StopIcon from "@mui/icons-material/Stop";
 import TimerIcon from "@mui/icons-material/Timer";
+import { Typography } from "@mui/material";
 import Button from "@mui/material/Button";
 import { isTauri } from "@tauri-apps/api/core";
 import { useState } from "react";
@@ -55,7 +56,7 @@ const formatPlayTime = (minutes: number, seconds: number): string => {
 export const LaunchModal = () => {
 	const { t } = useTranslation();
 	const { selectedGameId, getGameById, isLocalGame, allGames } = useStore();
-	const { launchGame, isGameRunning, stopGame, getGameRealTimeState } =
+	const { launchGame, stopGame, isGameRunning, getGameRealTimeState } =
 		useGamePlayStore();
 	const [stopping, setStopping] = useState(false);
 	// 检查这个特定游戏是否在运行
@@ -136,18 +137,23 @@ export const LaunchModal = () => {
 		);
 
 		return (
-			<div>
-				<Button
-					startIcon={<StopIcon />}
-					onClick={handleStopGame}
-					disabled={!isThisGameRunning}
+			<Button
+				startIcon={<StopIcon />}
+				onClick={handleStopGame}
+				className="rounded"
+				color="error"
+				variant="outlined"
+			>
+				<TimerIcon fontSize="small" color="disabled" />
+				<Typography
+					className="ml-1"
+					variant="button"
+					component="span"
+					color="textDisabled"
 				>
-					{t("components.LaunchModal.stopGame")}
-				</Button>
-				<Button startIcon={<TimerIcon />} disabled>
 					{timeDisplay}
-				</Button>
-			</div>
+				</Typography>
+			</Button>
 		);
 	}
 	return (

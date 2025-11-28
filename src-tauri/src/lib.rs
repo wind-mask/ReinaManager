@@ -10,11 +10,11 @@ use tauri::Manager;
 use tauri_plugin_log::{Target, TargetKind, TimezoneStrategy};
 use utils::{
     fs::{copy_file, delete_file, delete_game_covers, move_backup_folder, open_directory},
-    launch::launch_game,
+    launch::{launch_game, stop_game},
     logs::{get_reina_log_level, set_reina_log_level},
 };
 
-use crate::utils::{launch::stop_game, scan::scan_game_library};
+use crate::utils::{ scan::scan_game_library};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -39,6 +39,7 @@ pub fn run() {
             scan_game_library,
             stop_game,
             launch_game,
+            stop_game,
             open_directory,
             move_backup_folder,
             copy_file,
@@ -167,7 +168,7 @@ pub fn run() {
                         .build(),
                 )?;
             }
-            // log::set_max_level(log::LevelFilter::Error);
+            log::set_max_level(log::LevelFilter::Error);
             Ok(())
         })
         .build(tauri::generate_context!())

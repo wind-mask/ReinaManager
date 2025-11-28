@@ -342,10 +342,8 @@
 			"launchGame": "启动游戏",
 			"gamePathNotFound": "游戏路径未找到",
 			"launchFailed": "游戏启动失败:",
-			"playing": "正在游戏...",
-			"stopFailed": "停止游戏失败:",
-			"stopGame": "停止游戏",
-			"stoppingGame": "正在停止游戏..."
+			"stopFailed": "游戏停止失败:",
+			"playing": "正在游戏..."
 		},
 		"SortModal": {
 			"sort": "排序",
