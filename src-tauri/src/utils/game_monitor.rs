@@ -192,7 +192,7 @@ pub fn stop_game_session(_game_id: u32) -> Result<u32, String> {
     let com = Command::new("systemctl")
         .arg("--user")
         .arg("stop")
-        .arg(format!("reina-game-{}.scope", _game_id))
+        .arg(format!("reina_game_{}.scope", _game_id))
         .output();
     match com {
         Ok(output) => {

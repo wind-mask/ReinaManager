@@ -39,7 +39,6 @@ pub fn run() {
             scan_game_library,
             stop_game,
             launch_game,
-            stop_game,
             open_directory,
             move_backup_folder,
             copy_file,

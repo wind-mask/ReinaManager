@@ -57,7 +57,8 @@ const ScanLib: React.FC = () => {
 			);
 			gamePaths = gamePaths.filter((p) => {
 				// 过滤掉已存在的游戏路径
-				return !games.some((game) => game.localpath === p);
+				// 按game_path为已存在游戏路径的文件夹前缀
+				return !games.some((game) => game.localpath?.startsWith(p));
 			});
 			setTotalGames(gamePaths.length);
 			console.log("Found game paths:", gamePaths);
