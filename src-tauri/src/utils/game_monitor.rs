@@ -279,6 +279,7 @@ async fn run_game_monitor<R: Runtime>(
     app_handle: AppHandle<R>,
     game_id: u32,
     initial_pid: u32, // 初始监控的进程 PID，可能会在检测后改变。
+    process_id: u32,  // 初始监控的进程 PID，可能会在检测后改变。
     executable_path: String,
     #[allow(unused_variables)] sys: &mut System,
 ) -> Result<(), String> {
@@ -334,7 +335,6 @@ async fn run_game_monitor<R: Runtime>(
         tick_interval.tick().await;
 
         // 1. 检查最佳 PID 是否还活着
-        #[cfg(target_os = "windows")]
         let best_pid_running = is_process_running(best_pid);
         if !best_pid_running {
             consecutive_failures += 1;
@@ -491,6 +491,17 @@ fn check_any_foreground(candidate_pids: &[u32]) -> Option<u32> {
     }
 
     None
+}
+
+#[cfg(not(target_os = "windows"))]
+///TODO: 在x11上似乎可以直接实现，未定
+/// 但是作者使用wayland，各家合成器IPC具体支持不定
+/// 或考虑让用户提供脚本以调用提供相关信息
+fn has_window_for_pid(_pid: u32) -> bool {
+    // 非 Windows 平台的占位实现
+    // 注意：本项目主要面向 Windows 用户，此函数不会被使用
+    warn!("has_window_for_pid 在非 Windows 平台被调用");
+    false
 }
 
 // has_window_for_pid 函数已移除，其功能已整合到 select_best_from_candidates 中
