@@ -19,13 +19,6 @@
  * - react-i18next
  */
 
-import { fetchBgmById, fetchBgmByName } from "@/api/bgm";
-import { fetchMixedData } from "@/api/mixed";
-import { fetchVndbById, fetchVndbByName } from "@/api/vndb";
-import { useModal } from "@/components/Toolbar";
-import { useStore } from "@/store/";
-import type { FullGameData } from "@/types";
-import { handleExeFile } from "@/utils";
 import AddIcon from "@mui/icons-material/Add";
 import FileOpenIcon from "@mui/icons-material/FileOpen";
 import { FormControlLabel, Radio, RadioGroup } from "@mui/material";
@@ -39,9 +32,16 @@ import DialogTitle from "@mui/material/DialogTitle";
 import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import { isTauri } from "@tauri-apps/api/core";
-import path from "node:path/posix";
+import path from "path-browserify";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { fetchBgmById, fetchBgmByName } from "@/api/bgm";
+import { fetchMixedData } from "@/api/mixed";
+import { fetchVndbById, fetchVndbByName } from "@/api/vndb";
+import { useStore } from "@/store";
+import type { FullGameData } from "@/types";
+import { handleExeFile } from "@/utils";
+import { useModal } from "../Toolbar";
 
 /**
  * 从文件路径中提取其父文件夹的名称，支持多系统路径。
