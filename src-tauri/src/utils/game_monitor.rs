@@ -202,6 +202,8 @@ pub async fn monitor_game<R: Runtime>(
     game_id: u32,
     process_id: u32,
     executable_path: String,
+    #[cfg(target_os = "linux")]
+    systemd_unit_name:String
 ) {
     let app_handle_clone = app_handle.clone();
     let mut sys = System::new();

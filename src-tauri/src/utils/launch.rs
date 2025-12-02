@@ -261,7 +261,15 @@ pub async fn launch_game<R: Runtime>(
             let process_id = child.id();
 
             // 启动游戏监控
-            monitor_game(app_handle.clone(), game_id, process_id, game_path.clone()).await;
+            monitor_game(
+                app_handle.clone(),
+                game_id,
+                process_id,
+                game_path.clone(),
+                #[cfg(target_os = "linux")]
+                systemd_unit_name.clone(),
+            )
+            .await;
 
             // 如果需要Magpie放大，在后台启动
             #[cfg(target_os = "windows")]
@@ -324,7 +332,15 @@ pub async fn launch_game<R: Runtime>(
                 ) {
                     Ok(pid) => {
                         // 提权启动成功，继续进入监控
-                        monitor_game(app_handle.clone(), game_id, pid, game_path.clone()).await;
+                        monitor_game(
+                            app_handle.clone(),
+                            game_id,
+                            pid,
+                            game_path.clone(),
+                            #[cfg(target_os = "linux")]
+                            systemd_unit_name,
+                        )
+                        .await;
 
                         // 如果需要Magpie放大，在后台启动
                         if use_magpie {
