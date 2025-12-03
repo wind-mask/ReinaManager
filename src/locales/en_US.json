@@ -72,7 +72,7 @@
 				"doubleClickLaunch": "Double-click to launch game",
 				"doubleClickLaunchNote": "Enabling this will cause a 200ms delay for left-click (navigation mode only)",
 				"longPressLaunch": "Long-press to launch game",
-				"longPressLaunchNote": "Launch game after long-pressing card for 800ms"
+				"longPressLaunchNote": "Launch game after long-pressing card for 800ms. Enabling this will disable collection drag-sort feature"
 			},
 			"savePath": {
 				"title": "Game Save Backup Path",
@@ -89,7 +89,7 @@
 				"moveWarning": "Backup path saved, but there was an issue moving the backup folder"
 			},
 			"databaseBackup": {
-				"title": "Database Backup",
+				"title": "Database Backup & Restore",
 				"pathLabel": "Database Backup Save Path",
 				"pathPlaceholder": "Select or enter save path",
 				"selectFolder": "Select Directory",
@@ -104,7 +104,21 @@
 				"backupFailed": "Backup failed",
 				"backupError": "Database backup failed",
 				"openFolderFailed": "Failed to open folder",
-				"openFolderError": "Failed to open backup folder"
+				"openFolderError": "Failed to open backup folder",
+				"restore": "Restore Database",
+				"importing": "Importing...",
+				"importSuccess": "Database imported successfully, application will restart automatically",
+				"importFailed": "Import failed",
+				"importError": "Failed to import database",
+				"restoreWarning": "Restoring database will overwrite existing data, please use with caution. The application will restart automatically after import."
+			},
+			"timeTrackingMode": {
+				"title": "Game Time Tracking Mode",
+				"description": "Select how game time is calculated, affecting time display and statistics recording.",
+				"playtime": "Real Game Time (Default)",
+				"playtimeDesc": "Only counts time when the game window is in focus, pauses when switching to other windows",
+				"elapsed": "Total Elapsed Time",
+				"elapsedDesc": "Counts total time from game launch to exit, regardless of focus"
 			},
 			"logLevel": {
 				"title": "Log Settings",

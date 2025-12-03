@@ -72,7 +72,7 @@
 				"doubleClickLaunch": "雙擊啟動遊戲",
 				"doubleClickLaunchNote": "開啟後會導致左鍵單擊延遲200ms（僅導航模式）",
 				"longPressLaunch": "長按啟動遊戲",
-				"longPressLaunchNote": "長按卡片800ms後啟動遊戲"
+				"longPressLaunchNote": "長按卡片800ms後啟動遊戲，開啟後收藏夾拖曳排序功能將被禁用"
 			},
 			"savePath": {
 				"title": "遊戲存檔備份路徑",
@@ -89,7 +89,7 @@
 				"moveWarning": "備份路徑已儲存，但移動備份資料夾時出現問題"
 			},
 			"databaseBackup": {
-				"title": "資料庫備份",
+				"title": "資料庫備份與還原",
 				"pathLabel": "資料庫備份儲存路徑",
 				"pathPlaceholder": "選擇或輸入儲存路徑",
 				"selectFolder": "選擇目錄",
@@ -104,7 +104,21 @@
 				"backupFailed": "備份失敗",
 				"backupError": "資料庫備份失敗",
 				"openFolderFailed": "開啟資料夾失敗",
-				"openFolderError": "開啟備份資料夾失敗"
+				"openFolderError": "開啟備份資料夾失敗",
+				"restore": "還原資料庫",
+				"importing": "匯入中...",
+				"importSuccess": "資料庫匯入成功，應用程式將自動重新啟動",
+				"importFailed": "匯入失敗",
+				"importError": "資料庫匯入失敗",
+				"restoreWarning": "還原資料庫將覆蓋現有資料，請謹慎操作。匯入後應用程式將自動重新啟動。"
+			},
+			"timeTrackingMode": {
+				"title": "遊戲計時模式",
+				"description": "選擇遊戲時間的計算方式，影響遊戲運行時的時間顯示和統計記錄。",
+				"playtime": "真實遊戲時間（預設）",
+				"playtimeDesc": "僅計算遊戲視窗在前台時的時間，切換到其他視窗時暫停計時",
+				"elapsed": "遊戲啟動時間",
+				"elapsedDesc": "計算從遊戲啟動到結束的總時間，不區分前台後台"
 			},
 			"logLevel": {
 				"title": "日誌設置",
