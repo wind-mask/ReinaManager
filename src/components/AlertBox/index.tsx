@@ -7,7 +7,7 @@
  *
  * 主要导出：
  * - AlertBox：通用提示框组件
- * - AlertDeleteBox：带加载状态的删除确认弹窗
+ * - AlertConfirmBox：带加载状态的确认弹窗（支持删除、恢复等操作）
  *
  * 依赖：
  * - @mui/material
@@ -43,26 +43,41 @@ interface AlertBoxProps {
 	autoCloseOnConfirm?: boolean; // 确认后是否自动关闭
 	isLoading?: boolean; // 新增属性：加载状态
 	customMessage?: string; // 新增属性：自定义消息
+	// 可选的第三个功能按钮
+	extraButtonText?: string;
+	extraButtonColor?: "primary" | "error" | "success" | "info" | "warning";
+	extraButtonVariant?: "text" | "outlined" | "contained";
+	onExtraButtonClick?: () => void;
+	showExtraButton?: boolean;
 }
 
 /**
- * 删除提示框专用属性类型
+ * 确认提示框专用属性类型（支持删除、恢复等操作）
  */
-interface AlertDeleteBoxProps {
+interface AlertConfirmBoxProps {
 	open: boolean;
 	setOpen: (value: boolean) => void;
 	onConfirm: () => void;
 	isLoading?: boolean; // 添加加载状态
-	message?: string; // 自定义删除消息
-	title?: string; // 自定义删除标题
+	message?: string; // 自定义消息
+	title?: string; // 自定义标题
+	confirmText?: string; // 自定义确认按钮文本
+	confirmColor?: "primary" | "error" | "success" | "info" | "warning"; // 自定义确认按钮颜色
 }
 
-// 定义 ViewUpdateGameBoxProps 接口
-interface ViewUpdateGameBoxProps {
+// 定义 ViewGameBoxProps 接口
+interface ViewGameBoxProps {
 	fullgame: FullGameData | string | null;
 	open: boolean;
 	setOpen: (value: boolean) => void;
 	onConfirm: () => void;
+	// 可选的第三个功能按钮
+	extraButtonText?: string;
+	extraButtonColor?: "primary" | "error" | "success" | "info" | "warning";
+	extraButtonVariant?: "text" | "outlined" | "contained";
+	onExtraButtonClick?: () => void;
+	showExtraButton?: boolean;
+	isLoading?: boolean;
 }
 
 /**
@@ -83,6 +98,12 @@ export function AlertBox({
 	confirmVariant = "text",
 	autoCloseOnConfirm = true,
 	isLoading = false,
+	// 可选的第三个功能按钮
+	extraButtonText,
+	extraButtonColor = "primary",
+	extraButtonVariant = "outlined",
+	onExtraButtonClick,
+	showExtraButton = false,
 }: AlertBoxProps) {
 	const { t } = useTranslation();
 
@@ -124,6 +145,16 @@ export function AlertBox({
 				<Button onClick={handleClose} disabled={isLoading}>
 					{cancelText || t("components.AlertBox.cancel")}
 				</Button>
+				{showExtraButton && extraButtonText && onExtraButtonClick && (
+					<Button
+						onClick={onExtraButtonClick}
+						color={extraButtonColor}
+						variant={extraButtonVariant}
+						disabled={isLoading}
+					>
+						{extraButtonText}
+					</Button>
+				)}
 				<Button
 					onClick={handleConfirm}
 					color={confirmColor}
@@ -146,18 +177,20 @@ export function AlertBox({
 }
 
 /**
- * 删除提示框组件，带加载状态
+ * 确认提示框组件，带加载状态（支持删除、恢复等操作）
  *
- * @param {AlertDeleteBoxProps} props 组件属性
- * @returns {JSX.Element} 删除确认弹窗
+ * @param {AlertConfirmBoxProps} props 组件属性
+ * @returns {JSX.Element} 确认弹窗
  */
-export const AlertDeleteBox: React.FC<AlertDeleteBoxProps> = ({
+export const AlertConfirmBox: React.FC<AlertConfirmBoxProps> = ({
 	open,
 	setOpen,
 	onConfirm,
 	isLoading = false,
 	message,
 	title,
+	confirmText,
+	confirmColor = "error",
 }) => {
 	const { t } = useTranslation();
 
@@ -168,9 +201,9 @@ export const AlertDeleteBox: React.FC<AlertDeleteBoxProps> = ({
 			title={title || t("components.AlertBox.deleteGameTitle")}
 			message={message || t("components.AlertBox.deleteGameMessage")}
 			onConfirm={onConfirm}
-			confirmText={t("components.AlertBox.confirmDelete")}
+			confirmText={confirmText || t("components.AlertBox.confirmDelete")}
 			cancelText={t("components.AlertBox.cancel")}
-			confirmColor="error"
+			confirmColor={confirmColor}
 			confirmVariant="contained"
 			autoCloseOnConfirm={false} // 不自动关闭，由父组件控制
 			isLoading={isLoading} // 传递加载状态
@@ -188,18 +221,29 @@ export const AlertDeleteBox: React.FC<AlertDeleteBoxProps> = ({
  * @param {() => void} props.onConfirm 确认操作函数
  * @returns {JSX.Element} 更新游戏信息弹窗
  */
-export const ViewUpdateGameBox: React.FC<ViewUpdateGameBoxProps> = ({
+export const ViewGameBox: React.FC<ViewGameBoxProps> = ({
 	fullgame,
 	open,
 	setOpen,
 	onConfirm,
+	extraButtonText,
+	extraButtonColor = "primary",
+	extraButtonVariant = "outlined",
+	onExtraButtonClick,
+	showExtraButton = false,
+	isLoading = false,
 }) => {
 	const { t } = useTranslation();
+
+	// 根据 showExtraButton 切换标题：有查看更多按钮时表示添加流程，否则为更新流程
+	const dialogTitle = showExtraButton
+		? t("components.AlertBox.confirmAddTitle", "确认添加游戏")
+		: t("components.AlertBox.confirmUpdateTitle");
 	return (
 		<AlertBox
 			open={open}
 			setOpen={setOpen}
-			title={t("components.AlertBox.confirmUpdateTitle")}
+			title={dialogTitle}
 			message={
 				fullgame && typeof fullgame !== "string" ? (
 					<Box className="flex gap-2 items-start w-full">
@@ -247,6 +291,12 @@ export const ViewUpdateGameBox: React.FC<ViewUpdateGameBoxProps> = ({
 			cancelText={t("components.AlertBox.cancel")}
 			confirmColor="primary"
 			confirmVariant="contained"
+			extraButtonText={extraButtonText}
+			extraButtonColor={extraButtonColor}
+			extraButtonVariant={extraButtonVariant}
+			onExtraButtonClick={onExtraButtonClick}
+			showExtraButton={showExtraButton}
+			isLoading={isLoading}
 		/>
 	);
 };

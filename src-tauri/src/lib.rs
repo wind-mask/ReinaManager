@@ -3,16 +3,14 @@ mod database;
 mod entity;
 mod utils;
 
-use backup::savedata::{create_savedata_backup, delete_savedata_backup};
+use backup::savedata::{create_savedata_backup, delete_savedata_backup, restore_savedata_backup};
 use database::*;
 use migration::MigratorTrait;
 use tauri::Manager;
 use tauri_plugin_log::{Target, TargetKind, TimezoneStrategy};
 use utils::{
-    fs::{
-        copy_file, delete_file, delete_game_covers, import_database, move_backup_folder,
-        open_directory,
-    },
+    db::{backup_database, import_database},
+    fs::{copy_file, delete_file, delete_game_covers, move_backup_folder, open_directory},
     launch::{launch_game, stop_game},
     logs::{get_reina_log_level, set_reina_log_level},
 };
@@ -48,8 +46,10 @@ pub fn run() {
             copy_file,
             create_savedata_backup,
             delete_savedata_backup,
+            restore_savedata_backup,
             delete_file,
             delete_game_covers,
+            backup_database,
             import_database,
             // 游戏数据相关 commands
             insert_game_with_related,

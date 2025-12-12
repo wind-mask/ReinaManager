@@ -1,3 +1,10 @@
+import { fetchBgmByName } from "@/api/bgm";
+import { fetchMixedData } from "@/api/mixed";
+import { fetchVndbByName } from "@/api/vndb";
+import { useModal } from "@/components/Toolbar";
+import { useStore } from "@/store/";
+import type { FullGameData } from "@/types";
+import { handleFolder, trimDirnameToSearchName } from "@/utils";
 import AddIcon from "@mui/icons-material/Add";
 import FileOpenIcon from "@mui/icons-material/FileOpen";
 import {
@@ -14,13 +21,6 @@ import {
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { fetchBgmByName } from "@/api/bgm";
-import { fetchMixedData } from "@/api/mixed";
-import { fetchVndbByName } from "@/api/vndb";
-import { useModal } from "@/components/Toolbar";
-import { useStore } from "@/store/";
-import type { FullGameData } from "@/types";
-import { handleFolder, trimDirnameToSearchName } from "@/utils";
 
 const ScanLib: React.FC = () => {
 	const { t } = useTranslation();
@@ -80,12 +80,12 @@ const ScanLib: React.FC = () => {
 							if (apiSource === "bgm") {
 								const result = await fetchBgmByName(searchName, bgmToken);
 								if (typeof result !== "string") {
-									apiData = result;
+									apiData = result[0] || null;
 								}
 							} else if (apiSource === "vndb") {
 								const result = await fetchVndbByName(searchName);
 								if (typeof result !== "string") {
-									apiData = result;
+									apiData = result[0] || null;
 								}
 							} else {
 								const { bgm_data, vndb_data } = await fetchMixedData({

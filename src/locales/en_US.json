@@ -82,11 +82,11 @@
 				"saving": "Saving...",
 				"saveSuccess": "Backup path saved successfully",
 				"saveFailed": "Save failed",
-				"saveError": "Failed to save backup path",
+				"saveError": "Failed to save backup path: {{error}}",
 				"selectFolderError": "Failed to select folder",
 				"movingBackups": "Moving backup folder to new location...",
 				"moveSuccess": "Backup path saved successfully, backup folder has been moved to new location",
-				"moveWarning": "Backup path saved, but there was an issue moving the backup folder"
+				"moveWarning": "Backup path saved, but there was an issue moving the backup folder: {{message}}"
 			},
 			"databaseBackup": {
 				"title": "Database Backup & Restore",
@@ -100,16 +100,16 @@
 				"backup": "Backup Database",
 				"backing": "Backing up...",
 				"openFolder": "Open Backup Folder",
-				"backupSuccess": "Database backup successful",
+				"backupSuccess": "Database backup successful: {{path}}",
 				"backupFailed": "Backup failed",
-				"backupError": "Database backup failed",
+				"backupError": "Database backup failed: {{error}}",
 				"openFolderFailed": "Failed to open folder",
-				"openFolderError": "Failed to open backup folder",
+				"openFolderError": "Failed to open backup folder: {{error}}",
 				"restore": "Restore Database",
 				"importing": "Importing...",
 				"importSuccess": "Database imported successfully, application will restart automatically",
 				"importFailed": "Import failed",
-				"importError": "Failed to import database",
+				"importError": "Failed to import database: {{error}}",
 				"restoreWarning": "Restoring database will overwrite existing data, please use with caution. The application will restart automatically after import."
 			},
 			"timeTrackingMode": {
@@ -128,7 +128,7 @@
 				"changeFailed": "Failed to change log level",
 				"openFolder": "Open Log Folder",
 				"openFolderFailed": "Failed to open folder",
-				"openFolderError": "Failed to open log folder"
+				"openFolderError": "Failed to open log folder: {{error}}"
 			},
 			"batchUpdate": {
 				"title": "Batch Update Data",
@@ -219,7 +219,15 @@
 				"autoSaveDisabled": "Auto backup disabled",
 				"autoSaveUpdateFailed": "Failed to update auto backup setting",
 				"openBackupFolder": "Open Backup Folder",
-				"openSaveDataFolder": "Open Save Data Folder"
+				"openSaveDataFolder": "Open Save Data Folder",
+				"restoreBackup": "Restore Backup",
+				"restoreSuccess": "Save data restored successfully",
+				"restoreFailed": "Failed to restore",
+				"setPathForRestore": "Please set save data path first to restore backup",
+				"restoreBackupTitle": "Restore Save Data",
+				"confirmRestore": "Are you sure you want to restore the backup",
+				"confirmRestoreSuffix": "? This will overwrite your current save data. It's recommended to create a new backup before restoring.",
+				"confirmRestoreButton": "Restore"
 			},
 			"DataSourceUpdate": {
 				"bgmIdRequired": "Bangumi ID cannot be empty",
@@ -351,7 +359,13 @@
 			"gamePathNotFound": "Game path not found",
 			"launchFailed": "Failed to launch game:",
 			"stopFailed": "Failed to stop game:",
-			"playing": "Playing..."
+			"syncLocalPath": "Sync Local",
+			"setLocalPathTitle": "Set Local Path",
+			"localPathLabel": "Executable File Path",
+			"selectFolder": "Select Folder",
+			"pathRequired": "Please select or enter a path",
+			"pathSaved": "Path saved",
+			"pathSaveFailed": "Failed to save path"
 		},
 		"SortModal": {
 			"sort": "Sort",
@@ -387,19 +401,6 @@
 				"newCategoryName": "New Category Name"
 			}
 		},
-		"AlertBox": {
-			"cancel": "Cancel",
-			"confirm": "Confirm",
-			"confirmDelete": "Confirm Delete",
-			"deleteGameTitle": "Delete Game?",
-			"deleteGameMessage": "This action cannot be undone. Are you sure you want to delete this game?",
-			"processing": "Processing...",
-			"confirmUpdateTitle": "Confirm Update Game Info",
-			"bgmData": "Bangumi Data",
-			"vndbData": "VNDB Data",
-			"gameName": "Game Name",
-			"noData": "No data available"
-		},
 		"Snackbar": {
 			"failedOpenGameFolder": "Failed to open the game folder",
 			"failedOpenBackupFolder": "Failed to open the backup folder",
@@ -418,7 +419,29 @@
 			"cancel": "Cancel",
 			"processing": "Processing...",
 			"confirm": "Confirm",
-			"idSearch": "Enable ID Search Mode"
+			"idSearch": "Enable ID Search Mode",
+			"viewMore": "View More",
+			"selectGame": "Select Game",
+			"noResults": "No results found",
+			"developer": "Developer",
+			"invalidIDFormat": "Invalid ID format",
+			"noDataSource": "Unable to fetch game data",
+			"unknownError": "An unknown error occurred",
+			"timeout": "Request timed out, please try again later"
+		},
+		"AlertBox": {
+			"confirmAddTitle": "Confirm Add Game",
+			"confirmUpdateTitle": "Confirm Update Game",
+			"confirm": "Confirm",
+			"cancel": "Cancel",
+			"processing": "Processing...",
+			"bgmData": "BGM Data",
+			"vndbData": "VNDB Data",
+			"gameName": "Game Name",
+			"noData": "No data",
+			"confirmDelete": "Confirm Delete",
+			"deleteGameTitle": "Delete Game",
+			"deleteGameMessage": "Are you sure you want to delete this game?"
 		},
 		"FilterModal": {
 			"filter": "Filter",

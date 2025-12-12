@@ -82,11 +82,11 @@
 				"saving": "保存中...",
 				"saveSuccess": "バックアップパスの保存が成功しました",
 				"saveFailed": "保存に失敗しました",
-				"saveError": "バックアップパスの保存に失敗しました",
+				"saveError": "バックアップパスの保存に失敗しました: {{error}}",
 				"selectFolderError": "フォルダの選択に失敗しました",
 				"movingBackups": "バックアップフォルダを新しい場所に移動中...",
 				"moveSuccess": "バックアップパスの保存が成功し、バックアップフォルダが新しい場所に移動されました",
-				"moveWarning": "バックアップパスは保存されましたが、バックアップフォルダの移動に問題がありました"
+				"moveWarning": "バックアップパスは保存されましたが、バックアップフォルダの移動に問題がありました: {{message}}"
 			},
 			"databaseBackup": {
 				"title": "データベースバックアップと復元",
@@ -100,16 +100,16 @@
 				"backup": "データベースをバックアップ",
 				"backing": "バックアップ中...",
 				"openFolder": "バックアップフォルダを開く",
-				"backupSuccess": "データベースバックアップが成功しました",
+				"backupSuccess": "データベースバックアップが成功しました: {{path}}",
 				"backupFailed": "バックアップに失敗しました",
-				"backupError": "データベースバックアップに失敗しました",
+				"backupError": "データベースバックアップに失敗しました: {{error}}",
 				"openFolderFailed": "フォルダを開くのに失敗しました",
-				"openFolderError": "バックアップフォルダを開くのに失敗しました",
+				"openFolderError": "バックアップフォルダを開くのに失敗しました: {{error}}",
 				"restore": "データベースを復元",
 				"importing": "インポート中...",
 				"importSuccess": "データベースのインポートが成功しました。アプリが自動的に再起動します",
 				"importFailed": "インポートに失敗しました",
-				"importError": "データベースのインポートに失敗しました",
+				"importError": "データベースのインポートに失敗しました: {{error}}",
 				"restoreWarning": "データベースの復元は既存のデータを上書きします。ご注意ください。インポート後、アプリは自動的に再起動します。"
 			},
 			"timeTrackingMode": {
@@ -128,7 +128,7 @@
 				"changeFailed": "ログレベルの変更に失敗しました",
 				"openFolder": "ログフォルダを開く",
 				"openFolderFailed": "フォルダを開くのに失敗しました",
-				"openFolderError": "ログフォルダを開くのに失敗しました"
+				"openFolderError": "ログフォルダを開くのに失敗しました: {{error}}"
 			},
 			"batchUpdate": {
 				"title": "バッチ更新データ",
@@ -219,7 +219,15 @@
 				"autoSaveDisabled": "自動バックアップが無効になりました",
 				"autoSaveUpdateFailed": "自動バックアップ設定の更新に失敗しました",
 				"openBackupFolder": "バックアップフォルダを開く",
-				"openSaveDataFolder": "セーブデータフォルダを開く"
+				"openSaveDataFolder": "セーブデータフォルダを開く",
+				"restoreBackup": "バックアップを復元",
+				"restoreSuccess": "セーブデータが正常に復元されました",
+				"restoreFailed": "復元に失敗しました",
+				"setPathForRestore": "バックアップを復元するには、まずセーブデータパスを設定してください",
+				"restoreBackupTitle": "セーブデータを復元",
+				"confirmRestore": "バックアップを復元してもよろしいですか",
+				"confirmRestoreSuffix": "？現在のセーブデータが上書きされます。復元前に新しいバックアップを作成することをお勧めします。",
+				"confirmRestoreButton": "復元"
 			},
 			"DataSourceUpdate": {
 				"bgmIdRequired": "Bangumi IDを空にすることはできません",
@@ -351,7 +359,13 @@
 			"gamePathNotFound": "ゲームパスが見つかりません",
 			"launchFailed": "ゲーム起動に失敗しました:",
 			"stopFailed": "ゲーム停止に失敗しました:",
-			"playing": "プレイ中..."
+			"syncLocalPath": "ローカル同期",
+			"setLocalPathTitle": "ローカルパスを設定",
+			"localPathLabel": "実行ファイルパス",
+			"selectFolder": "フォルダを選択",
+			"pathRequired": "パスを選択または入力してください",
+			"pathSaved": "パスが保存されました",
+			"pathSaveFailed": "パスの保存に失敗しました"
 		},
 		"SortModal": {
 			"sort": "並べ替え",
@@ -386,19 +400,6 @@
 				"newCategoryName": "新しいカテゴリ名"
 			}
 		},
-		"AlertBox": {
-			"cancel": "キャンセル",
-			"confirm": "確認",
-			"confirmDelete": "削除を確認",
-			"deleteGameTitle": "ゲームを削除",
-			"deleteGameMessage": "このゲームを削除してもよろしいですか？この操作は取り消せません。",
-			"processing": "処理中...",
-			"confirmUpdateTitle": "ゲーム情報の更新を確認",
-			"bgmData": "Bangumiデータ",
-			"vndbData": "VNDBデータ",
-			"gameName": "ゲーム名",
-			"noData": "データがありません"
-		},
 		"Snackbar": {
 			"failedOpenGameFolder": "ゲームフォルダの開けに失敗しました",
 			"failedOpenBackupFolder": "バックアップフォルダの開けに失敗しました",
@@ -417,7 +418,29 @@
 			"cancel": "キャンセル",
 			"processing": "処理中...",
 			"confirm": "確認",
-			"idSearch": "ID検索モードを有効化"
+			"idSearch": "ID検索モードを有効化",
+			"viewMore": "もっと見る",
+			"selectGame": "ゲームを選択",
+			"noResults": "結果が見つかりませんでした",
+			"developer": "開発者",
+			"invalidIDFormat": "IDフォーマットが無効です",
+			"noDataSource": "ゲームデータを取得できません",
+			"unknownError": "不明なエラーが発生しました",
+			"timeout": "タイムアウトしました。しばらくしてから再試行してください"
+		},
+		"AlertBox": {
+			"confirmAddTitle": "ゲームの追加を確認",
+			"confirmUpdateTitle": "ゲーム情報の更新を確認",
+			"confirm": "確認",
+			"cancel": "キャンセル",
+			"processing": "処理中...",
+			"bgmData": "BGM データ",
+			"vndbData": "VNDB データ",
+			"gameName": "ゲーム名",
+			"noData": "データがありません",
+			"confirmDelete": "削除を確認",
+			"deleteGameTitle": "ゲームを削除",
+			"deleteGameMessage": "このゲームを削除してもよろしいですか？"
 		},
 		"FilterModal": {
 			"filter": "フィルター",

@@ -9,16 +9,17 @@
  * @copyright AGPL-3.0
  */
 
-import { AlertDeleteBox } from "@/components/AlertBox";
-import { ManageGamesDialog } from "@/components/Collection";
-import { InputDialog } from "@/components/CommonDialog";
-import { useStore } from "@/store";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import Button from "@mui/material/Button";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { AlertConfirmBox } from "@/components/AlertBox";
+import { ManageGamesDialog } from "@/components/Collection";
+import { InputDialog } from "@/components/CommonDialog";
+import { LaunchModal } from "@/components/LaunchModal";
+import { useStore } from "@/store";
 
 export const CollectionToolbar: React.FC = () => {
 	const { t } = useTranslation();
@@ -135,7 +136,7 @@ export const CollectionToolbar: React.FC = () => {
 					)}
 				/>
 
-				<AlertDeleteBox
+				<AlertConfirmBox
 					open={deleteGroupDialogOpen}
 					setOpen={setDeleteGroupDialogOpen}
 					onConfirm={handleDeleteGroup}
@@ -151,6 +152,7 @@ export const CollectionToolbar: React.FC = () => {
 	if (selectedCategoryId !== null && selectedCategoryId > 0) {
 		return (
 			<>
+				<LaunchModal />
 				<Button
 					startIcon={<EditIcon />}
 					onClick={() => setManageGamesDialogOpen(true)}

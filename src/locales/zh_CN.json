@@ -88,11 +88,11 @@
 				"saving": "保存中...",
 				"saveSuccess": "备份路径保存成功",
 				"saveFailed": "保存失败",
-				"saveError": "保存备份路径失败",
+				"saveError": "保存备份路径失败: {{error}}",
 				"selectFolderError": "选择文件夹失败",
 				"movingBackups": "正在移动备份文件夹到新位置...",
 				"moveSuccess": "备份路径保存成功，备份文件夹已移动到新位置",
-				"moveWarning": "备份路径已保存，但移动备份文件夹时出现问题"
+				"moveWarning": "备份路径已保存，但移动备份文件夹时出现问题: {{message}}"
 			},
 			"databaseBackup": {
 				"title": "数据库备份与恢复",
@@ -106,16 +106,16 @@
 				"backup": "备份数据库",
 				"backing": "备份中...",
 				"openFolder": "打开备份文件夹",
-				"backupSuccess": "数据库备份成功",
+				"backupSuccess": "数据库备份成功: {{path}}",
 				"backupFailed": "备份失败",
-				"backupError": "数据库备份失败",
+				"backupError": "数据库备份失败: {{error}}",
 				"openFolderFailed": "打开文件夹失败",
-				"openFolderError": "打开备份文件夹失败",
+				"openFolderError": "打开备份文件夹失败: {{error}}",
 				"restore": "恢复数据库",
 				"importing": "导入中...",
 				"importSuccess": "数据库导入成功，应用将自动重启",
 				"importFailed": "导入失败",
-				"importError": "数据库导入失败",
+				"importError": "数据库导入失败: {{error}}",
 				"restoreWarning": "恢复数据库将覆盖现有数据，请谨慎操作。导入后应用将自动重启。"
 			},
 			"timeTrackingMode": {
@@ -134,7 +134,7 @@
 				"changeFailed": "切换日志级别失败",
 				"openFolder": "打开日志文件夹",
 				"openFolderFailed": "打开文件夹失败",
-				"openFolderError": "打开日志文件夹失败"
+				"openFolderError": "打开日志文件夹失败: {{error}}"
 			},
 			"batchUpdate": {
 				"title": "批量更新数据",
@@ -225,7 +225,15 @@
 				"pathUpdateFailed": "路径更新失败",
 				"autoSaveEnabled": "自动备份已启用",
 				"autoSaveDisabled": "自动备份已禁用",
-				"autoSaveUpdateFailed": "自动备份设置失败"
+				"autoSaveUpdateFailed": "自动备份设置失败",
+				"restoreBackup": "恢复备份",
+				"restoreSuccess": "存档恢复成功",
+				"restoreFailed": "恢复失败",
+				"setPathForRestore": "请先设置存档路径以恢复备份",
+				"restoreBackupTitle": "恢复存档",
+				"confirmRestore": "确定要恢复备份",
+				"confirmRestoreSuffix": " 吗？这将覆盖当前存档，建议在恢复前先创建新备份。",
+				"confirmRestoreButton": "恢复"
 			},
 			"DataSourceUpdate": {
 				"bgmIdRequired": "Bangumi ID 不能为空",
@@ -357,7 +365,13 @@
 			"gamePathNotFound": "游戏路径未找到",
 			"launchFailed": "游戏启动失败:",
 			"stopFailed": "游戏停止失败:",
-			"playing": "正在游戏..."
+			"syncLocalPath": "同步本地",
+			"setLocalPathTitle": "设置本地路径",
+			"localPathLabel": "可执行文件路径",
+			"selectFolder": "选择文件夹",
+			"pathRequired": "请选择或输入路径",
+			"pathSaved": "路径已保存",
+			"pathSaveFailed": "保存路径失败"
 		},
 		"SortModal": {
 			"sort": "排序",
@@ -393,19 +407,6 @@
 				"newCategoryName": "新分类名称"
 			}
 		},
-		"AlertBox": {
-			"cancel": "取消",
-			"confirm": "确认",
-			"deleteGameTitle": "删除游戏",
-			"deleteGameMessage": "确定要删除这个游戏吗？此操作不可撤销。",
-			"confirmDelete": "确认删除",
-			"processing": "处理中...",
-			"confirmUpdateTitle": "确认更新游戏信息",
-			"bgmData": "Bangumi 数据",
-			"vndbData": "VNDB 数据",
-			"gameName": "游戏名称",
-			"noData": "无可用数据"
-		},
 		"Snackbar": {
 			"failedOpenGameFolder": "打开游戏文件夹失败",
 			"failedOpenBackupFolder": "打开备份文件夹失败",
@@ -424,7 +425,29 @@
 			"cancel": "取消",
 			"processing": "处理中...",
 			"confirm": "确认",
-			"idSearch": "启用ID搜索模式"
+			"idSearch": "启用ID搜索模式",
+			"viewMore": "查看更多",
+			"selectGame": "选择游戏",
+			"noResults": "没有找到结果",
+			"developer": "开发商",
+			"invalidIDFormat": "ID格式无效",
+			"noDataSource": "无法获取游戏数据",
+			"unknownError": "发生未知错误",
+			"timeout": "请求超时，请稍后重试"
+		},
+		"AlertBox": {
+			"confirmAddTitle": "确认添加游戏",
+			"confirmUpdateTitle": "确认更新游戏信息",
+			"confirm": "确认",
+			"cancel": "取消",
+			"processing": "处理中...",
+			"bgmData": "BGM 数据",
+			"vndbData": "VNDB 数据",
+			"gameName": "游戏名称",
+			"noData": "没有数据",
+			"confirmDelete": "确认删除",
+			"deleteGameTitle": "删除游戏",
+			"deleteGameMessage": "确定要删除该游戏吗？"
 		},
 		"ScanLib": {
 			"scanLibrary": "扫描游戏库",
