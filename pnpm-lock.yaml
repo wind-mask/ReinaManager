@@ -89,6 +89,9 @@ importers:
       path-browserify:
         specifier: ^1.0.1
         version: 1.0.1
+      pathe:
+        specifier: ^2.0.3
+        version: 2.0.3
       pinyin-pro:
         specifier: ^3.27.0
         version: 3.27.0

@@ -43,6 +43,7 @@
 		"marked": "^17.0.1",
 		"notistack": "^3.0.2",
 		"path-browserify": "^1.0.1",
+		"pathe": "^2.0.3",
 		"pinyin-pro": "^3.27.0",
 		"react": "^18.3.1",
 		"react-activation": "^0.13.4",

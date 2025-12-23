@@ -40,6 +40,7 @@ import DialogTitle from "@mui/material/DialogTitle";
 import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import { isTauri } from "@tauri-apps/api/core";
+import { basename, dirname } from "pathe";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import GameSelectDialog from "./GameSelectDialog";
@@ -71,8 +72,9 @@ interface DialogState {
  * @returns 文件夹名称
  */
 function extractFolderName(path: string): string {
-	const parts = path.split("\\");
-	return parts.length > 1 ? parts[parts.length - 2] : "";
+	// 使用 pathe 的 dirname 获取父目录，然后获取文件夹名
+	const parentDir = dirname(path);
+	return basename(parentDir);
 }
 
 /**
