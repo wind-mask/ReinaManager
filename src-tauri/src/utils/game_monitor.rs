@@ -6,10 +6,10 @@
 // ============================================================================
 // 外部依赖导入
 // ============================================================================
-use std::path::Path;
 use log::{debug, error, info, warn};
 use parking_lot::RwLock;
 use serde_json::json;
+use std::path::Path;
 use std::{
     collections::HashSet,
     sync::{
@@ -202,8 +202,7 @@ pub async fn monitor_game<R: Runtime>(
     game_id: u32,
     process_id: u32,
     executable_path: String,
-    #[cfg(target_os = "linux")]
-    systemd_unit_name:String
+    #[cfg(target_os = "linux")] systemd_unit_name: String,
 ) {
     let app_handle_clone = app_handle.clone();
     let mut sys = System::new();
