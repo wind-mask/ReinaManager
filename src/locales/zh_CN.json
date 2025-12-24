@@ -145,6 +145,17 @@
 				"elapsed": "游戏启动时间",
 				"elapsedDesc": "计算从游戏启动到结束的总时间，不区分前台后台"
 			},
+			"linuxLaunchCommand": {
+				"title": "Linux 启动命令",
+				"description": "设置 Linux 上启动 Windows 可执行文件（.exe）时使用的命令。支持 wine、proton 或其他兼容层命令，也可以是 PATH 中的可执行文件或脚本的完整路径。",
+				"commandLabel": "启动命令",
+				"helperText": "例如: wine, /usr/bin/wine, ~/scripts/run-game.sh",
+				"saveBtn": "保存",
+				"saveSuccess": "Linux 启动命令已保存",
+				"saveError": "保存失败",
+				"resetTooltip": "重置为默认值 (wine)",
+				"note": "注意：更改此设置后，需要重新启动游戏才能生效。"
+			},
 			"logLevel": {
 				"title": "日志设置",
 				"levelLabel": "日志输出级别",

@@ -1,8 +1,9 @@
 use crate::utils::game_monitor::{monitor_game, stop_game_session};
 use serde::{Deserialize, Serialize};
-use std::path::Path;
 use std::process::Command;
+use std::{env::home_dir, path::Path};
 use tauri::{command, AppHandle, Runtime};
+use tauri_plugin_store::StoreExt;
 
 // ================= Windows 提权启动（ShellExecuteExW with "runas"）支持 =================
 // 仅在 Windows 下编译，其他平台不包含该实现
@@ -136,6 +137,17 @@ pub async fn launch_game<R: Runtime>(
     }
     #[cfg(target_os = "linux")]
     {
+        // 从 store 中读取 Linux 启动命令配置
+
+        use log::debug;
+        let linux_launch_command = app_handle
+            .store("settings.json")
+            .ok()
+            .and_then(|store| store.get("linux_launch_command"))
+            .and_then(|v| v.as_str().map(|s| s.to_string()))
+            .unwrap_or_else(|| "wine".to_string());
+        let linux_launch_command = expand_path(&linux_launch_command);
+        debug!("使用的 Linux 启动命令: {:?}", linux_launch_command);
         //TODO: 使用dbus接口交互systemd
         command = Command::new("systemd-run"); // 使用 systemd-run 启动游戏进程
         command.arg("--scope"); // 使用 scope 模式
@@ -146,14 +158,10 @@ pub async fn launch_game<R: Runtime>(
 
         command.arg(&systemd_unit_name); // 设置 systemd unit 名称
         if exe_name.to_string_lossy().ends_with(".exe") {
-            // Windows 可执行文件需要使用 wine 启动
-            //TODO: 可配置exe文件的运行方式
-            command.arg("wine");
-            // 如果在 Wayland 环境下，清除 DISPLAY 变量以优先使用 Wayland
-            if std::env::var("WAYLAND_DISPLAY").is_ok() {
-                command.env("DISPLAY", "");
-            }
-            command.stdout(std::process::Stdio::null()); // 避免 wine 输出干扰
+            // Windows 可执行文件需要使用配置的启动命令
+            command.arg(&linux_launch_command);
+
+            command.stdout(std::process::Stdio::null()); // 避免输出干扰
             command.stderr(std::process::Stdio::null());
         }
         command.arg(&game_path); // 添加游戏可执行文件路径
@@ -174,6 +182,7 @@ pub async fn launch_game<R: Runtime>(
                 app_handle,
                 game_id,
                 process_id,
+                #[cfg(target_os = "windows")]
                 game_path.clone(),
                 #[cfg(target_os = "linux")]
                 systemd_unit_name.clone(),
@@ -236,6 +245,17 @@ pub async fn launch_game<R: Runtime>(
     }
 }
 
+fn expand_path(path: &str) -> String {
+    if path.starts_with("~") {
+        if let Some(home_dir) = home_dir() {
+            path.replacen("~", &home_dir.to_string_lossy(), 1)
+        } else {
+             path.to_string()
+        }
+    } else {
+        path.to_string()
+    }
+}
 /// 停止游戏结果
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StopResult {

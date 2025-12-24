@@ -22,6 +22,7 @@ use crate::utils::scan::scan_game_library;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_window_state::Builder::new().build())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
@@ -171,6 +172,7 @@ pub fn run() {
                         ])
                         .build(),
                 )?;
+                log::set_max_level(log::LevelFilter::Debug);
             } else {
                 // 设置初始日志级别为 Error（运行时可通过命令调整）
                 app.handle().plugin(
