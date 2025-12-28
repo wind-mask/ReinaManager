@@ -3,6 +3,7 @@ use crate::utils::fs::PathManager;
 use crate::utils::game_monitor::{monitor_game, stop_game_session};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
+use std::env::home_dir;
 use std::path::Path;
 use std::process::Command;
 use sysinfo::{ProcessRefreshKind, RefreshKind, System};
@@ -242,10 +243,7 @@ pub async fn launch_game<R: Runtime>(
             // Windows 可执行文件需要使用 wine 启动
             //TODO: 可配置exe文件的运行方式
             command.arg("wine");
-            // 如果在 Wayland 环境下，清除 DISPLAY 变量以优先使用 Wayland
-            if std::env::var("WAYLAND_DISPLAY").is_ok() {
-                command.env("DISPLAY", "");
-            }
+            
         }
         command.arg(&game_path); // 添加游戏可执行文件路径
         command.current_dir(game_dir);
@@ -397,8 +395,8 @@ pub struct StopResult {
 ///
 /// 停止结果，包含成功标志、消息和终止的进程数量
 #[command]
-pub fn stop_game(game_id: u32) -> Result<StopResult, String> {
-    match stop_game_session(game_id) {
+pub async fn stop_game(game_id: u32) -> Result<StopResult, String> {
+    match stop_game_session(game_id).await {
         Ok(terminated_count) => Ok(StopResult {
             success: true,
             message: format!(
@@ -486,7 +484,6 @@ fn is_process_running(process_name: &str) -> bool {
         .values()
         .any(|process| process.name().eq_ignore_ascii_case(process_name))
 }
-
 // ================= Windows 提权启动（ShellExecuteExW with "runas"）支持 =================
 // 仅在 Windows 下编译，其他平台不包含该实现
 #[cfg(target_os = "windows")]
@@ -577,4 +574,16 @@ pub struct LaunchResult {
     process_id: Option<u32>, // 添加进程ID字段
     #[cfg(target_os = "linux")]
     systemd_scope: Option<String>, // 添加 systemd scope 字段
+}
+
+fn expand_path(path: &str) -> String {
+    if path.starts_with("~") {
+        if let Some(home_dir) = home_dir() {
+            path.replacen("~", &home_dir.to_string_lossy(), 1)
+        } else {
+            path.to_string()
+        }
+    } else {
+        path.to_string()
+    }
 }
