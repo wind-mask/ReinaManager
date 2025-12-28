@@ -23,7 +23,16 @@
 
 ## Linux 分支注释
 
-本分支为适配中的linux分支，功能参考release的变更日志。
+本分支为适配中的linux分支，完整功能参考release的变更日志，下列文档可能不准确，仅供参考：
+
+- [x] 启动管理功能依赖于`systemd`(version>=211)下`systemd-run`可执行文，及[org.freedesktop.systemd1 — The D-Bus interface of systemd](https://www.freedesktop.org/software/systemd/man/latest/org.freedesktop.systemd1.html)接口。
+      使用可配置的启动脚本启动游戏，默认为`wine`（推荐使用[umu-launcher](https://github.com/Open-Wine-Components/umu-launcher)结合（各版本）[Proton](https://github.com/ValveSoftware/Proton)）
+- [x] 使用xcb监控x11（含xwaylnad）启动的游戏的窗口，包括聚焦时间
+- [x] 设置中的开机自启，请确保桌面环境支持[XDG Autostart specification](https://specifications.freedesktop.org/autostart/latest/)
+- [x] 桌面托盘tray
+- [x] 增加了一个扫描游戏库功能
+- [ ] wayland下的游戏窗口和聚焦监控
+
 
 合并前请自行构建或参见如下：
 

@@ -148,7 +148,7 @@ fn unregister_session(game_id: u32) {
 /// # Returns
 /// 成功返回终止的进程数量，失败返回错误信息
 #[cfg(target_os = "windows")]
-pub fn stop_game_session(game_id: u32) -> Result<u32, String> {
+pub async fn stop_game_session(game_id: u32) -> Result<u32, String> {
     // 获取会话信息
     let sessions = get_sessions().read();
     let session = sessions
@@ -191,6 +191,7 @@ pub fn stop_game_session(game_id: u32) -> Result<u32, String> {
 pub async fn stop_game_session(_game_id: u32) -> Result<u32, String> {
     stop_game_unit(_game_id).await.map(|_| 1)
 }
+#[cfg(target_os = "linux")]
 async fn stop_game_unit(game_id: u32) -> Result<(), String> {
     // 1. 连接到 Session Bus (对应 --user)
     let proxy = get_manager_proxy().await.map_err(|e| {
@@ -1219,7 +1220,7 @@ fn check_any_has_window(_candidate_pids: &[u32]) -> Option<u32> {
     check_any_has_window_x11(_candidate_pids)
 }
 /// TODO: 未来可考虑集成其他 wayland 合成器特定功能实现。
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "linux")]
 fn check_any_foreground(_candidate_pids: &[u32]) -> Option<u32> {
     check_any_foreground_x11(_candidate_pids)
 }

@@ -1,6 +1,6 @@
-use crate::utils::game_monitor::{
-    get_connection, get_manager_proxy, monitor_game, stop_game_session,
-};
+#[cfg(target_os = "linux")]
+use crate::utils::game_monitor::{get_connection, get_manager_proxy};
+use crate::utils::game_monitor::{monitor_game, stop_game_session};
 use serde::{Deserialize, Serialize};
 use std::process::Command;
 use std::{env::home_dir, path::Path};
@@ -300,6 +300,7 @@ fn expand_path(path: &str) -> String {
 ///
 /// # Returns
 /// bool - 如果 scope 已存在则返回 true，否则返回 false
+#[cfg(target_os = "linux")]
 async fn check_scope_or_reset_failed(systemd_unit_name: &str) -> Result<bool, String> {
     let proxy = get_manager_proxy().await.map_err(|e| {
         format!(
