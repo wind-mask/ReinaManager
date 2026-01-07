@@ -39,7 +39,7 @@ import { useTranslation } from "react-i18next";
 import { snackbar } from "@/components/Snackbar";
 import { useStore } from "@/store";
 import { useGamePlayStore } from "@/store/gamePlayStore";
-import type { FullGameData } from "@/types";
+import type { UpdateGameParams } from "@/types";
 import { handleFolder } from "@/utils";
 
 /**
@@ -229,10 +229,8 @@ export const LaunchModal = () => {
 
 		setIsSaving(true);
 		try {
-			const updateData: Partial<FullGameData> = {
-				game: {
-					localpath: localPath.trim(),
-				},
+			const updateData: UpdateGameParams = {
+				localpath: localPath.trim(),
 			};
 
 			await updateGame(selectedGameId, updateData);

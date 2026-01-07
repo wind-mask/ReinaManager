@@ -10,13 +10,7 @@ import { fetchVNDBByIds } from "@/api/vndb";
 import { snackbar } from "@/components/Snackbar";
 import { gameService, savedataService, settingsService } from "@/services";
 import { useScrollStore } from "@/store/scrollStore";
-import type {
-	BgmData,
-	GameData,
-	HanleGamesProps,
-	RawGameData,
-	VndbData,
-} from "@/types";
+import type { BgmData, GameData, HanleGamesProps, VndbData } from "@/types";
 import { getDisplayGameData } from "./dataTransform";
 
 /**
@@ -400,8 +394,8 @@ export const getGameDisplayName = (
 	language?: string,
 ): string => {
 	const currentLanguage = language || i18next.language;
-	if (game.custom_name) {
-		return game.custom_name;
+	if (game.custom_data?.name) {
+		return game.custom_data.name;
 	}
 	// 只有当语言为zh-CN时才使用name_cn，其他语言都使用name
 	return currentLanguage === "zh-CN" && game.name_cn
@@ -420,7 +414,7 @@ export const getcustomCoverFolder = (gameID: number): string => {
 };
 export const getGameCover = (game: GameData): string => {
 	// 如果有自定义封面扩展名，构造自定义封面路径
-	if (game.custom_cover && game.id) {
+	if (game.custom_data?.image && game.id) {
 		// 获取缓存的资源目录路径
 		const customCoverFolder = getcustomCoverFolder(game.id);
 		if (customCoverFolder) {
@@ -428,7 +422,7 @@ export const getGameCover = (game: GameData): string => {
 			// 例如：custom_cover = "jpg_1703123456789"
 			const customCoverPath = join(
 				customCoverFolder,
-				`cover_${game.id}_${game.custom_cover}`,
+				`cover_${game.id}_${game.custom_data.image}`,
 			);
 
 			// 在 Tauri 环境中使用 convertFileSrc 转换路径
@@ -441,7 +435,7 @@ export const getGameCover = (game: GameData): string => {
 	}
 
 	// 使用默认封面 (来自 bgm/vndb/other 数据的 image 字段)
-	return game.image || "";
+	return game.image || "/images/default.png";
 };
 
 /**
@@ -466,8 +460,8 @@ export const toggleGameClearStatus = async (
 		const game = getDisplayGameData(fullgame);
 
 		const newClearStatus = game.clear === 1 ? 0 : 1;
-		await gameService.updateGameWithRelated(gameId, {
-			game: { clear: newClearStatus as 1 | 0 },
+		await gameService.updateGame(gameId, {
+			clear: newClearStatus as 1 | 0,
 		});
 
 		// 更新store中的games数组
@@ -701,36 +695,39 @@ export async function moveBackupFolder(
  * @param tags
  */
 export function isNsfwGame(tags: string[]): boolean {
-	if (!tags || tags.length === 0) return false;
+	if (tags.length === 0) return false;
 
-	// 检查是否包含R18相关标签
-	const hasR18Tag = tags.some((tag) => tag.includes("R18"));
-	if (hasR18Tag) return true;
+	if (tags.some((tag) => tag.includes("R18") || tag === "拔作")) {
+		// 1. 显式 R18 或 拔作
+		return true;
+	}
 
-	// 检查是否包含拔作标签
-	if (tags.includes("拔作")) return true;
-
-	// 如果tags均为英文且没有包含No Sexual Content 也为NSFW
-	// biome-ignore lint/suspicious/noControlCharactersInRegex: 非字面上的控制字符
-	const allEnglish = tags.every((tag) => /^[\x00-\x7F]+$/.test(tag));
-	return allEnglish && !tags.includes("No Sexual Content");
+	// 2. 纯英文标签且无 "No Sexual Content" (沿用你原本的逻辑)
+	// biome-ignore lint/suspicious/noControlCharactersInRegex: 允许 ASCII 范围检查
+	const isAllEnglish = tags.every((tag) => /^[\x00-\x7F]+$/.test(tag));
+	return isAllEnglish && !tags.includes("No Sexual Content");
 }
 
 /**
- * 通过tags中的R18来判断是否为NSFW并过滤
- * @param data 游戏数据数组
- * @param nsfwFilter 是否启用NSFW过滤
- * @returns 过滤后的游戏数据
+ * 统一判断单个游戏是否为 NSFW
+ * 策略：优先读取 game.nsfw 字段，如果为 null/undefined 则回退到标签判断
+ */
+export function getGameNsfwStatus(game: GameData): boolean {
+	return game.nsfw ?? isNsfwGame(game.tags || []);
+}
+
+/**
+ * 应用 NSFW 过滤器
  */
 export function applyNsfwFilter(
 	data: GameData[],
-	nsfwFilter: boolean,
+	enableFilter: boolean,
 ): GameData[] {
-	if (!nsfwFilter) return data;
-	return data.filter((game) => {
-		const tags = game.tags || [];
-		return !isNsfwGame(tags);
-	});
+	// 如果没开启过滤，直接返回原数据（这是最快路径）
+	if (!enableFilter) return data;
+
+	// 过滤掉判定为 NSFW 的游戏
+	return data.filter((game) => !getGameNsfwStatus(game));
 }
 
 //主动保存指定路径的滚动条位置
@@ -769,10 +766,10 @@ async function batchUpdateCommon(
 	) => Promise<
 		| string
 		| Array<{
-				game: RawGameData;
-				bgm_data: BgmData | null;
-				vndb_data: VndbData | null;
-				other_data: null;
+				bgm_id?: string | null;
+				vndb_id?: string | null;
+				bgm_data?: BgmData | null;
+				vndb_data?: VndbData | null;
 		  }>
 	>,
 	getAllIdsFunction: () => Promise<Array<[number, string]>>,
@@ -824,18 +821,20 @@ async function batchUpdateCommon(
 		const errors: string[] = [];
 
 		// 4. 构建更新数据
-		const updates: Array<[number, BgmData | VndbData]> = [];
+		const updates: Array<
+			[number, Partial<{ bgm_data: BgmData; vndb_data: VndbData }>]
+		> = [];
 
 		for (const [gameId, apiId] of idPairs) {
 			const data = resultsTemp.find((result) => {
 				if (type === "bgm") {
-					return result.game.bgm_id === apiId;
+					return result.bgm_id === apiId;
 				}
-				return result.game.vndb_id === apiId;
+				return result.vndb_id === apiId;
 			});
 
 			if (data?.[updateKeyName]) {
-				updates.push([gameId, data[updateKeyName]]);
+				updates.push([gameId, { [updateKeyName]: data[updateKeyName] }]);
 			} else {
 				errors.push(
 					i18next.t(
@@ -848,21 +847,7 @@ async function batchUpdateCommon(
 
 		// 5. 批量更新数据库
 		if (updates.length > 0) {
-			if (updateKeyName === "bgm_data") {
-				await gameService.updateBatch(
-					undefined,
-					updates as Array<[number, BgmData]>,
-					undefined,
-					undefined,
-				);
-			} else {
-				await gameService.updateBatch(
-					undefined,
-					undefined,
-					updates as Array<[number, VndbData]>,
-					undefined,
-				);
-			}
+			await gameService.updateBatch(updates);
 		}
 
 		return {
@@ -917,6 +902,126 @@ export async function batchUpdateBgmData(bgmToken?: string): Promise<{
 		"bgm_data",
 		bgmToken,
 	);
+}
+
+// ==================== 脏检查工具函数 ====================
+
+/**
+ * 计算 UI 状态与原始数据的差异 (String & Number)
+ *
+ * 用于 React 受控组件向后端提交更新时的"三态"比对逻辑：
+ * - undefined: 没变，不传（后端跳过此字段）
+ * - null: 被清空，传 null（后端更新为 NULL）
+ * - T: 被修改，传新值（后端更新为新值）
+ *
+ * @param current 当前 UI 中的状态 (例如 input 的 value)
+ * @param original 原始数据 (可能是 null/undefined)
+ * @returns undefined | null | T
+ *
+ * @example
+ * // 字符串示例
+ * getDiff("", null)        // → undefined (没变，原本就是空)
+ * getDiff("ABC", "ABC")    // → undefined (没变)
+ * getDiff("", "ABC")       // → null (被清空)
+ * getDiff("DEF", "ABC")    // → "DEF" (被修改)
+ *
+ * @example
+ * // 数字示例
+ * getDiff(0, undefined)    // → undefined (没变，原本就是 0)
+ * getDiff(10, 10)          // → undefined (没变)
+ * getDiff(20, 10)          // → 20 (被修改)
+ */
+export function getDiff<T extends string | number>(
+	current: T,
+	original: T | null | undefined,
+): T | null | undefined {
+	// --- 1. 字符串处理 ---
+	if (typeof current === "string") {
+		// 归一化：将原始数据的 null/undefined 都视为 "" 与当前状态对比
+		const normOriginal = (original ?? "") as string;
+		const normCurrent = current.trim(); // 去除首尾空格
+
+		// [逻辑1：没变] 归一化后相等 -> 不传 (undefined)
+		if (normOriginal === normCurrent) return undefined;
+
+		// [逻辑2：被清空] 当前为空，说明用户删光了 -> 传 null
+		if (normCurrent === "") return null;
+
+		// [逻辑3：被修改] 有值且不等 -> 传新值
+		return normCurrent as T;
+	}
+
+	// --- 2. 数字处理 ---
+	if (typeof current === "number") {
+		// 归一化：undefined/null 视为 0
+		const normOriginal = original ?? 0;
+
+		// [逻辑1：没变]
+		if (normOriginal === current) return undefined;
+
+		// [逻辑2：数字变了] 数字通常直接覆盖
+		return current;
+	}
+
+	return undefined;
+}
+
+/**
+ * 计算数组差异（用于 aliases, tags 等字符串数组）
+ *
+ * @param current 当前 UI 状态
+ * @param original 原始数据
+ * @returns undefined | null | T[]
+ *
+ * @example
+ * getArrayDiff([], [])           // → undefined (没变)
+ * getArrayDiff(["a"], ["a"])     // → undefined (没变)
+ * getArrayDiff([], ["a", "b"])   // → null (被清空)
+ * getArrayDiff(["c"], ["a"])     // → ["c"] (被修改)
+ */
+export function getArrayDiff<T>(
+	current: T[],
+	original: T[] | null | undefined,
+): T[] | null | undefined {
+	const normOriginal = original ?? [];
+
+	// 使用 JSON 比较（适用于简单类型数组）
+	if (JSON.stringify(current) === JSON.stringify(normOriginal)) {
+		return undefined; // 没变
+	}
+
+	// 被清空
+	if (current.length === 0) {
+		return null;
+	}
+
+	// 被修改
+	return current;
+}
+
+/**
+ * 计算布尔值差异
+ *
+ * @param current 当前 UI 状态
+ * @param original 原始数据
+ * @returns undefined | boolean
+ *
+ * @example
+ * getBoolDiff(false, undefined)  // → undefined (没变，原本就是 false)
+ * getBoolDiff(true, true)        // → undefined (没变)
+ * getBoolDiff(true, false)       // → true (被修改)
+ */
+export function getBoolDiff(
+	current: boolean,
+	original: boolean | null | undefined,
+): boolean | undefined {
+	const normOriginal = original ?? false;
+
+	if (current === normOriginal) {
+		return undefined; // 没变
+	}
+
+	return current; // 被修改
 }
 
 // 导出数据转换工具

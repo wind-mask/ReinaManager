@@ -55,21 +55,18 @@ pub fn run() {
             backup_database,
             import_database,
             // 游戏数据相关 commands
-            insert_game_with_related,
-            find_full_game_by_id,
-            find_full_games,
-            update_game_with_related,
+            insert_game,
+            find_game_by_id,
+            find_all_games,
+            update_game,
             delete_game,
-            delete_bgm_data,
-            delete_vndb_data,
-            delete_other_data,
             delete_games_batch,
             count_games,
             game_exists_by_bgm_id,
             game_exists_by_vndb_id,
             get_all_bgm_ids,
             get_all_vndb_ids,
-            update_batch,
+            update_games_batch,
             // 存档备份相关 commands
             save_savedata_record,
             get_savedata_count,
@@ -100,6 +97,10 @@ pub fn run() {
             update_settings,
             get_portable_mode,
             set_portable_mode,
+            get_le_path,
+            set_le_path,
+            get_magpie_path,
+            set_magpie_path,
             // 日志相关 commands（运行时动态调整）
             set_reina_log_level,
             get_reina_log_level,
@@ -140,7 +141,6 @@ pub fn run() {
                 match db::establish_connection(&app_handle).await {
                     Ok(conn) => {
                         log::info!("数据库连接建立成功");
-
                         // 执行数据库迁移
                         log::info!("开始执行数据库迁移...");
                         match migration::Migrator::up(&conn, None).await {
