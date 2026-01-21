@@ -932,137 +932,6 @@ fn get_timestamp() -> u64 {
         .expect("系统时间错误: 时间回溯")
         .as_secs()
 }
-///TODO: 对于linux上实现考虑分离，暂定
-#[cfg(target_os = "linux")]
-async fn run_game_monitor(
-    app_handle: &AppHandle<impl Runtime>,
-    game_id: u32,
-    systemd_scope: &str,
-) -> Result<(), String> {
-    // Linux 版本的监控逻辑实现
-    // {
-    let mut accumulated_seconds = 0u64;
-    let start_time = get_timestamp();
-    tokio::time::sleep(Duration::from_secs(MONITOR_CHECK_INTERVAL_SECS * 3)).await;
-
-    // 初始扫描：获取所有候选 PID
-    let candidate_pids = get_all_candidate_pids(systemd_scope).await;
-
-    // 从候选中选择最佳 PID 作为主监控对象
-    let mut best_pid = match select_best_from_candidates(&candidate_pids) {
-        Some(p) => p,
-        None => {
-            return Err("未找到任何候选进程进行监控".to_string());
-        }
-    };
-
-    info!(
-        "开始监控游戏: ID={}, 最佳 PID={}, 候选进程组={:?}",
-        game_id, best_pid, candidate_pids
-    );
-
-    // 通知前端会话开始
-    app_handle
-        .emit(
-            "game-session-started",
-            json!({ "gameId": game_id, "processId": best_pid, "startTime": start_time }),
-        )
-        .map_err(|e| format!("无法发送 game-session-started 事件: {}", e))?;
-    let mut consecutive_failures = 0u32;
-
-    // 等待 3 秒让游戏进程充分启动（例如 Launcher -> Game 的切换）
-    info!("等待 9 秒以便游戏进程充分启动...");
-    tokio::time::sleep(Duration::from_secs(MONITOR_CHECK_INTERVAL_SECS * 9)).await;
-
-    // 等待后重新扫描，获取最新的进程状态
-    let mut candidate_pids = get_all_candidate_pids(systemd_scope).await;
-    if let Some(new_best) = select_best_from_candidates(&candidate_pids) {
-        if new_best != best_pid {
-            info!(
-                "等待期间发现更优进程，切换 PID: {} -> {}",
-                best_pid, new_best
-            );
-            best_pid = new_best;
-        }
-    }
-
-    // 创建精确的 1 秒间隔定时器
-    let mut tick_interval = interval(Duration::from_secs(MONITOR_CHECK_INTERVAL_SECS));
-    tick_interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
-
-    loop {
-        tick_interval.tick().await;
-
-        #[cfg(target_os = "linux")]
-        let game_running = is_game_running(systemd_scope).await;
-        if !game_running {
-            consecutive_failures += 1;
-            debug!(
-                "最佳进程 {} 检查失败次数: {}/{}",
-                best_pid, consecutive_failures, MAX_CONSECUTIVE_FAILURES
-            );
-
-            if consecutive_failures >= MAX_CONSECUTIVE_FAILURES {
-                info!("游戏scope {} 已失活，结束监控会话", systemd_scope);
-                break;
-            }
-        } else {
-            // 最佳 PID 仍在运行，重置失败计数
-            consecutive_failures = 0;
-
-            // 2. 清理候选列表中已失活的 PID（轻量级维护）
-
-            // 3. 前台判定：检查候选列表中是否有任何进程在前台
-            //    这是关键优化点 - 即使最佳 PID 不在前台，其他候选 PID 在前台也算数
-            if let Some(foreground_pid) = check_any_foreground(&candidate_pids) {
-                accumulated_seconds += 1;
-
-                // 如果前台进程不是当前的最佳 PID，考虑切换
-                if foreground_pid != best_pid {
-                    debug!(
-                        "前台进程 {} 不是最佳 PID {}，考虑调整",
-                        foreground_pid, best_pid
-                    );
-                    best_pid = foreground_pid;
-                }
-
-                // 发送时间更新
-                if accumulated_seconds > 0
-                    && accumulated_seconds.is_multiple_of(TIME_UPDATE_INTERVAL_SECS)
-                {
-                    let minutes = accumulated_seconds / 60;
-                    // debug!(
-                    //     "发送时间更新事件: {} 分钟 ({} 秒)",
-                    //     minutes, accumulated_seconds
-                    // );
-                    app_handle
-                        .emit(
-                            "game-time-update",
-                            json!({
-                                "gameId": game_id,
-                                "totalMinutes": minutes,
-                                "totalSeconds": accumulated_seconds,
-                                "startTime": start_time,
-                                "currentTime": get_timestamp(),
-                                "processId": best_pid
-                            }),
-                        )
-                        .map_err(|e| format!("无法发送 game-time-update 事件: {}", e))?;
-                }
-            } else {
-                candidate_pids = get_all_candidate_pids(systemd_scope).await;
-            }
-        }
-    }
-
-    finalize_session(
-        app_handle,
-        game_id,
-        best_pid,
-        start_time,
-        accumulated_seconds,
-    )
-}
 
 #[cfg(target_os = "linux")]
 static SESSION_CONN: tokio::sync::OnceCell<zbus::Connection> = tokio::sync::OnceCell::const_new();
@@ -1365,4 +1234,134 @@ fn check_any_has_window_x11(candidate_pids: &[u32]) -> Option<u32> {
     }
 
     None
+}
+#[cfg(target_os = "linux")]
+async fn run_game_monitor(
+    app_handle: &AppHandle<impl Runtime>,
+    game_id: u32,
+    systemd_scope: &str,
+) -> Result<(), String> {
+    // Linux 版本的监控逻辑实现
+    // {
+    let mut accumulated_seconds = 0u64;
+    let start_time = get_timestamp();
+    tokio::time::sleep(Duration::from_secs(MONITOR_CHECK_INTERVAL_SECS * 3)).await;
+
+    // 初始扫描：获取所有候选 PID
+    let candidate_pids = get_all_candidate_pids(systemd_scope).await;
+
+    // 从候选中选择最佳 PID 作为主监控对象
+    let mut best_pid = match select_best_from_candidates(&candidate_pids) {
+        Some(p) => p,
+        None => {
+            return Err("未找到任何候选进程进行监控".to_string());
+        }
+    };
+
+    info!(
+        "开始监控游戏: ID={}, 最佳 PID={}, 候选进程组={:?}",
+        game_id, best_pid, candidate_pids
+    );
+
+    // 通知前端会话开始
+    app_handle
+        .emit(
+            "game-session-started",
+            json!({ "gameId": game_id, "processId": best_pid, "startTime": start_time }),
+        )
+        .map_err(|e| format!("无法发送 game-session-started 事件: {}", e))?;
+    let mut consecutive_failures = 0u32;
+
+    // 等待 3 秒让游戏进程充分启动（例如 Launcher -> Game 的切换）
+    info!("等待 9 秒以便游戏进程充分启动...");
+    tokio::time::sleep(Duration::from_secs(MONITOR_CHECK_INTERVAL_SECS * 9)).await;
+
+    // 等待后重新扫描，获取最新的进程状态
+    let mut candidate_pids = get_all_candidate_pids(systemd_scope).await;
+    if let Some(new_best) = select_best_from_candidates(&candidate_pids) {
+        if new_best != best_pid {
+            info!(
+                "等待期间发现更优进程，切换 PID: {} -> {}",
+                best_pid, new_best
+            );
+            best_pid = new_best;
+        }
+    }
+
+    // 创建精确的 1 秒间隔定时器
+    let mut tick_interval = interval(Duration::from_secs(MONITOR_CHECK_INTERVAL_SECS));
+    tick_interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
+
+    loop {
+        tick_interval.tick().await;
+
+        #[cfg(target_os = "linux")]
+        let game_running = is_game_running(systemd_scope).await;
+        if !game_running {
+            consecutive_failures += 1;
+            debug!(
+                "最佳进程 {} 检查失败次数: {}/{}",
+                best_pid, consecutive_failures, MAX_CONSECUTIVE_FAILURES
+            );
+
+            if consecutive_failures >= MAX_CONSECUTIVE_FAILURES {
+                info!("游戏scope {} 已失活，结束监控会话", systemd_scope);
+                break;
+            }
+        } else {
+            // 最佳 PID 仍在运行，重置失败计数
+            consecutive_failures = 0;
+
+            // 2. 清理候选列表中已失活的 PID（轻量级维护）
+
+            // 3. 前台判定：检查候选列表中是否有任何进程在前台
+            //    这是关键优化点 - 即使最佳 PID 不在前台，其他候选 PID 在前台也算数
+            if let Some(foreground_pid) = check_any_foreground(&candidate_pids) {
+                accumulated_seconds += 1;
+
+                // 如果前台进程不是当前的最佳 PID，考虑切换
+                if foreground_pid != best_pid {
+                    debug!(
+                        "前台进程 {} 不是最佳 PID {}，考虑调整",
+                        foreground_pid, best_pid
+                    );
+                    best_pid = foreground_pid;
+                }
+
+                // 发送时间更新
+                if accumulated_seconds > 0
+                    && accumulated_seconds.is_multiple_of(TIME_UPDATE_INTERVAL_SECS)
+                {
+                    let minutes = accumulated_seconds / 60;
+                    // debug!(
+                    //     "发送时间更新事件: {} 分钟 ({} 秒)",
+                    //     minutes, accumulated_seconds
+                    // );
+                    app_handle
+                        .emit(
+                            "game-time-update",
+                            json!({
+                                "gameId": game_id,
+                                "totalMinutes": minutes,
+                                "totalSeconds": accumulated_seconds,
+                                "startTime": start_time,
+                                "currentTime": get_timestamp(),
+                                "processId": best_pid
+                            }),
+                        )
+                        .map_err(|e| format!("无法发送 game-time-update 事件: {}", e))?;
+                }
+            } else {
+                candidate_pids = get_all_candidate_pids(systemd_scope).await;
+            }
+        }
+    }
+
+    finalize_session(
+        app_handle,
+        game_id,
+        best_pid,
+        start_time,
+        accumulated_seconds,
+    )
 }

@@ -18,6 +18,8 @@
  * - @/utils
  */
 
+import { isTauri } from "@tauri-apps/api/core";
+import { create } from "zustand";
 import { useStore } from "@/store";
 import type { GameSession, GameStatistics, GameTimeStats } from "@/types";
 import {
@@ -32,8 +34,6 @@ import {
 	getGameSessions,
 	initGameTimeTracking,
 } from "@/utils/gameStats";
-import { isTauri } from "@tauri-apps/api/core";
-import { create } from "zustand";
 
 /**
  * 游戏启动结果类型

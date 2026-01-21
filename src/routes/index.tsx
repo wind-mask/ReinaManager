@@ -1,5 +1,3 @@
-import App from "@/App";
-import Layout from "@/components/Layout";
 import CategoryIcon from "@mui/icons-material/Category";
 import GamesIcon from "@mui/icons-material/Games";
 import HomeIcon from "@mui/icons-material/Home";
@@ -12,6 +10,8 @@ import {
 	createHashRouter,
 	type RouteObject,
 } from "react-router-dom";
+import App from "@/App";
+import Layout from "@/components/Layout";
 
 // 使用 React.lazy 懒加载页面组件
 const Home = lazy(() =>

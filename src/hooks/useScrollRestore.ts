@@ -1,7 +1,7 @@
-import { useScrollStore } from "@/store/scrollStore";
 import { useCallback, useEffect, useRef } from "react";
 import { useActivate, useUnactivate } from "react-activation";
 import { useLocation } from "react-router-dom";
+import { useScrollStore } from "@/store/scrollStore";
 
 interface UseScrollRestoreOptions {
 	/** 滚动容器选择器，默认 'main' */

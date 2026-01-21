@@ -18,8 +18,6 @@
  * - react-i18next
  */
 
-import { SearchBox } from "@/components/SearchBox";
-import { Toolbars } from "@/components/Toolbar";
 import { Avatar } from "@mui/material";
 import Chip from "@mui/material/Chip";
 import Stack from "@mui/material/Stack";
@@ -35,6 +33,8 @@ import { useCallback, useMemo } from "react";
 import KeepAlive from "react-activation";
 import { useTranslation } from "react-i18next";
 import { Outlet, useLocation } from "react-router-dom";
+import { SearchBox } from "@/components/SearchBox";
+import { Toolbars } from "@/components/Toolbar";
 import { LinkWithScrollSave } from "../LinkWithScrollSave";
 
 /**

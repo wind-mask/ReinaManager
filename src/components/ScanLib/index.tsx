@@ -292,10 +292,7 @@ const ScanLib: React.FC = () => {
 				</DialogContent>
 				<DialogActions>
 					{/* 取消按钮 */}
-					<Button
-						variant="outlined"
-						onClick={cancelOngoingRequest}
-					>
+					<Button variant="outlined" onClick={cancelOngoingRequest}>
 						{t("components.ScanLib.cancel") || "取消"}
 					</Button>
 					{/* 确认按钮 */}
