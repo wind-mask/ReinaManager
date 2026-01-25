@@ -6,7 +6,6 @@
 // ============================================================================
 // 外部依赖导入
 // ============================================================================
-
 #[cfg(target_os = "windows")]
 use log::warn;
 use log::{debug, error, info};
@@ -17,6 +16,7 @@ use serde_json::json;
 use std::collections::HashSet;
 #[cfg(target_os = "windows")]
 use std::path::Path;
+
 #[cfg(target_os = "windows")]
 use std::sync::OnceLock;
 #[cfg(target_os = "windows")]
@@ -29,7 +29,6 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use sysinfo::{ProcessesToUpdate, System};
 use tauri::{AppHandle, Emitter, Runtime};
 use tokio::time::{interval, MissedTickBehavior};
-
 #[cfg(target_os = "windows")]
 use windows::Win32::{
     Foundation::CloseHandle,
@@ -228,8 +227,9 @@ async fn stop_game_unit(game_id: u32) -> Result<(), String> {
 /// # Arguments
 /// * `app_handle` - Tauri 应用句柄，用于发送事件到前端
 /// * `game_id` - 游戏的唯一标识符
-/// * `process_id` - 要开始监控的游戏进程的初始 PID
-/// * `executable_path` - 游戏主可执行文件的完整路径，用于在进程重启或切换后重新查找
+/// * `process_id` - 要开始监控的游戏进程的初始 PID (仅 Windows)
+/// * `executable_path` - 游戏主可执行文件的完整路径，用于在进程重启或切换后重新查找 (仅 Windows)
+/// * `systemd_unit_name` - Linux 平台下的 systemd user scope 名称 (仅 Linux)
 ///
 /// # 工作流程
 /// 1. 创建 System 实例用于进程查询
@@ -239,8 +239,8 @@ pub async fn monitor_game<R: Runtime>(
     app_handle: AppHandle<R>,
     game_id: u32,
     process_id: u32,
-    #[cfg(target_os = "windows")] executable_path: String,
-    #[cfg(target_os = "linux")] systemd_scope: String,
+    executable_path: String,
+    #[cfg(target_os = "linux")] systemd_unit_name: String,
 ) {
     #[cfg(target_os = "windows")]
     {
@@ -262,7 +262,7 @@ pub async fn monitor_game<R: Runtime>(
     }
     #[cfg(target_os = "linux")]
     tauri::async_runtime::spawn(async move {
-        if let Err(e) = run_game_monitor(&app_handle, game_id, &systemd_scope).await {
+        if let Err(e) = run_game_monitor(&app_handle, game_id, &systemd_unit_name).await {
             error!("游戏监控任务 (game_id: {}) 出错: {}", game_id, e);
             if let Err(e) = finalize_session(&app_handle, game_id, process_id, get_timestamp(), 0) {
                 error!("无法完成游戏会话结束: {}", e);
@@ -305,7 +305,7 @@ async fn run_game_monitor<R: Runtime>(
     game_id: u32,
     initial_pid: u32,
     executable_path: String,
-    sys: &mut System,
+    #[allow(unused_variables)] sys: &mut System,
 ) -> Result<(), String> {
     let mut accumulated_seconds = 0u64;
     let start_time = get_timestamp();
@@ -315,9 +315,8 @@ async fn run_game_monitor<R: Runtime>(
     tokio::time::sleep(Duration::from_secs(3)).await;
 
     // 初始扫描：获取所有候选 PID
-    let candidate_pids_vec = get_all_candidate_pids(&executable_path, sys);
-    let mut candidate_pids_set: HashSet<u32> = candidate_pids_vec.into_iter().collect();
-
+    let mut candidate_pids = get_all_candidate_pids(&executable_path, sys);
+    let mut candidate_pids_set: HashSet<u32> = candidate_pids.into_iter().collect();
     // 如果初始 PID 不在候选列表中，手动添加（容错）
     if !candidate_pids_set.contains(&initial_pid) && is_process_running(initial_pid) {
         candidate_pids_set.insert(initial_pid);
@@ -729,7 +728,14 @@ fn get_all_candidate_pids(executable_path: &str, sys: &mut System) -> Vec<u32> {
     candidate_pids
 }
 
-/// 根据可执行文件的完整路径查找所有正在运行的进程 PID 列表
+/// 根据可执行文件所在目录获取该目录及子目录下所有正在运行的进程 PID 列表。
+///
+/// 此函数会刷新进程信息，然后扫描所有进程，找出可执行文件路径在目标目录或其子目录中的进程。
+// has_window_for_pid 函数已移除，其功能已整合到 select_best_from_candidates 中
+// 这样可以避免多次调用 EnumWindows（O(N*M) -> O(M)），提升性能
+/// 根据可执行文件所在目录获取该目录及子目录下所有正在运行的进程 PID 列表。
+///
+/// 此函数会刷新进程信息，然后扫描所有进程，找出可执行文件路径在目标目录或其子目录中的进程。
 ///
 /// # Arguments
 /// * `executable_path` - 要查找的可执行文件的完整路径
@@ -982,7 +988,8 @@ async fn get_process_id_by_scope(systemd_scope: &str) -> Option<Vec<u32>> {
             systemd_scope, ps
         );
     }
-    Some(ps.iter().map(|p| p.1).collect())
+
+    ps.into_iter().map(|p| p.1).collect::<Vec<u32>>().into()
 }
 /// 获取游戏进程 pidss
 #[cfg(target_os = "linux")]
@@ -1235,6 +1242,7 @@ fn check_any_has_window_x11(candidate_pids: &[u32]) -> Option<u32> {
 
     None
 }
+
 #[cfg(target_os = "linux")]
 async fn run_game_monitor(
     app_handle: &AppHandle<impl Runtime>,

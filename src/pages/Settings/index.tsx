@@ -1957,9 +1957,6 @@ export const Settings: React.FC = () => {
 				{/* 计时模式设置 */}
 				<TimeTrackingModeSettings />
 				<Divider sx={{ my: 3 }} />
-				{/* Linux 启动命令设置 */}
-				<LinuxLaunchCommandSettings />
-				<Divider sx={{ my: 3 }} />
 				{/* 实验性功能 */}
 				<DevSettings />
 				{import.meta.env.TAURI_ENV_PLATFORM === "linux" && (
