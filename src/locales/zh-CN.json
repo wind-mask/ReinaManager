@@ -254,8 +254,29 @@
 			"ymgallink": "月幕Gal页面"
 		},
 		"Tray": {
-			"exit": "退出"
+			"open": "打开",
+			"exit": "退出",
+			"idSearch": "启用ID搜索模式",
+			"viewMore": "查看更多",
+			"selectGame": "选择游戏",
+			"noResults": "没有找到结果",
+			"developer": "开发商",
+			"invalidIDFormat": "ID格式无效",
+			"noDataSource": "无法获取游戏数据",
+			"unknownError": "发生未知错误",
+			"timeout": "请求超时，请稍后重试"
 		},
+
+		"ScanLib": {
+			"scanLibrary": "扫描游戏库",
+			"selectFolder": "选择库目录",
+			"cancel": "取消",
+			"scanning": "正在扫描...",
+			"confirm": "确认",
+			"unknownError": "未知错误",
+			"processing": "处理中..."
+		},
+
 		"Window": {
 			"closeDialog": {
 				"dontRemind": "不再提醒",

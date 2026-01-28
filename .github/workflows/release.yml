@@ -29,7 +29,7 @@ jobs:
         uses: orhun/git-cliff-action@v4
         with:
           config: cliff.toml
-          args: -vv --latest --strip header --tag-pattern v\\d+\\.\\d+\\.\\d+-linux-\\d+
+          args: -vv --latest --strip header --tag-pattern v\\d+\\.\\d+\\.\\d+-linux-\\d+\(-linux-\\d+\)?
         env:
           OUTPUT: CHANGES.md
           GITHUB_REPO: ${{ github.repository }}

@@ -317,7 +317,7 @@ export const GameInfoEdit: React.FC<GameInfoEditProps> = ({
 	// 处理选择可执行文件路径
 	const handleSelectLocalPath = async () => {
 		try {
-			const selectedPath = await handleExeFile();
+			const selectedPath = await handleExeFile(localPath);
 			if (selectedPath) {
 				setLocalPath(selectedPath);
 			}
