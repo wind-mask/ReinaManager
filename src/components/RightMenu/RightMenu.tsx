@@ -77,7 +77,7 @@ const RightMenu: React.FC<RightMenuProps> = ({
 	const { selectedGame } = useSelectedGame(id ?? null);
 	const getGameById = useGetGameById();
 	const launchGame = useGamePlayStore((s) => s.launchGame);
-	const isGameRunning = useGamePlayStore((s) => s.isGameRunning);
+	const runningGameIds = useGamePlayStore((s) => s.runningGameIds);
 	const [openAlert, setOpenAlert] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
 	const [gameData, setGameData] = useState<GameData | null>(null);
@@ -87,7 +87,9 @@ const RightMenu: React.FC<RightMenuProps> = ({
 	const { updatePlayStatus } = useGameStatusActions();
 
 	// 检查该游戏是否正在运行
-	const isThisGameRunning = isGameRunning(id === null ? undefined : id);
+	const isThisGameRunning = id
+		? runningGameIds.has(id)
+		: runningGameIds.size > 0;
 
 	// 获取游戏数据以显示游戏状态
 	useEffect(() => {
