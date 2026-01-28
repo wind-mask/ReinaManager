@@ -15,6 +15,7 @@
 
 import { version } from "@pkg";
 import type { BgmData, FullGameData } from "@/types";
+
 import i18n from "@/utils/i18n";
 import http, { tauriHttp } from "./http";
 
@@ -156,20 +157,18 @@ export async function fetchBgmByName(
 
 	try {
 		const keyword = name.trim();
-		const resp = (
-			await tauriHttp.post(
-				"https://api.bgm.tv/v0/search/subjects",
-				{
-					keyword: keyword,
-					filter: {
-						type: [4], // 4 = 游戏类型
-					},
-					limit: limit,
+		const resp = await tauriHttp.post(
+			"https://api.bgm.tv/v0/search/subjects",
+			{
+				keyword: keyword,
+				filter: {
+					type: [4], // 4 = 游戏类型
 				},
-				BGM_HEADER,
-			)
-		).data;
+				limit: limit,
+			},
 
+			BGM_HEADER,
+		);
 		const rawResults = Array.isArray(resp.data) ? resp.data : [];
 
 		if (rawResults.length === 0) {

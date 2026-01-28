@@ -17,6 +17,11 @@
  * - react-i18next
  */
 
+import { snackbar } from "@/components/Snackbar";
+import { useSelectedGame } from "@/hooks/features/games/useGameFacade";
+import { useUpdateGame } from "@/hooks/queries/useGames";
+import { useStore } from "@/store";
+import { useGamePlayStore } from "@/store/gamePlayStore";
 import FolderOpenIcon from "@mui/icons-material/FolderOpen";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import StopIcon from "@mui/icons-material/Stop";
@@ -36,11 +41,6 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
-import { snackbar } from "@/components/Snackbar";
-import { useSelectedGame } from "@/hooks/features/games/useGameFacade";
-import { useUpdateGame } from "@/hooks/queries/useGames";
-import { useStore } from "@/store";
-import { useGamePlayStore } from "@/store/gamePlayStore";
 
 import type { UpdateGameParams } from "@/types";
 import { handleFolder } from "@/utils";
@@ -80,13 +80,14 @@ export const LaunchModal = () => {
 	const updateGameMutation = useUpdateGame();
 	const { selectedGame, isLoadingSelectedGame } =
 		useSelectedGame(selectedGameId);
-	const { launchGame, stopGame, isGameRunning, getGameRealTimeState } =
+
+	const { launchGame, stopGame, runningGameIds, gameRealTimeStates } =
 		useGamePlayStore(
 			useShallow((s) => ({
 				launchGame: s.launchGame,
 				stopGame: s.stopGame,
-				isGameRunning: s.isGameRunning,
-				getGameRealTimeState: s.getGameRealTimeState,
+				runningGameIds: s.runningGameIds,
+				gameRealTimeStates: s.gameRealTimeStates,
 			})),
 		);
 
@@ -100,15 +101,15 @@ export const LaunchModal = () => {
 	const [isSaving, setIsSaving] = useState(false);
 
 	// 检查这个特定游戏是否在运行
-	const isThisGameRunning = isGameRunning(
-		selectedGameId === null ? undefined : selectedGameId,
-	);
+	const isThisGameRunning = selectedGameId
+		? runningGameIds.has(selectedGameId)
+		: runningGameIds.size > 0;
 	const hasSelectedGame = selectedGameId !== null;
 	const hasLocalPath = Boolean(selectedGame?.localpath?.trim());
 
 	// 获取实时游戏状态
 	const realTimeState = selectedGameId
-		? getGameRealTimeState(selectedGameId)
+		? (gameRealTimeStates[selectedGameId] ?? null)
 		: null;
 
 	// elapsed 模式下使用 setInterval 每秒更新一次显示（不触发 React re-render）
