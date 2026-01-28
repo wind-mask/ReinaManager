@@ -48,7 +48,6 @@ import { ThemeSwitcher } from "@toolpad/core/DashboardLayout";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
-import { AlertConfirmBox } from "@/components/AlertBox";
 import { FilterModal } from "@/components/FilterModal";
 import { LaunchModal } from "@/components/LaunchModal";
 import { PathSettingsModal } from "@/components/PathSettingsModal";
@@ -58,9 +57,12 @@ import SortModal from "@/components/SortModal";
 import { useUpdatePlayStatus } from "@/hooks/queries/usePlayStatus";
 import { settingsService } from "@/services";
 import { useStore } from "@/store";
-import type { HanleGamesProps } from "@/types";
-import type { PlayStatus } from "@/types/collection";
+import type { HanleGamesProps, PlayStatus } from "@/types";
+
 import { handleOpenFolder, openurl } from "@/utils";
+import { AlertConfirmBox } from "../AlertBox";
+import ScanLib from "../ScanLib";
+
 import { CollectionToolbar } from "./Collection";
 
 /**
@@ -441,6 +443,7 @@ export const Buttongroup = ({
 					<Button onClick={() => openAddModal("")} startIcon={<AddIcon />}>
 						{t("components.AddModal.addGame")}
 					</Button>
+					<ScanLib />
 					<SortModal />
 					<FilterModal />
 					<ThemeSwitcher />
