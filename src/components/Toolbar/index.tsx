@@ -29,6 +29,23 @@
  * - @tauri-apps/api/core
  */
 
+import { FilterModal } from "@/components/FilterModal";
+import { LaunchModal } from "@/components/LaunchModal";
+import { PathSettingsModal } from "@/components/PathSettingsModal";
+import { PlayStatusSubmenu } from "@/components/RightMenu/PlayStatusSubmenu";
+import { snackbar } from "@/components/Snackbar";
+import SortModal from "@/components/SortModal";
+import {
+	useGetGameById,
+	useSelectedGame,
+} from "@/hooks/features/games/useGameFacade";
+import { useGameStatusActions } from "@/hooks/features/games/useGameStatusActions";
+import { useDeleteGame, useUpdateGame } from "@/hooks/queries/useGames";
+import { useLePath, useMagpiePath } from "@/hooks/queries/useSettings";
+import { useStore } from "@/store";
+import type { HanleGamesProps } from "@/types";
+import type { PlayStatus } from "@/types/collection";
+import { handleOpenFolder } from "@/utils";
 import AddIcon from "@mui/icons-material/Add";
 import CallMadeIcon from "@mui/icons-material/CallMade";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -48,28 +65,12 @@ import { ThemeSwitcher } from "@toolpad/core/DashboardLayout";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
-import { AlertConfirmBox } from "@/components/AlertBox";
-import { FilterModal } from "@/components/FilterModal";
-import { LaunchModal } from "@/components/LaunchModal";
-import { PathSettingsModal } from "@/components/PathSettingsModal";
-import { PlayStatusSubmenu } from "@/components/RightMenu/PlayStatusSubmenu";
-import { snackbar } from "@/components/Snackbar";
-import SortModal from "@/components/SortModal";
-import {
-	useGetGameById,
-	useSelectedGame,
-} from "@/hooks/features/games/useGameFacade";
-import { useGameStatusActions } from "@/hooks/features/games/useGameStatusActions";
-import { useDeleteGame, useUpdateGame } from "@/hooks/queries/useGames";
-import { useLePath, useMagpiePath } from "@/hooks/queries/useSettings";
-import { useStore } from "@/store";
-import type { HanleGamesProps } from "@/types";
-import type { PlayStatus } from "@/types/collection";
-import { handleOpenFolder } from "@/utils";
+import { AlertConfirmBox } from "../AlertBox";
+import ScanLib from "../ScanLib";
 import { CollectionToolbar } from "./Collection";
 
 /**
- * 按钮组属性类型
+import { CollectionToolbar } from "./Collection";
  */
 interface ButtonGroupProps {
 	isLibraries: boolean;
@@ -411,6 +412,7 @@ export const Buttongroup = ({
 					<Button onClick={() => openAddModal("")} startIcon={<AddIcon />}>
 						{t("components.AddModal.addGame")}
 					</Button>
+					<ScanLib />
 					<SortModal />
 					<FilterModal />
 					<ThemeSwitcher />
