@@ -571,7 +571,7 @@ async fn check_scope_or_reset_failed(systemd_unit_name: &str) -> Result<bool, St
             if let zbus::Error::MethodError(name, _, _) = &e {
                 if name.as_str() == "org.freedesktop.systemd1.NoSuchUnit" {
                     // 单元不存在
-                     Ok(false)
+                    Ok(false)
                 } else {
                     Err(format!(
                         "检查单元 {} 是否存在时出错: {}",
@@ -579,7 +579,7 @@ async fn check_scope_or_reset_failed(systemd_unit_name: &str) -> Result<bool, St
                     ))
                 }
             } else {
-                 Err(format!(
+                Err(format!(
                     "检查单元 {} 是否存在时出错: {}",
                     systemd_unit_name, e
                 ))

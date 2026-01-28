@@ -467,7 +467,7 @@ pub async fn get_le_path(db: State<'_, DatabaseConnection>) -> Result<String, St
 pub async fn set_le_path(
     db: State<'_, DatabaseConnection>,
     app: AppHandle,
-    path: String
+    path: String,
 ) -> Result<(), String> {
     SettingsRepository::set_le_path(&db, path)
         .await
