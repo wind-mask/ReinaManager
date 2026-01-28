@@ -50,7 +50,6 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 import AddModal from "@/components/AddModal";
-import { AlertConfirmBox } from "@/components/AlertBox";
 import { FilterModal } from "@/components/FilterModal";
 import { LaunchModal } from "@/components/LaunchModal";
 import { PathSettingsModal } from "@/components/PathSettingsModal";
@@ -60,6 +59,8 @@ import { settingsService } from "@/services";
 import { useStore } from "@/store";
 import type { HanleGamesProps } from "@/types";
 import { handleOpenFolder, openurl, toggleGameClearStatus } from "@/utils";
+import { AlertConfirmBox } from "../AlertBox";
+import ScanLib from "../ScanLib";
 import { CollectionToolbar } from "./Collection";
 
 /**
@@ -457,6 +458,7 @@ export const Buttongroup = ({
 				<>
 					<LaunchModal />
 					<AddModal />
+					<ScanLib />
 					<SortModal />
 					<FilterModal />
 					<ThemeSwitcher />

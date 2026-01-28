@@ -17,6 +17,8 @@ use utils::{
     logs::{get_reina_log_level, set_reina_log_level},
 };
 
+use crate::utils::scan::scan_game_library;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -41,6 +43,7 @@ pub fn run() {
             // 工具类 commands
             stop_game,
             launch_game,
+            scan_game_library,
             open_directory,
             move_backup_folder,
             copy_file,
