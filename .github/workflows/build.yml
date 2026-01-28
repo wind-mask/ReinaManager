@@ -130,21 +130,7 @@ jobs:
           # 不在这里创建 GitHub release，仅构建
           args: >-
             --target ${{ matrix.rust_target }}
-<<<<<<< HEAD
-            ${{
-              (github.event.pull_request.head.repo.full_name == github.repository || github.event_name != 'pull_request')
-              && ''
-              || '-c ''{"bundle": {"createUpdaterArtifacts": false}}'''
-            }}
-||||||| parent of e3aafa6 (💚 ci(ci): 删除page部署的工作流；工作流调整)
-            ${{ 
-              (github.event.pull_request.head.repo.full_name == github.repository || github.event_name != 'pull_request')
-              && ''
-              || '-c ''{"bundle": {"createUpdaterArtifacts": false}}'''
-            }}
-=======
             -c '{"bundle": {"createUpdaterArtifacts": false}}'
->>>>>>> e3aafa6 (💚 ci(ci): 删除page部署的工作流；工作流调整)
           tagName: ""
           releaseName: ""
           releaseBody: ""
@@ -191,16 +177,8 @@ jobs:
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v6
         with:
-<<<<<<< HEAD
-          name: ReinaManager-${{ steps.get_version.outputs.VERSION }}-${{ steps.short.outputs.SHORT }}-portable
-          path: src-tauri/target/${{ matrix.rust_target }}/release/portable/ReinaManager-${{ steps.get_version.outputs.VERSION }}-${{ steps.short.outputs.SHORT }}
-||||||| parent of e3aafa6 (💚 ci(ci): 删除page部署的工作流；工作流调整)
-          name: ReinaManager-${{ steps.get_version.outputs.VERSION }}-${{ steps.short.outputs.SHORT }}-exe
-          path: src-tauri/target/${{ matrix.rust_target }}/release/ReinaManager.exe
-=======
           name: ReinaManager-${{ steps.get_version.outputs.VERSION }}-${{ steps.short.outputs.SHORT }}-deb
           path: src-tauri/target/${{ matrix.rust_target }}/release/bundle/deb/*.deb
->>>>>>> e3aafa6 (💚 ci(ci): 删除page部署的工作流；工作流调整)
           if-no-files-found: warn
 
       - name: Upload MSI Installer (Artifact)
