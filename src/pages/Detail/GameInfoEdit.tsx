@@ -22,7 +22,7 @@ import {
 	TextField,
 	Typography,
 } from "@mui/material";
-import { basename, dirname } from "pathe";
+import { basename } from "pathe";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useImagePreview } from "@/hooks/common/useImagePreview";
@@ -236,9 +236,7 @@ export const GameInfoEdit: React.FC<GameInfoEditProps> = ({
 	// 处理选择可执行文件路径
 	const handleSelectLocalPath = async () => {
 		try {
-			const selectedPath = await handleExeFile(
-				localPath ? dirname(localPath) : "",
-			);
+			const selectedPath = await handleExeFile(localPath);
 			if (selectedPath) {
 				setLocalPath(selectedPath);
 			}
