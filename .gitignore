@@ -17,3 +17,17 @@ others
 *.local
 
 
+#test
+test
+
+# ai_cli
+.ai_cli
+1cli.bat
+
+## docs
+docs
+
+## scripts
+scripts
+
+others
