@@ -3,76 +3,39 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
     inputs:
       tag_name:
-        description: 'Release tag name (e.g.: v1.0.0)'
+        description: "Release tag name (e.g.: v1.0.0)"
         required: true
         type: string
-      prerelease:
-        description: 'Mark as pre-release'
-        required: false
-        default: false
-        type: boolean
 
 jobs:
   prepare:
     name: Prepare Release
     runs-on: ubuntu-latest
     outputs:
-      pure_changelog: ${{ steps.cliff_pure.outputs.changes }}
-      release_body: ${{ steps.combine.outputs.content }}
+      changelog: ${{ steps.changelog.outputs.content }}
     steps:
       - name: Checkout repository
+
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Get version
-        id: get_version
-        shell: bash
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "Version is $VERSION"
-
-      - name: Extract pure changelog from CHANGELOG.md
-        id: cliff_pure
-        uses: mindsers/changelog-reader-action@v2
-        with:
-          version: ${{ steps.get_version.outputs.VERSION }}
-          path: ./CHANGELOG.md
-
-      - name: Generate download links
+      - name: Extract changelog for current version
+        id: changelog
         uses: orhun/git-cliff-action@v4
-        id: cliff_links
-        env:
-          INCLUDE_DOWNLOAD_LINKS: "only"
         with:
           config: cliff.toml
-          args: --latest --strip header
+          args: -vv --latest --strip header
+        env:
+          OUTPUT: CHANGES.md
+          GITHUB_REPO: ${{ github.repository }}
 
-      - name: Combine full release body
-        id: combine
-        shell: bash
-        run: |
-          # 生成一个随机定界符，避免内容中含有 EOF 导致截断
-          EOF=$(openssl rand -hex 8)
-          {
-            echo "content<<$EOF"
-            cat << INNER_EOF
-          ${{ steps.cliff_pure.outputs.changes }}
-
-          ${{ steps.cliff_links.outputs.content }}
-          INNER_EOF
-            echo "$EOF"
-          } >> "$GITHUB_OUTPUT"
-
-  build-linux:
-    name: Build Linux
-    runs-on: ${{ matrix.os }}
-    needs: prepare
+  build:
+    name: Build
     strategy:
       matrix:
         include:
@@ -80,97 +43,56 @@ jobs:
             rust_target: x86_64-unknown-linux-gnu
           - os: ubuntu-22.04-arm
             rust_target: aarch64-unknown-linux-gnu
-    environment: TAURI_KEY
+    runs-on: ${{ matrix.os }}
+    # environment: TAURI_KEY
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
       - name: Install Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version: 22
       - name: Install pnpm
         uses: pnpm/action-setup@v5
         with:
           version: 10
           run_install: false
+      - name: Get pnpm store directory
+        id: pnpm-store
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.rust_target }}
+
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
           workspaces: "./src-tauri -> target"
           key: ${{ matrix.rust_target }}
           shared-key: "reina-manager-build"
-      - name: Install Mold
+
+      - name: Install Mold (Linux)
+        if: runner.os == 'Linux'
         uses: rui314/setup-mold@v1
-      - name: Install system dependencies
+
+      # Linux 依赖安装 (去掉了 mold，因为上一步已经安装)
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libsoup-3.0-dev libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf clang
-      - name: Install dependencies
-        run: pnpm install
-      - name: Build and Upload to Draft Release
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
-          TAURI_UPDATER_ACTIVE: true
-        with:
-          tagName: ${{ github.ref_name }}
-          releaseName: ${{ github.ref_name }}
-          releaseBody: ${{ needs.prepare.outputs.pure_changelog }}
-          releaseDraft: true
-          prerelease: false
-          includeUpdaterJson: true
-          includeRelease: true
-          tauriScript: pnpm tauri
-          args: --target ${{ matrix.rust_target }}
-
-  build-windows:
-    name: Build Windows
-    runs-on: windows-latest
-    needs: prepare
-    strategy:
-      matrix:
-        rust_target: [ x86_64-pc-windows-msvc, aarch64-pc-windows-msvc ]
-    environment: TAURI_KEY
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-      - name: Install Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-          run_install: false
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.rust_target }}
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: "./src-tauri -> target"
-          shared-key: ${{ matrix.rust_target }}
-          save-if: false
-      - name: Configure Rust linker (Windows lld)
-        shell: bash
-        run: |
-          mkdir -p .cargo
-          echo "Configuring lld for Windows..."
-          cat >> .cargo/config.toml <<EOF
-          [target.x86_64-pc-windows-msvc]
-          linker = "rust-lld"
-
-          [target.aarch64-pc-windows-msvc]
-          linker = "rust-lld"
-          EOF
       - name: Install dependencies
         run: pnpm install
       - name: Get version
@@ -185,8 +107,8 @@ jobs:
         shell: bash
         run: |
           case "${{ matrix.rust_target }}" in
-            *x86_64-pc-windows*) SHORT=win_x64 ;;
-            *aarch64-pc-windows*) SHORT=win_arm64 ;;
+            *x86_64*) SHORT=linux_amd64 ;;
+            *aarch64*) SHORT=linux_arm64 ;;
             *) SHORT=unknown ;;
           esac
           echo "SHORT=$SHORT" >> $GITHUB_OUTPUT
@@ -194,123 +116,165 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
-          TAURI_UPDATER_ACTIVE: true
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: ${{ github.ref_name }}
-          releaseBody: ${{ needs.prepare.outputs.pure_changelog }}
-          releaseDraft: true
+          # tagName: ${{ github.ref_name }}
+          tagName: ""
+          # releaseName: ${{ github.ref_name }}
+          releaseName: ""
+          # releaseBody: ${{ needs.prepare.outputs.changelog }}
+          releaseBody: ""
+          releaseDraft: false
           prerelease: false
-          includeUpdaterJson: true
+          includeUpdaterJson: false
+          includeDebug: false
           includeRelease: true
           tauriScript: pnpm tauri
-          args: --target ${{ matrix.rust_target }}
-      - name: Prepare portable package (Windows)
-        shell: pwsh
-        run: |
-          $version = "${{ steps.get_version.outputs.VERSION }}"
-          $short = "${{ steps.short.outputs.SHORT }}"
-          $target = "${{ matrix.rust_target }}"
-          $portableRoot = "src-tauri/target/$target/release/portable/ReinaManager_${version}_${short}"
-          $resourcesDataDir = Join-Path $portableRoot "resources/data"
-          $zipPath = "src-tauri/target/$target/release/ReinaManager_${version}_${short}-portable.zip"
-
-          if (Test-Path $portableRoot) {
-            Remove-Item $portableRoot -Recurse -Force
-          }
-          if (Test-Path $zipPath) {
-            Remove-Item $zipPath -Force
-          }
-
-          New-Item -ItemType Directory -Path $resourcesDataDir -Force | Out-Null
-          @"
-          该文件夹为数据库文件夹，删除该文件夹则退出便携模式，反之则保持便携模式。
-          This folder stores the database. Deleting this folder exits portable mode; keeping it preserves portable mode.
-          "@ | Set-Content -Path (Join-Path $resourcesDataDir "readme.txt") -Encoding UTF8
-          Copy-Item "src-tauri/target/$target/release/ReinaManager.exe" "$portableRoot/ReinaManager.exe"
-          Compress-Archive -Path "$portableRoot/*" -DestinationPath $zipPath
-      - name: Upload portable package to Draft Release
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release upload "${{ github.ref_name }}" \
-            "src-tauri/target/${{ matrix.rust_target }}/release/ReinaManager_${{ steps.get_version.outputs.VERSION }}_${{ steps.short.outputs.SHORT }}-portable.zip" \
-            --clobber
-
-  finalize-release:
-    name: Finalize Release
+          args:
+            --target ${{ matrix.rust_target }}
+            # Upload build artifacts for testings
+      - name: Upload deb (Artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ReinaManager-${{ steps.get_version.outputs.VERSION }}-${{ steps.short.outputs.SHORT }}-deb
+          path: src-tauri/target/${{ matrix.rust_target }}/release/bundle/deb/*.deb
+          if-no-files-found: warn
+      - name: Upload rpm (Artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ReinaManager-${{ steps.get_version.outputs.VERSION }}-${{ steps.short.outputs.SHORT }}-rpm
+          path: src-tauri/target/${{ matrix.rust_target }}/release/bundle/rpm/*.rpm
+          if-no-files-found: warn
+      - name: Upload AppImage (Artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ReinaManager-${{ steps.get_version.outputs.VERSION }}-${{ steps.short.outputs.SHORT }}-appimage
+          path: src-tauri/target/${{ matrix.rust_target }}/release/bundle/appimage/*.AppImage
+          if-no-files-found: warn
+  create-release:
+    name: Create Release
     runs-on: ubuntu-latest
-    needs: [prepare, build-linux, build-windows]
-    permissions:
-      contents: write
+    needs:
+      - prepare
+      - build
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v5
+        with:
+          path: release-artifacts
+          pattern: ReinaManager-*
+          merge-multiple: true
+      - name: Create Github Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ github.ref_name }}
+          name: Release ${{ inputs.tag_name == '' && github.ref_name || inputs.tag_name }}
+          immutableCreate: true
+          body: ${{ needs.prepare.outputs.changelog }}
+          artifacts: "release-artifacts/ReinaManager*.deb,release-artifacts/ReinaManager*.rpm,release-artifacts/ReinaManager*.AppImage"
+          makeLatest: true
+  # finalize-release:
+  #   name: Finalize Release
+  #   runs-on: ubuntu-latest
+  #   needs: [prepare, build-and-upload] # 等待所有构建和上传完成
+  #   permissions:
+  #     contents: write # 需要权限来编辑 release
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
 
-      - name: Determine release type
-        id: release-type
-        shell: bash
-        run: |
-          if [[ "${{ github.ref_name }}" == *"alpha"* ]] || [[ "${{ github.ref_name }}" == *"beta"* ]] || [[ "${{ github.ref_name }}" == *"rc"* ]] || [[ "${{ github.ref_name }}" == *"pre"* ]] || [[ "${{ github.event.inputs.prerelease }}" == "true" ]]; then
-            echo "IS_PRERELEASE=true" >> $GITHUB_OUTPUT
-          else
-            echo "IS_PRERELEASE=false" >> $GITHUB_OUTPUT
-          fi
+  #     - name: Determine release type
+  #       id: release-type
+  #       shell: bash
+  #       run: |
+  #         if [[ "${{ github.ref_name }}" == *"alpha"* ]] || [[ "${{ github.ref_name }}" == *"beta"* ]] || [[ "${{ github.ref_name }}" == *"rc"* ]] || [[ "${{ github.ref_name }}" == *"pre"* ]] || [[ "${{ github.event.inputs.prerelease }}" == "true" ]]; then
+  #           echo "IS_PRERELEASE=true" >> $GITHUB_OUTPUT
+  #         else
+  #           echo "IS_PRERELEASE=false" >> $GITHUB_OUTPUT
+  #         fi
 
-      - name: Publish Final Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          FULL_RELEASE_BODY: ${{ needs.prepare.outputs.release_body }}
-        run: |
-          # 1. 将包含下载链接的完整内容写入临时文件
-          echo "$FULL_RELEASE_BODY" > full_release_notes.md
-          
-          # 2. 判断是否添加 prerelease 标签
-          PRERELEASE_FLAG=""
-          if [ "${{ steps.release-type.outputs.IS_PRERELEASE }}" == "true" ]; then
-            PRERELEASE_FLAG="--prerelease"
-          fi
-          
-          # 3. 强制覆写 Release 正文，并解除草稿状态
-          gh release edit "${{ github.ref_name }}" \
-            --draft=false \
-            --notes-file full_release_notes.md \
-            $PRERELEASE_FLAG
+  #     - name: Prepare Release Body
+  #       id: release_body
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       shell: bash
+  #       run: |
+  #         TAG_NAME="${{ github.ref_name }}"
+  #         # 从 GitHub API 获取草稿 release 的所有资源文件名
+  #         ASSETS_JSON=$(gh release view "$TAG_NAME" --json assets --jq '.assets | .[] | .name')
 
-  update_cdn_urls:
-    name: Update CDN URLs in latest.json
-    runs-on: ubuntu-latest
-    needs: finalize-release # 等待 release 正式发布
-    if: startsWith(github.ref, 'refs/tags/')
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+  #         # 查找 MSI 和 EXE 文件
+  #         X64_MSI=$(echo "$ASSETS_JSON" | grep -E "_x64_.*\.msi$" || echo "")
+  #         ARM64_MSI=$(echo "$ASSETS_JSON" | grep -E "_arm64_.*\.msi$" || echo "")
 
-      - name: Update latest.json with CDN URLs
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TAG_NAME="${{ github.ref_name }}"
-          URL="https://github.com/${{ github.repository }}/releases/download/$TAG_NAME/latest.json"
+  #         CHANGELOG="${{ needs.prepare.outputs.changelog }}"
 
-          n=0
-          until [ "$n" -ge 5 ]; do
-            curl -L -f -o latest.json "$URL" && break
-            n=$((n+1))
-            sleep 5
-          done
+  #         # 为所有文件创建 URL
+  #         X64_MSI_URL="https://github.com/${{ github.repository }}/releases/download/$TAG_NAME/$X64_MSI"
+  #         ARM64_MSI_URL="https://github.com/${{ github.repository }}/releases/download/$TAG_NAME/$ARM64_MSI"
 
-          if [ ! -f "latest.json" ]; then
-            echo "Error: Could not download latest.json after several retries."
-            exit 1
-          fi
+  #         DOWNLOAD_SECTION=$(cat <<EOF
+  #         ---
+  #         ### 📥 下载地址 (Download)
+  #         ![Downloads](https://img.shields.io/github/downloads/${{ github.repository }}/$TAG_NAME/total)
 
-          jq '.platforms |= with_entries(.value.url |= "https://gh.huoshen80.top/\(.)")' latest.json > latest_modified.json
-          mv -f latest_modified.json latest.json
+  #         **Windows** (不支持 Win7)
+  #           - [**64位 (x64)**]($X64_MSI_URL)
+  #           - [**ARM64**]($ARM64_MSI_URL)
+  #         EOF
+  #         )
 
-          gh release upload $TAG_NAME "latest.json" --clobber
-          echo "Successfully updated latest.json with CDN URLs"
+  #         FINAL_BODY=$(cat <<EOF
+  #         $CHANGELOG
+
+  #         $DOWNLOAD_SECTION
+  #         EOF
+  #         )
+
+  #         {
+  #           echo "body<<EOF"
+  #           echo "$FINAL_BODY"
+  #           echo "EOF"
+  #         } >> $GITHUB_OUTPUT
+
+  #     - name: Publish Final Release
+  #       uses: softprops/action-gh-release@v2
+  #       with:
+  #         tag_name: ${{ github.ref_name }}
+  #         body: ${{ steps.release_body.outputs.body }}
+  #         draft: false
+  #         prerelease: ${{ steps.release-type.outputs.IS_PRERELEASE }}
+
+  # update_cdn_urls:
+  #   name: Update CDN URLs in latest.json
+  #   runs-on: ubuntu-latest
+  #   needs: finalize-release # 等待 release 正式发布
+  #   if: startsWith(github.ref, 'refs/tags/')
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
+
+  #     - name: Update latest.json with CDN URLs
+  #       shell: bash
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       run: |
+  #         TAG_NAME="${{ github.ref_name }}"
+  #         URL="https://github.com/${{ github.repository }}/releases/download/$TAG_NAME/latest.json"
+
+  #         n=0
+  #         until [ "$n" -ge 5 ]; do
+  #           curl -L -f -o latest.json "$URL" && break
+  #           n=$((n+1))
+  #           sleep 5
+  #         done
+
+  #         if [ ! -f "latest.json" ]; then
+  #           echo "Error: Could not download latest.json after several retries."
+  #           exit 1
+  #         fi
+
+  #         jq '.platforms |= with_entries(.value.url |= "https://gh.huoshen80.top/\(.)")' latest.json > latest_modified.json
+  #         mv -f latest_modified.json latest.json
+
+  #         gh release upload $TAG_NAME "latest.json" --clobber
+  #         echo "Successfully updated latest.json with CDN URLs"
