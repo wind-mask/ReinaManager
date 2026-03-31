@@ -376,9 +376,10 @@ fn check_any_has_window_x11(candidate_pids: &[u32]) -> Option<u32> {
 
         if let Ok(pid_reply) = conn.wait_for_reply(pid_cookie)
             && let Some(&pid) = pid_reply.value::<u32>().first()
-                && candidate_pids.contains(&pid) {
-                    return Some(pid);
-                }
+            && candidate_pids.contains(&pid)
+        {
+            return Some(pid);
+        }
     }
 
     None

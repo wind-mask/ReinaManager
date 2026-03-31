@@ -44,7 +44,7 @@
 		"@tauri-apps/plugin-shell": "~2.3.5",
 		"@tauri-apps/plugin-store": "~2.4.3",
 		"@tauri-apps/plugin-updater": "~2.10.1",
-		"@tauri-apps/plugin-window-state": "=2.2.3",
+		"@tauri-apps/plugin-window-state": "~2.2.3",
 		"@toolpad/core": "^0.16.0",
 		"@typescript/native-preview": "7.0.0-dev.20260622.1",
 		"fuse.js": "^7.4.2",
@@ -71,7 +71,7 @@
 		"@types/react-dom": "^18.3.7",
 		"@vitejs/plugin-react": "^6.0.2",
 		"git-cliff": "^2.13.1",
-		"i18next-cli": "=1.58.3",
+		"i18next-cli": "^1.64.1",
 		"typescript": "^6.0.3",
 		"unocss": "^66.7.2",
 		"vite": "^8.0.16"
