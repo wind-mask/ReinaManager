@@ -82,148 +82,128 @@ type ThemeMode = "light" | "dark" | "system";
 let lastAppliedWindowTheme: ThemeMode | null = null;
 
 const SourceLinkIcon = ({ source }: { source: SourceType }) => {
-	const [failedUrl, setFailedUrl] = useState<string>();
-	const resolveImageUrl = useProxyImageUrlResolver();
-	const adapter = getRuntimeSourceAdapter(source);
-	const imageUrl = resolveImageUrl(adapter.iconUrl);
+  const [failedUrl, setFailedUrl] = useState<string>();
+  const resolveImageUrl = useProxyImageUrlResolver();
+  const adapter = getRuntimeSourceAdapter(source);
+  const imageUrl = resolveImageUrl(adapter.iconUrl);
 
-	if (failedUrl === imageUrl) {
-		return <CloseIcon fontSize="small" sx={{ color: "error.main" }} />;
-	}
+  if (failedUrl === imageUrl) {
+    return <CloseIcon fontSize="small" sx={{ color: "error.main" }} />;
+  }
 
-	return (
-		<Box
-			component="img"
-			src={imageUrl}
-			alt={`${adapter.label} favicon`}
-			onError={() => setFailedUrl(imageUrl)}
-			sx={{
-				width: 16,
-				height: 16,
-				margin: "2px",
-				borderRadius: "4px",
-				objectFit: "contain",
-			}}
-		/>
-	);
+  return (
+    <Box
+      component="img"
+      src={imageUrl}
+      alt={`${adapter.label} favicon`}
+      onError={() => setFailedUrl(imageUrl)}
+      sx={{
+        width: 16,
+        height: 16,
+        margin: "2px",
+        borderRadius: "4px",
+        objectFit: "contain",
+      }}
+    />
+  );
 };
 
 /**
  * 主题切换组件（亮色 / 暗色 / 跟随系统）
  */
 const ThemeSwitcher = () => {
-	const { t } = useTranslation();
-	const { mode, setMode, systemMode, allColorSchemes } = useColorScheme();
-	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-	const menuOpen = Boolean(anchorEl);
+  const { t } = useTranslation();
+  const { mode, setMode, systemMode, allColorSchemes } = useColorScheme();
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const menuOpen = Boolean(anchorEl);
 
-	const currentMode = (mode ?? "system") as ThemeMode;
-	const resolvedMode = useMemo<"light" | "dark">(() => {
-		if (currentMode === "system") return systemMode ?? "light";
-		return currentMode;
-	}, [currentMode, systemMode]);
-	const isDualTheme = allColorSchemes.length > 1;
+  const currentMode = (mode ?? "system") as ThemeMode;
+  const resolvedMode = useMemo<"light" | "dark">(() => {
+    if (currentMode === "system") return systemMode ?? "light";
+    return currentMode;
+  }, [currentMode, systemMode]);
+  const isDualTheme = allColorSchemes.length > 1;
 
-	useEffect(() => {
-		if (!isTauri()) return;
-		if (lastAppliedWindowTheme === currentMode) return;
+  useEffect(() => {
+    if (!isTauri()) return;
+    if (lastAppliedWindowTheme === currentMode) return;
 
-		lastAppliedWindowTheme = currentMode;
-		void getCurrentWindow()
-			.setTheme(currentMode === "system" ? null : currentMode)
-			.catch((error) => {
-				lastAppliedWindowTheme = null;
-				console.warn("更新窗口主题失败:", error);
-			});
-	}, [currentMode]);
+    lastAppliedWindowTheme = currentMode;
+    void getCurrentWindow()
+      .setTheme(currentMode === "system" ? null : currentMode)
+      .catch((error) => {
+        lastAppliedWindowTheme = null;
+        console.warn("更新窗口主题失败:", error);
+      });
+  }, [currentMode]);
 
-	const handleOpenMenu = (event: MouseEvent<HTMLButtonElement>) => {
-		setAnchorEl(event.currentTarget);
-	};
+  const handleOpenMenu = (event: MouseEvent<HTMLButtonElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
 
-	const handleCloseMenu = () => {
-		setAnchorEl(null);
-	};
+  const handleCloseMenu = () => {
+    setAnchorEl(null);
+  };
 
-	const handleSelectMode = async (nextMode: ThemeMode) => {
-		setMode(nextMode);
-		handleCloseMenu();
-	};
+  const handleSelectMode = async (nextMode: ThemeMode) => {
+    setMode(nextMode);
+    handleCloseMenu();
+  };
 
-	const currentIcon =
-		currentMode === "system" ? (
-			<BrightnessAutoIcon />
-		) : resolvedMode === "dark" ? (
-			<DarkModeIcon />
-		) : (
-			<LightModeIcon />
-		);
+  const currentIcon =
+    currentMode === "system" ? (
+      <BrightnessAutoIcon />
+    ) : resolvedMode === "dark" ? (
+      <DarkModeIcon />
+    ) : (
+      <LightModeIcon />
+    );
 
-	if (!isDualTheme) return null;
+  if (!isDualTheme) return null;
 
-	return (
-		<>
-			<Tooltip title={t("components.Toolbar.theme", "主题")} enterDelay={1000}>
-				<IconButton
-					aria-label={t("components.Toolbar.theme", "主题")}
-					onClick={handleOpenMenu}
-					color="primary"
-					size="small"
-				>
-					{currentIcon}
-				</IconButton>
-			</Tooltip>
-			<Menu
-				anchorEl={anchorEl}
-				open={menuOpen}
-				onClose={handleCloseMenu}
-				transitionDuration={0}
-			>
-				<MenuItem
-					selected={currentMode === "light"}
-					onClick={() => handleSelectMode("light")}
-				>
-					<ListItemIcon>
-						<LightModeIcon fontSize="small" />
-					</ListItemIcon>
-					<ListItemText>
-						{t("components.Toolbar.themeLight", "浅色")}
-					</ListItemText>
-				</MenuItem>
-				<MenuItem
-					selected={currentMode === "dark"}
-					onClick={() => handleSelectMode("dark")}
-				>
-					<ListItemIcon>
-						<DarkModeIcon fontSize="small" />
-					</ListItemIcon>
-					<ListItemText>
-						{t("components.Toolbar.themeDark", "深色")}
-					</ListItemText>
-				</MenuItem>
-				<MenuItem
-					selected={currentMode === "system"}
-					onClick={() => handleSelectMode("system")}
-				>
-					<ListItemIcon>
-						<BrightnessAutoIcon fontSize="small" />
-					</ListItemIcon>
-					<ListItemText>
-						{t("components.Toolbar.themeSystem", "跟随系统")}
-					</ListItemText>
-				</MenuItem>
-			</Menu>
-		</>
-	);
+  return (
+    <>
+      <Tooltip title={t("components.Toolbar.theme", "主题")} enterDelay={1000}>
+        <IconButton
+          aria-label={t("components.Toolbar.theme", "主题")}
+          onClick={handleOpenMenu}
+          color="primary"
+          size="small"
+        >
+          {currentIcon}
+        </IconButton>
+      </Tooltip>
+      <Menu anchorEl={anchorEl} open={menuOpen} onClose={handleCloseMenu} transitionDuration={0}>
+        <MenuItem selected={currentMode === "light"} onClick={() => handleSelectMode("light")}>
+          <ListItemIcon>
+            <LightModeIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>{t("components.Toolbar.themeLight", "浅色")}</ListItemText>
+        </MenuItem>
+        <MenuItem selected={currentMode === "dark"} onClick={() => handleSelectMode("dark")}>
+          <ListItemIcon>
+            <DarkModeIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>{t("components.Toolbar.themeDark", "深色")}</ListItemText>
+        </MenuItem>
+        <MenuItem selected={currentMode === "system"} onClick={() => handleSelectMode("system")}>
+          <ListItemIcon>
+            <BrightnessAutoIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>{t("components.Toolbar.themeSystem", "跟随系统")}</ListItemText>
+        </MenuItem>
+      </Menu>
+    </>
+  );
 };
 
 /**
  * 按钮组属性类型
  */
 interface ButtonGroupProps {
-	isLibraries: boolean;
-	isDetail: boolean;
-	isCollection: boolean;
+  isLibraries: boolean;
+  isDetail: boolean;
+  isCollection: boolean;
 }
 
 /**
@@ -233,23 +213,23 @@ interface ButtonGroupProps {
  * @returns {object} 弹窗状态与控制方法
  */
 export const useModal = () => {
-	const [isopen, setisopen] = useState(false);
-	const previousFocus = useRef<HTMLElement | null>(null);
+  const [isopen, setisopen] = useState(false);
+  const previousFocus = useRef<HTMLElement | null>(null);
 
-	const handleOpen = () => {
-		// 记录当前聚焦元素
-		previousFocus.current = document.activeElement as HTMLElement;
-		setisopen(true);
-	};
+  const handleOpen = () => {
+    // 记录当前聚焦元素
+    previousFocus.current = document.activeElement as HTMLElement;
+    setisopen(true);
+  };
 
-	const handleClose = () => {
-		setisopen(false);
-		// 弹窗关闭后恢复焦点
-		if (previousFocus.current) {
-			previousFocus.current.focus();
-		}
-	};
-	return { isopen, handleOpen, handleClose };
+  const handleClose = () => {
+    setisopen(false);
+    // 弹窗关闭后恢复焦点
+    if (previousFocus.current) {
+      previousFocus.current.focus();
+    }
+  };
+  return { isopen, handleOpen, handleClose };
 };
 
 /**
@@ -258,20 +238,20 @@ export const useModal = () => {
  * @returns {JSX.Element}
  */
 const OpenFolder = ({ selectedGame }: { selectedGame: GameData }) => {
-	const { t } = useTranslation();
-	const isDisabled = selectedGame.localpath == null;
+  const { t } = useTranslation();
+  const isDisabled = selectedGame.localpath == null;
 
-	return (
-		<Button
-			startIcon={<FolderOpenIcon />}
-			color="primary"
-			variant="text"
-			disabled={isDisabled}
-			onClick={() => handleOpenFolder(selectedGame)}
-		>
-			{t("components.Toolbar.openGameFolder", "打开游戏目录")}
-		</Button>
-	);
+  return (
+    <Button
+      startIcon={<FolderOpenIcon />}
+      color="primary"
+      variant="text"
+      disabled={isDisabled}
+      onClick={() => handleOpenFolder(selectedGame)}
+    >
+      {t("components.Toolbar.openGameFolder", "打开游戏目录")}
+    </Button>
+  );
 };
 
 /**
@@ -281,53 +261,53 @@ const OpenFolder = ({ selectedGame }: { selectedGame: GameData }) => {
  * @returns {JSX.Element}
  */
 export const DeleteModal: React.FC<{ id: number }> = ({ id }) => {
-	const { t } = useTranslation();
-	const deletion = useContext(GameDeletionContext);
-	const { selectedGame } = useGameById(id);
-	const [openAlert, setOpenAlert] = useState(false);
-	const [isDeleting, setIsDeleting] = useState(false);
-	const deleteGameMutation = useDeleteGame();
-	const navigate = useNavigate();
+  const { t } = useTranslation();
+  const deletion = useContext(GameDeletionContext);
+  const { selectedGame } = useGameById(id);
+  const [openAlert, setOpenAlert] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const deleteGameMutation = useDeleteGame();
+  const navigate = useNavigate();
 
-	/**
-	 * 删除游戏操作
-	 */
-	const handleDeleteGame = async () => {
-		if (isDeleting || !selectedGame) return;
-		try {
-			setIsDeleting(true);
-			deletion?.setGame(selectedGame);
-			await deleteGameMutation.mutateAsync(id);
-			navigate(-1);
-		} catch (error) {
-			console.error("删除游戏失败:", error);
-			deletion?.setGame(null);
-			setIsDeleting(false);
-			setOpenAlert(false);
-		}
-	};
+  /**
+   * 删除游戏操作
+   */
+  const handleDeleteGame = async () => {
+    if (isDeleting || !selectedGame) return;
+    try {
+      setIsDeleting(true);
+      deletion?.setGame(selectedGame);
+      await deleteGameMutation.mutateAsync(id);
+      navigate(-1);
+    } catch (error) {
+      console.error("删除游戏失败:", error);
+      deletion?.setGame(null);
+      setIsDeleting(false);
+      setOpenAlert(false);
+    }
+  };
 
-	return (
-		<>
-			<Button
-				startIcon={<DeleteIcon />}
-				color="error"
-				variant="text"
-				disabled={isDeleting}
-				onClick={() => setOpenAlert(true)}
-			>
-				{isDeleting
-					? t("components.Toolbar.deleting", "删除中...")
-					: t("components.Toolbar.deleteGame", "删除游戏")}
-			</Button>
-			<AlertConfirmBox
-				open={openAlert}
-				setOpen={setOpenAlert}
-				onConfirm={handleDeleteGame}
-				isLoading={isDeleting}
-			/>
-		</>
-	);
+  return (
+    <>
+      <Button
+        startIcon={<DeleteIcon />}
+        color="error"
+        variant="text"
+        disabled={isDeleting}
+        onClick={() => setOpenAlert(true)}
+      >
+        {isDeleting
+          ? t("components.Toolbar.deleting", "删除中...")
+          : t("components.Toolbar.deleteGame", "删除游戏")}
+      </Button>
+      <AlertConfirmBox
+        open={openAlert}
+        setOpen={setOpenAlert}
+        onConfirm={handleDeleteGame}
+        isLoading={isDeleting}
+      />
+    </>
+  );
 };
 
 /**
@@ -335,172 +315,155 @@ export const DeleteModal: React.FC<{ id: number }> = ({ id }) => {
  * @returns {JSX.Element}
  */
 const MoreButton = ({ selectedGame }: { selectedGame: GameData }) => {
-	const updateGameMutation = useUpdateGame();
-	const { t } = useTranslation();
-	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-	const open = Boolean(anchorEl);
-	const [pathSettingsModalOpen, setPathSettingsModalOpen] = useState(false);
-	const { data: settings } = useAllSettings();
-	const hasLePath = Boolean(settings?.le_path);
-	const hasMagpiePath = Boolean(settings?.magpie_path);
+  const updateGameMutation = useUpdateGame();
+  const { t } = useTranslation();
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
+  const [pathSettingsModalOpen, setPathSettingsModalOpen] = useState(false);
+  const { data: settings } = useAllSettings();
+  const hasLePath = Boolean(settings?.le_path);
+  const hasMagpiePath = Boolean(settings?.magpie_path);
 
-	// 使用 Feature Facade 更新游戏状态
-	const { updatePlayStatus } = useGameStatusActions();
-	const gameId = selectedGame.id;
+  // 使用 Feature Facade 更新游戏状态
+  const { updatePlayStatus } = useGameStatusActions();
+  const gameId = selectedGame.id;
 
-	const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-		setAnchorEl(event.currentTarget);
-	};
+  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
 
-	const handleClose = () => {
-		setAnchorEl(null);
-	};
-	const sourceLinks = REGISTERED_SOURCE_KEYS.flatMap((source) => {
-		const adapter = getRuntimeSourceAdapter(source);
-		const sourceId = getSourceIdFromDisplay(selectedGame, source);
-		return sourceId
-			? [
-					{
-						source,
-						label: adapter.label,
-						url: adapter.getExternalUrl(sourceId),
-					},
-				]
-			: [];
-	});
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+  const sourceLinks = REGISTERED_SOURCE_KEYS.flatMap((source) => {
+    const adapter = getRuntimeSourceAdapter(source);
+    const sourceId = getSourceIdFromDisplay(selectedGame, source);
+    return sourceId
+      ? [
+          {
+            source,
+            label: adapter.label,
+            url: adapter.getExternalUrl(sourceId),
+          },
+        ]
+      : [];
+  });
 
-	/**
-	 * 更新游戏状态
-	 */
-	const handlePlayStatusChange = (newStatus: PlayStatus) => {
-		updatePlayStatus({ gameId, newStatus });
-	};
+  /**
+   * 更新游戏状态
+   */
+  const handlePlayStatusChange = (newStatus: PlayStatus) => {
+    updatePlayStatus({ gameId, newStatus });
+  };
 
-	/**
-	 * 切换LE转区启动状态
-	 */
-	const handleToggleLeLaunch = async () => {
-		const nextEnabled = selectedGame.le_launch !== 1;
+  /**
+   * 切换LE转区启动状态
+   */
+  const handleToggleLeLaunch = async () => {
+    const nextEnabled = selectedGame.le_launch !== 1;
 
-		if (nextEnabled && !hasLePath) {
-			snackbar.warning(
-				t(
-					"components.Toolbar.lePathNotSet",
-					"未设置LE转区软件路径，请先配置路径",
-				),
-			);
-			setPathSettingsModalOpen(true);
-			return;
-		}
+    if (nextEnabled && !hasLePath) {
+      snackbar.warning(t("components.Toolbar.lePathNotSet", "未设置LE转区软件路径，请先配置路径"));
+      setPathSettingsModalOpen(true);
+      return;
+    }
 
-		try {
-			await updateGameMutation.mutateAsync({
-				gameId,
-				updates: { le_launch: nextEnabled ? 1 : 0 },
-			});
-		} catch (error) {
-			console.error("更新LE转区启动状态失败:", error);
-		}
-	};
+    try {
+      await updateGameMutation.mutateAsync({
+        gameId,
+        updates: { le_launch: nextEnabled ? 1 : 0 },
+      });
+    } catch (error) {
+      console.error("更新LE转区启动状态失败:", error);
+    }
+  };
 
-	/**
-	 * 切换Magpie放大状态
-	 */
-	const handleToggleMagpie = async () => {
-		const nextEnabled = selectedGame.magpie !== 1;
+  /**
+   * 切换Magpie放大状态
+   */
+  const handleToggleMagpie = async () => {
+    const nextEnabled = selectedGame.magpie !== 1;
 
-		if (nextEnabled && !hasMagpiePath) {
-			snackbar.warning(
-				t(
-					"components.Toolbar.magpiePathNotSet",
-					"未设置Magpie软件路径，请先配置路径",
-				),
-			);
-			setPathSettingsModalOpen(true);
-			return;
-		}
+    if (nextEnabled && !hasMagpiePath) {
+      snackbar.warning(
+        t("components.Toolbar.magpiePathNotSet", "未设置Magpie软件路径，请先配置路径"),
+      );
+      setPathSettingsModalOpen(true);
+      return;
+    }
 
-		try {
-			await updateGameMutation.mutateAsync({
-				gameId,
-				updates: { magpie: nextEnabled ? 1 : 0 },
-			});
-		} catch (error) {
-			console.error("更新Magpie放大状态失败:", error);
-		}
-	};
+    try {
+      await updateGameMutation.mutateAsync({
+        gameId,
+        updates: { magpie: nextEnabled ? 1 : 0 },
+      });
+    } catch (error) {
+      console.error("更新Magpie放大状态失败:", error);
+    }
+  };
 
-	return (
-		<>
-			<Button
-				startIcon={<MoreVertIcon />}
-				color="inherit"
-				variant="text"
-				onClick={handleClick}
-			>
-				{t("components.Toolbar.more", "更多")}
-			</Button>
-			<Menu
-				id="more-menu"
-				anchorEl={anchorEl}
-				open={open}
-				onClose={handleClose}
-				transitionDuration={0}
-			>
-				{sourceLinks.map((link) => (
-					<MenuItem
-						key={link.source}
-						onClick={() => {
-							void openurl(link.url);
-							handleClose();
-						}}
-					>
-						<ListItemIcon>
-							<SourceLinkIcon source={link.source} />
-						</ListItemIcon>
-						<ListItemText>
-							{t("components.Toolbar.sourceLink", "查看{{source}}页面", {
-								source: link.label,
-							})}
-						</ListItemText>
-					</MenuItem>
-				))}
-				<MenuItem onClick={handleToggleLeLaunch}>
-					<ListItemIcon>
-						<TurnRightIcon fontSize="small" />
-					</ListItemIcon>
-					<ListItemText>
-						{t("components.Toolbar.leLaunch", "LE转区启动")}
-					</ListItemText>
-					<Switch checked={selectedGame.le_launch === 1} size="small" />
-				</MenuItem>
-				<MenuItem onClick={handleToggleMagpie}>
-					<ListItemIcon>
-						<OpenInFullIcon fontSize="small" />
-					</ListItemIcon>
-					<ListItemText>
-						{t("components.Toolbar.magpieZoom", "Magpie放大")}
-					</ListItemText>
-					<Switch checked={selectedGame.magpie === 1} size="small" />
-				</MenuItem>
+  return (
+    <>
+      <Button startIcon={<MoreVertIcon />} color="inherit" variant="text" onClick={handleClick}>
+        {t("components.Toolbar.more", "更多")}
+      </Button>
+      <Menu
+        id="more-menu"
+        anchorEl={anchorEl}
+        open={open}
+        onClose={handleClose}
+        transitionDuration={0}
+      >
+        {sourceLinks.map((link) => (
+          <MenuItem
+            key={link.source}
+            onClick={() => {
+              void openurl(link.url);
+              handleClose();
+            }}
+          >
+            <ListItemIcon>
+              <SourceLinkIcon source={link.source} />
+            </ListItemIcon>
+            <ListItemText>
+              {t("components.Toolbar.sourceLink", "查看{{source}}页面", {
+                source: link.label,
+              })}
+            </ListItemText>
+          </MenuItem>
+        ))}
+        <MenuItem onClick={handleToggleLeLaunch}>
+          <ListItemIcon>
+            <TurnRightIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>{t("components.Toolbar.leLaunch", "LE转区启动")}</ListItemText>
+          <Switch checked={selectedGame.le_launch === 1} size="small" />
+        </MenuItem>
+        <MenuItem onClick={handleToggleMagpie}>
+          <ListItemIcon>
+            <OpenInFullIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>{t("components.Toolbar.magpieZoom", "Magpie放大")}</ListItemText>
+          <Switch checked={selectedGame.magpie === 1} size="small" />
+        </MenuItem>
 
-				{/* 游戏状态切换 - 二级菜单 */}
-				<PlayStatusSubmenu
-					currentStatus={selectedGame.clear}
-					onStatusChange={handlePlayStatusChange}
-					iconSize="small"
-					expandDirection="left"
-				/>
-			</Menu>
+        {/* 游戏状态切换 - 二级菜单 */}
+        <PlayStatusSubmenu
+          currentStatus={selectedGame.clear}
+          onStatusChange={handlePlayStatusChange}
+          iconSize="small"
+          expandDirection="left"
+        />
+      </Menu>
 
-			{/* 路径设置弹窗 */}
-			<PathSettingsModal
-				open={pathSettingsModalOpen}
-				onClose={() => setPathSettingsModalOpen(false)}
-				inSettingsPage={false}
-			/>
-		</>
-	);
+      {/* 路径设置弹窗 */}
+      <PathSettingsModal
+        open={pathSettingsModalOpen}
+        onClose={() => setPathSettingsModalOpen(false)}
+        inSettingsPage={false}
+      />
+    </>
+  );
 };
 
 /**
@@ -508,52 +471,48 @@ const MoreButton = ({ selectedGame }: { selectedGame: GameData }) => {
  * @param {ButtonGroupProps} props
  * @returns {JSX.Element}
  */
-export const Buttongroup = ({
-	isLibraries,
-	isDetail,
-	isCollection,
-}: ButtonGroupProps) => {
-	const { t } = useTranslation();
-	const openAddModal = useStore((state) => state.openAddModal);
-	const detailFallback = <ThemeSwitcher />;
+export const Buttongroup = ({ isLibraries, isDetail, isCollection }: ButtonGroupProps) => {
+  const { t } = useTranslation();
+  const openAddModal = useStore((state) => state.openAddModal);
+  const detailFallback = <ThemeSwitcher />;
 
-	return (
-		<>
-			{isDetail && (
-				<SelectedGameGuard
-					fallback={detailFallback}
-					loadingFallback={detailFallback}
-					notFoundFallback={detailFallback}
-				>
-					{(selectedGame) => (
-						<>
-							<LaunchModal />
-							<OpenFolder selectedGame={selectedGame} />
-							<DeleteModal id={selectedGame.id} />
-							<MoreButton selectedGame={selectedGame} />
-							<ThemeSwitcher />
-						</>
-					)}
-				</SelectedGameGuard>
-			)}
-			{isLibraries && (
-				<>
-					<LaunchModal />
-					<Button onClick={() => openAddModal("")} startIcon={<AddIcon />}>
-						{t("components.AddModal.addGame", "添加游戏")}
-					</Button>
-					<FilterSortModal />
-					<ThemeSwitcher />
-				</>
-			)}
-			{isCollection && (
-				<>
-					<CollectionToolbar />
-					<ThemeSwitcher />
-				</>
-			)}
-		</>
-	);
+  return (
+    <>
+      {isDetail && (
+        <SelectedGameGuard
+          fallback={detailFallback}
+          loadingFallback={detailFallback}
+          notFoundFallback={detailFallback}
+        >
+          {(selectedGame) => (
+            <>
+              <LaunchModal />
+              <OpenFolder selectedGame={selectedGame} />
+              <DeleteModal id={selectedGame.id} />
+              <MoreButton selectedGame={selectedGame} />
+              <ThemeSwitcher />
+            </>
+          )}
+        </SelectedGameGuard>
+      )}
+      {isLibraries && (
+        <>
+          <LaunchModal />
+          <Button onClick={() => openAddModal("")} startIcon={<AddIcon />}>
+            {t("components.AddModal.addGame", "添加游戏")}
+          </Button>
+          <FilterSortModal />
+          <ThemeSwitcher />
+        </>
+      )}
+      {isCollection && (
+        <>
+          <CollectionToolbar />
+          <ThemeSwitcher />
+        </>
+      )}
+    </>
+  );
 };
 
 /**
@@ -561,19 +520,15 @@ export const Buttongroup = ({
  * @returns {JSX.Element}
  */
 export const Toolbars = () => {
-	const path = useLocation().pathname;
-	const isLibraries = path === "/libraries";
-	const isDetail = path.startsWith("/libraries/") && path !== "/libraries/";
-	const isCollection = path === "/collection";
+  const path = useLocation().pathname;
+  const isLibraries = path === "/libraries";
+  const isDetail = path.startsWith("/libraries/") && path !== "/libraries/";
+  const isCollection = path === "/collection";
 
-	return (
-		<Stack direction="row">
-			<Buttongroup
-				isLibraries={isLibraries}
-				isDetail={isDetail}
-				isCollection={isCollection}
-			/>
-			{!isLibraries && !isDetail && !isCollection && <ThemeSwitcher />}
-		</Stack>
-	);
+  return (
+    <Stack direction="row">
+      <Buttongroup isLibraries={isLibraries} isDetail={isDetail} isCollection={isCollection} />
+      {!isLibraries && !isDetail && !isCollection && <ThemeSwitcher />}
+    </Stack>
+  );
 };

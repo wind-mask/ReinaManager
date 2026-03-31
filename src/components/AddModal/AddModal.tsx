@@ -36,20 +36,15 @@ import { useAllSettings } from "@/hooks/queries/useSettings";
 import type { GameRuntimeInsertOptions } from "@/metadata/data/metadata";
 import { showGameAddedSuccess } from "@/providers/snackBar";
 import {
-	handleDroppedPath,
-	handleLaunchFile,
-	type LaunchFileSelection,
-	splitExecutablePath,
-	trimDirnameToSearchName,
+  handleDroppedPath,
+  handleLaunchFile,
+  type LaunchFileSelection,
+  splitExecutablePath,
+  trimDirnameToSearchName,
 } from "@/services/fs/fileDialog";
 import type { SteamLaunchTarget } from "@/services/invoke/fileService";
 import { useStore } from "@/store/appStore";
-import type {
-	GameMetadataDraft,
-	GameScanMode,
-	InsertGameParams,
-	SourceType,
-} from "@/types";
+import type { GameMetadataDraft, GameScanMode, InsertGameParams, SourceType } from "@/types";
 import { createAbortableRunner } from "@/utils/async";
 import { getUserErrorMessage } from "@/utils/errors";
 import { formatSteamAppIdWithPath } from "@/utils/steam";
@@ -58,9 +53,9 @@ import CloudCollectionTab from "./CloudCollectionTab";
 import GameSelectDialog from "./GameSelectDialog";
 import MixedSourceConfirmDialog from "./MixedSourceConfirmDialog";
 import {
-	type AddGameMode,
-	AddGameModeToggleGroup,
-	SingleSourceSelect,
+  type AddGameMode,
+  AddGameModeToggleGroup,
+  SingleSourceSelect,
 } from "./SourceMatchControls";
 import { useTauriDragDrop } from "./useTauriDragDrop";
 
@@ -76,9 +71,9 @@ const DEFAULT_SCAN_FIRST_LEVEL_EXECUTABLES = false;
 type AddModalTab = "single" | "bulk" | "cloud";
 
 type SingleLaunchSelection =
-	| { kind: "none" }
-	| { kind: "local"; path: string }
-	| { kind: "steam"; target: SteamLaunchTarget };
+  | { kind: "none" }
+  | { kind: "local"; path: string }
+  | { kind: "steam"; target: SteamLaunchTarget };
 
 /**
  * 从文件路径中提取文件夹名称并清洗（纯函数，置于组件外以保证稳定引用）
@@ -86,27 +81,27 @@ type SingleLaunchSelection =
  * @returns 搜索名称（从文件夹名提取并清洗后的结果）
  */
 function extractFolderName(path: string): string {
-	// 使用 pathe 的 dirname 获取父目录，然后获取文件夹名
-	const parentDir = dirname(path);
-	return trimDirnameToSearchName(basename(parentDir));
+  // 使用 pathe 的 dirname 获取父目录，然后获取文件夹名
+  const parentDir = dirname(path);
+  return trimDirnameToSearchName(basename(parentDir));
 }
 
 async function buildRuntimeOptions(
-	selection: SingleLaunchSelection,
+  selection: SingleLaunchSelection,
 ): Promise<GameRuntimeInsertOptions | undefined> {
-	switch (selection.kind) {
-		case "none":
-			return undefined;
-		case "local":
-			return splitExecutablePath(selection.path);
-		case "steam":
-			return {
-				localpath: selection.target.localpath,
-				executable: selection.target.executable,
-				launch_type: "steam",
-				steam_launch_id: selection.target.steam_launch_id,
-			};
-	}
+  switch (selection.kind) {
+    case "none":
+      return undefined;
+    case "local":
+      return splitExecutablePath(selection.path);
+    case "steam":
+      return {
+        localpath: selection.target.localpath,
+        executable: selection.target.executable,
+        launch_type: "steam",
+        steam_launch_id: selection.target.steam_launch_id,
+      };
+  }
 }
 
 /**
@@ -122,536 +117,506 @@ async function buildRuntimeOptions(
  * @returns {JSX.Element} 添加游戏的弹窗组件
  */
 const AddModal: React.FC = () => {
-	const { t } = useTranslation();
-	const navigate = useNavigate();
-	const { data: settings } = useAllSettings();
-	const hasBgmAuth = Boolean(settings?.bgm_auth);
-	const addGameMutation = useAddGame();
-	const { addGameFromMetadata, isAddingGame } = useSingleGameAddActions();
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { data: settings } = useAllSettings();
+  const hasBgmAuth = Boolean(settings?.bgm_auth);
+  const addGameMutation = useAddGame();
+  const { addGameFromMetadata, isAddingGame } = useSingleGameAddActions();
 
-	const {
-		apiSource,
-		setApiSource,
-		mixedEnabledSources,
-		addModalOpen,
-		addModalPath,
-		openAddModal,
-		closeAddModal,
-		setAddModalPath,
-		cloudCollectionImportSource,
-	} = useStore(
-		useShallow((s) => ({
-			apiSource: s.apiSource,
-			setApiSource: s.setApiSource,
-			mixedEnabledSources: s.mixedEnabledSources,
-			addModalOpen: s.addModalOpen,
-			addModalPath: s.addModalPath,
-			openAddModal: s.openAddModal,
-			closeAddModal: s.closeAddModal,
-			setAddModalPath: s.setAddModalPath,
-			cloudCollectionImportSource: s.cloudCollectionImportSource,
-		})),
-	);
-	const [formText, setFormText] = useState("");
-	const [error, setError] = useState("");
-	const [customLoading, setCustomLoading] = useState(false);
-	const [addMode, setAddMode] = useState<AddGameMode>("mixed");
-	const [bulkApiSource, setBulkApiSource] = useState<SourceType>();
-	const [scanMode, setScanMode] = useState<GameScanMode>(DEFAULT_SCAN_MODE);
-	const [scanMaxDepth, setScanMaxDepth] = useState(DEFAULT_SCAN_DEPTH);
-	const [scanFirstLevelExecutables, setScanFirstLevelExecutables] = useState(
-		DEFAULT_SCAN_FIRST_LEVEL_EXECUTABLES,
-	);
-	const [activeTab, setActiveTab] = useState<AddModalTab>("single");
-	const [cloudBusy, setCloudBusy] = useState(false);
-	const [bulkDropQueue, setBulkDropQueue] = useState<BulkDropBatch[]>([]);
-	const [launchSelection, setLaunchSelection] = useState<SingleLaunchSelection>(
-		{ kind: "none" },
-	);
-	const previousFocus = useRef<HTMLElement | null>(null);
-	const nextDropBatchIdRef = useRef(1);
-	const singleDropGenerationRef = useRef(0);
-	const pendingSingleDropPathRef = useRef<string | null>(null);
-	const resolvedBulkApiSource = bulkApiSource ?? (hasBgmAuth ? "bgm" : "vndb");
+  const {
+    apiSource,
+    setApiSource,
+    mixedEnabledSources,
+    addModalOpen,
+    addModalPath,
+    openAddModal,
+    closeAddModal,
+    setAddModalPath,
+    cloudCollectionImportSource,
+  } = useStore(
+    useShallow((s) => ({
+      apiSource: s.apiSource,
+      setApiSource: s.setApiSource,
+      mixedEnabledSources: s.mixedEnabledSources,
+      addModalOpen: s.addModalOpen,
+      addModalPath: s.addModalPath,
+      openAddModal: s.openAddModal,
+      closeAddModal: s.closeAddModal,
+      setAddModalPath: s.setAddModalPath,
+      cloudCollectionImportSource: s.cloudCollectionImportSource,
+    })),
+  );
+  const [formText, setFormText] = useState("");
+  const [error, setError] = useState("");
+  const [customLoading, setCustomLoading] = useState(false);
+  const [addMode, setAddMode] = useState<AddGameMode>("mixed");
+  const [bulkApiSource, setBulkApiSource] = useState<SourceType>();
+  const [scanMode, setScanMode] = useState<GameScanMode>(DEFAULT_SCAN_MODE);
+  const [scanMaxDepth, setScanMaxDepth] = useState(DEFAULT_SCAN_DEPTH);
+  const [scanFirstLevelExecutables, setScanFirstLevelExecutables] = useState(
+    DEFAULT_SCAN_FIRST_LEVEL_EXECUTABLES,
+  );
+  const [activeTab, setActiveTab] = useState<AddModalTab>("single");
+  const [cloudBusy, setCloudBusy] = useState(false);
+  const [bulkDropQueue, setBulkDropQueue] = useState<BulkDropBatch[]>([]);
+  const [launchSelection, setLaunchSelection] = useState<SingleLaunchSelection>({ kind: "none" });
+  const previousFocus = useRef<HTMLElement | null>(null);
+  const nextDropBatchIdRef = useRef(1);
+  const singleDropGenerationRef = useRef(0);
+  const pendingSingleDropPathRef = useRef<string | null>(null);
+  const resolvedBulkApiSource = bulkApiSource ?? (hasBgmAuth ? "bgm" : "vndb");
 
-	// 请求取消控制器
-	const abortControllerRef = useRef<AbortController | null>(null);
+  // 请求取消控制器
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-	const showError = useCallback((message: string) => {
-		setError(message);
-		setTimeout(() => setError(""), ERROR_DISPLAY_DURATION_MS);
-	}, []);
+  const showError = useCallback((message: string) => {
+    setError(message);
+    setTimeout(() => setError(""), ERROR_DISPLAY_DURATION_MS);
+  }, []);
 
-	/**
-	 * 当路径变化时，自动提取文件夹名作为游戏名。
-	 */
-	useEffect(() => {
-		if (addModalPath) {
-			setLaunchSelection({ kind: "local", path: addModalPath });
-			setFormText(extractFolderName(addModalPath));
-		}
-	}, [addModalPath]);
+  /**
+   * 当路径变化时，自动提取文件夹名作为游戏名。
+   */
+  useEffect(() => {
+    if (addModalPath) {
+      setLaunchSelection({ kind: "local", path: addModalPath });
+      setFormText(extractFolderName(addModalPath));
+    }
+  }, [addModalPath]);
 
-	useEffect(() => {
-		if (addModalOpen) {
-			previousFocus.current = document.activeElement as HTMLElement;
-			if (cloudCollectionImportSource) {
-				setActiveTab("cloud");
-			}
-			return;
-		}
+  useEffect(() => {
+    if (addModalOpen) {
+      previousFocus.current = document.activeElement as HTMLElement;
+      if (cloudCollectionImportSource) {
+        setActiveTab("cloud");
+      }
+      return;
+    }
 
-		if (previousFocus.current) {
-			previousFocus.current.focus();
-		}
-	}, [addModalOpen, cloudCollectionImportSource]);
+    if (previousFocus.current) {
+      previousFocus.current.focus();
+    }
+  }, [addModalOpen, cloudCollectionImportSource]);
 
-	const handleAddGame = useCallback(
-		async (gameData: GameMetadataDraft) => {
-			const runtimeOptions = await buildRuntimeOptions(launchSelection);
-			const game = await addGameFromMetadata(gameData, runtimeOptions);
-			closeAddModal();
-			showGameAddedSuccess({ gameId: game.id, navigate, t });
-		},
-		[addGameFromMetadata, closeAddModal, launchSelection, navigate, t],
-	);
+  const handleAddGame = useCallback(
+    async (gameData: GameMetadataDraft) => {
+      const runtimeOptions = await buildRuntimeOptions(launchSelection);
+      const game = await addGameFromMetadata(gameData, runtimeOptions);
+      closeAddModal();
+      showGameAddedSuccess({ gameId: game.id, navigate, t });
+    },
+    [addGameFromMetadata, closeAddModal, launchSelection, navigate, t],
+  );
 
-	const metadataSearchFlow = useMetadataSearchFlow({
-		mixedEnabledSources,
-		t,
-		onResolved: handleAddGame,
-		onError: showError,
-	});
-	const isBusy =
-		customLoading ||
-		metadataSearchFlow.isSearching ||
-		isAddingGame ||
-		cloudBusy;
+  const metadataSearchFlow = useMetadataSearchFlow({
+    mixedEnabledSources,
+    t,
+    onResolved: handleAddGame,
+    onError: showError,
+  });
+  const isBusy = customLoading || metadataSearchFlow.isSearching || isAddingGame || cloudBusy;
 
-	const applyLaunchSelection = useCallback(
-		(selection: LaunchFileSelection) => {
-			setActiveTab("single");
-			if (selection.launchType === "local") {
-				setLaunchSelection({ kind: "local", path: selection.path });
-				openAddModal(selection.path);
-				return;
-			}
+  const applyLaunchSelection = useCallback(
+    (selection: LaunchFileSelection) => {
+      setActiveTab("single");
+      if (selection.launchType === "local") {
+        setLaunchSelection({ kind: "local", path: selection.path });
+        openAddModal(selection.path);
+        return;
+      }
 
-			setLaunchSelection({ kind: "steam", target: selection.target });
-			setAddModalPath("");
-			setFormText(selection.target.name);
-			openAddModal("");
-		},
-		[openAddModal, setAddModalPath],
-	);
+      setLaunchSelection({ kind: "steam", target: selection.target });
+      setAddModalPath("");
+      setFormText(selection.target.name);
+      openAddModal("");
+    },
+    [openAddModal, setAddModalPath],
+  );
 
-	const invalidateSingleDrop = useCallback(() => {
-		singleDropGenerationRef.current++;
-		pendingSingleDropPathRef.current = null;
-	}, []);
+  const invalidateSingleDrop = useCallback(() => {
+    singleDropGenerationRef.current++;
+    pendingSingleDropPathRef.current = null;
+  }, []);
 
-	const enqueueBulkDrop = useCallback(
-		(paths: string[]) => {
-			const batch: BulkDropBatch = {
-				id: nextDropBatchIdRef.current++,
-				paths,
-			};
-			setBulkDropQueue((current) => [...current, batch]);
-			setActiveTab("bulk");
-			openAddModal("");
-		},
-		[openAddModal],
-	);
+  const enqueueBulkDrop = useCallback(
+    (paths: string[]) => {
+      const batch: BulkDropBatch = {
+        id: nextDropBatchIdRef.current++,
+        paths,
+      };
+      setBulkDropQueue((current) => [...current, batch]);
+      setActiveTab("bulk");
+      openAddModal("");
+    },
+    [openAddModal],
+  );
 
-	const handleDroppedPaths = useCallback(
-		(paths: string[]) => {
-			const pendingSinglePath = pendingSingleDropPathRef.current;
-			if (pendingSinglePath) {
-				invalidateSingleDrop();
-				enqueueBulkDrop([pendingSinglePath, ...paths]);
-				return;
-			}
+  const handleDroppedPaths = useCallback(
+    (paths: string[]) => {
+      const pendingSinglePath = pendingSingleDropPathRef.current;
+      if (pendingSinglePath) {
+        invalidateSingleDrop();
+        enqueueBulkDrop([pendingSinglePath, ...paths]);
+        return;
+      }
 
-			if (paths.length === 1 && activeTab === "single") {
-				if (isBusy) return;
-				const generation = ++singleDropGenerationRef.current;
-				pendingSingleDropPathRef.current = paths[0];
-				void handleDroppedPath(paths[0])
-					.then((selection) => {
-						if (selection && singleDropGenerationRef.current === generation) {
-							applyLaunchSelection(selection);
-						}
-					})
-					.finally(() => {
-						if (singleDropGenerationRef.current === generation) {
-							pendingSingleDropPathRef.current = null;
-						}
-					});
-				return;
-			}
+      if (paths.length === 1 && activeTab === "single") {
+        if (isBusy) return;
+        const generation = ++singleDropGenerationRef.current;
+        pendingSingleDropPathRef.current = paths[0];
+        void handleDroppedPath(paths[0])
+          .then((selection) => {
+            if (selection && singleDropGenerationRef.current === generation) {
+              applyLaunchSelection(selection);
+            }
+          })
+          .finally(() => {
+            if (singleDropGenerationRef.current === generation) {
+              pendingSingleDropPathRef.current = null;
+            }
+          });
+        return;
+      }
 
-			enqueueBulkDrop(paths);
-		},
-		[
-			activeTab,
-			applyLaunchSelection,
-			enqueueBulkDrop,
-			invalidateSingleDrop,
-			isBusy,
-		],
-	);
+      enqueueBulkDrop(paths);
+    },
+    [activeTab, applyLaunchSelection, enqueueBulkDrop, invalidateSingleDrop, isBusy],
+  );
 
-	const handleBulkDropBatchHandled = useCallback((batchId: number) => {
-		setBulkDropQueue((current) =>
-			current[0]?.id === batchId
-				? current.slice(1)
-				: current.filter((batch) => batch.id !== batchId),
-		);
-	}, []);
+  const handleBulkDropBatchHandled = useCallback((batchId: number) => {
+    setBulkDropQueue((current) =>
+      current[0]?.id === batchId
+        ? current.slice(1)
+        : current.filter((batch) => batch.id !== batchId),
+    );
+  }, []);
 
-	const { isDragging } = useTauriDragDrop({
-		onPathsDropped: handleDroppedPaths,
-	});
+  const { isDragging } = useTauriDragDrop({
+    onPathsDropped: handleDroppedPaths,
+  });
 
-	const handleSelectLaunchFile = async () => {
-		try {
-			const defaultPath =
-				launchSelection.kind === "steam"
-					? launchSelection.target.localpath
-					: launchSelection.kind === "local"
-						? launchSelection.path
-						: undefined;
-			const selection = await handleLaunchFile(defaultPath);
-			if (selection) applyLaunchSelection(selection);
-		} catch (error) {
-			showError(getUserErrorMessage(error, t));
-		}
-	};
+  const handleSelectLaunchFile = async () => {
+    try {
+      const defaultPath =
+        launchSelection.kind === "steam"
+          ? launchSelection.target.localpath
+          : launchSelection.kind === "local"
+            ? launchSelection.path
+            : undefined;
+      const selection = await handleLaunchFile(defaultPath);
+      if (selection) applyLaunchSelection(selection);
+    } catch (error) {
+      showError(getUserErrorMessage(error, t));
+    }
+  };
 
-	/**
-	 * 重置所有状态
-	 */
-	const resetState = useCallback(() => {
-		invalidateSingleDrop();
-		metadataSearchFlow.reset();
-		setFormText("");
-		setActiveTab("single");
-		setLaunchSelection({ kind: "none" });
-		setBulkDropQueue([]);
-		setAddModalPath("");
-		setError("");
-		setCloudBusy(false);
-	}, [invalidateSingleDrop, metadataSearchFlow, setAddModalPath]);
+  /**
+   * 重置所有状态
+   */
+  const resetState = useCallback(() => {
+    invalidateSingleDrop();
+    metadataSearchFlow.reset();
+    setFormText("");
+    setActiveTab("single");
+    setLaunchSelection({ kind: "none" });
+    setBulkDropQueue([]);
+    setAddModalPath("");
+    setError("");
+    setCloudBusy(false);
+  }, [invalidateSingleDrop, metadataSearchFlow, setAddModalPath]);
 
-	const handleCloseModal = useCallback(() => {
-		if (isBusy) return;
-		invalidateSingleDrop();
-		closeAddModal();
-	}, [closeAddModal, invalidateSingleDrop, isBusy]);
+  const handleCloseModal = useCallback(() => {
+    if (isBusy) return;
+    invalidateSingleDrop();
+    closeAddModal();
+  }, [closeAddModal, invalidateSingleDrop, isBusy]);
 
-	const cancelOngoingRequest = useCallback(() => {
-		if (abortControllerRef.current) {
-			abortControllerRef.current.abort();
-		}
-		abortControllerRef.current = null;
-		invalidateSingleDrop();
-		closeAddModal();
-	}, [closeAddModal, invalidateSingleDrop]);
+  const cancelOngoingRequest = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = null;
+    invalidateSingleDrop();
+    closeAddModal();
+  }, [closeAddModal, invalidateSingleDrop]);
 
-	/**
-	 * 提交表单，处理添加游戏的逻辑。
-	 * - 自定义模式下直接添加本地游戏。
-	 * - mixed 或自动识别出的 ID 搜索使用预览确认弹窗。
-	 * - 单一数据源的名称搜索使用列表选择弹窗，并在选择后直接添加。
-	 */
-	const handleSubmit = async () => {
-		if (isBusy) return;
-		const { controller, withAbort } = createAbortableRunner();
-		if (abortControllerRef.current) abortControllerRef.current.abort();
-		abortControllerRef.current = controller;
+  /**
+   * 提交表单，处理添加游戏的逻辑。
+   * - 自定义模式下直接添加本地游戏。
+   * - mixed 或自动识别出的 ID 搜索使用预览确认弹窗。
+   * - 单一数据源的名称搜索使用列表选择弹窗，并在选择后直接添加。
+   */
+  const handleSubmit = async () => {
+    if (isBusy) return;
+    const { controller, withAbort } = createAbortableRunner();
+    if (abortControllerRef.current) abortControllerRef.current.abort();
+    abortControllerRef.current = controller;
 
-		const timeoutId = window.setTimeout(() => {
-			controller.abort();
-			showError(t("components.AddModal.timeout", "请求超时，请稍后重试"));
-		}, REQUEST_TIMEOUT_MS);
+    const timeoutId = window.setTimeout(() => {
+      controller.abort();
+      showError(t("components.AddModal.timeout", "请求超时，请稍后重试"));
+    }, REQUEST_TIMEOUT_MS);
 
-		try {
-			// 手动模式只写入本地路径和自定义名称，不请求元数据源。
-			if (addMode === "custom") {
-				if (launchSelection.kind === "none") {
-					showError(
-						t("components.AddModal.noLauncherSelected", "未选择启动文件"),
-					);
-					return;
-				}
-				setCustomLoading(true);
-				const runtimeOptions = await buildRuntimeOptions(launchSelection);
-				const customGameData: InsertGameParams = {
-					...runtimeOptions,
-					id_type: "custom", // 标记为自定义
-					sources: [],
-					custom_data: {
-						name: formText,
-					},
-				};
-				const game = await addGameMutation.mutateAsync(customGameData);
-				closeAddModal();
-				showGameAddedSuccess({ gameId: game.id, navigate, t });
-				return;
-			}
+    try {
+      // 手动模式只写入本地路径和自定义名称，不请求元数据源。
+      if (addMode === "custom") {
+        if (launchSelection.kind === "none") {
+          showError(t("components.AddModal.noLauncherSelected", "未选择启动文件"));
+          return;
+        }
+        setCustomLoading(true);
+        const runtimeOptions = await buildRuntimeOptions(launchSelection);
+        const customGameData: InsertGameParams = {
+          ...runtimeOptions,
+          id_type: "custom", // 标记为自定义
+          sources: [],
+          custom_data: {
+            name: formText,
+          },
+        };
+        const game = await addGameMutation.mutateAsync(customGameData);
+        closeAddModal();
+        showGameAddedSuccess({ gameId: game.id, navigate, t });
+        return;
+      }
 
-			await metadataSearchFlow.searchMetadata({
-				query: formText,
-				source: addMode === "single" ? apiSource : "mixed",
-				withAbort,
-			});
-		} catch (error) {
-			showError(getUserErrorMessage(error, t));
-		} finally {
-			window.clearTimeout(timeoutId);
-			if (abortControllerRef.current === controller) {
-				abortControllerRef.current = null;
-			}
-			setCustomLoading(false);
-		}
-	};
+      await metadataSearchFlow.searchMetadata({
+        query: formText,
+        source: addMode === "single" ? apiSource : "mixed",
+        withAbort,
+      });
+    } catch (error) {
+      showError(getUserErrorMessage(error, t));
+    } finally {
+      window.clearTimeout(timeoutId);
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
+      setCustomLoading(false);
+    }
+  };
 
-	return (
-		<>
-			{/* 拖拽遮罩层 */}
-			{isDragging && (
-				<Box className="fixed inset-0 z-[9999] bg-[rgba(25,118,210,0.15)] backdrop-blur-sm flex flex-col items-center justify-center pointer-events-none">
-					<CloudUploadIcon className="text-[80px] text-[#1976d2] mb-2 opacity-90" />
-					<Typography
-						variant="h5"
-						className="text-2xl font-semibold text-[#1976d2] text-center opacity-90"
-					>
-						{t("components.AddModal.dragDropHere", "拖拽文件到这里")}
-					</Typography>
-				</Box>
-			)}
-			<Dialog
-				open={addModalOpen}
-				onClose={(_, reason) => {
-					// 加载时防止关闭弹窗
-					if (reason !== "backdropClick" && !isBusy) {
-						handleCloseModal();
-					}
-				}}
-				closeAfterTransition={false}
-				aria-labelledby="addgame-dialog-title"
-				fullWidth
-				maxWidth={activeTab === "single" ? "sm" : "lg"}
-				slotProps={{
-					paper: {
-						sx:
-							activeTab !== "single"
-								? {
-										height: "min(88vh, 920px)",
-										display: "flex",
-										flexDirection: "column",
-									}
-								: undefined,
-					},
-					transition: {
-						onExited: resetState,
-					},
-				}}
-			>
-				{/* 错误提示 */}
-				{error && <Alert severity="error">{error}</Alert>}
-				<DialogTitle>
-					{t("components.AddModal.addGame", "添加游戏")}
-				</DialogTitle>
-				<Tabs
-					value={activeTab}
-					onChange={(_, value: AddModalTab) => setActiveTab(value)}
-					variant="fullWidth"
-				>
-					<Tab
-						value="single"
-						label={t("components.AddModal.singleTab", "单个添加")}
-						disabled={isBusy}
-					/>
-					<Tab
-						value="bulk"
-						label={t("components.AddModal.bulkTab", "批量导入")}
-						disabled={isBusy}
-					/>
-					<Tab
-						value="cloud"
-						label={t("components.AddModal.cloudTab", "云端收藏")}
-						disabled={isBusy}
-					/>
-				</Tabs>
-				<DialogContent
-					sx={{ pt: 2, display: activeTab === "single" ? undefined : "none" }}
-				>
-					{/* single tab 内容：通过 display 控制显隐，避免切换 tab 时卸载 */}
-					<Stack spacing={2} sx={{ pt: 1 }}>
-						{/* 选择本地可执行文件 */}
-						<Button
-							fullWidth
-							variant="contained"
-							onClick={() => void handleSelectLaunchFile()}
-							startIcon={<FileOpenIcon />}
-							disabled={isBusy}
-						>
-							{t("components.AddModal.selectLauncher", "选择启动文件")}
-						</Button>
-						<TextField
-							fullWidth
-							size="small"
-							value={
-								launchSelection.kind === "steam"
-									? `Steam · ${launchSelection.target.name} · ${formatSteamAppIdWithPath(launchSelection.target.steam_launch_id, launchSelection.target.localpath)}`
-									: launchSelection.kind === "local"
-										? launchSelection.path
-										: ""
-							}
-							placeholder={t(
-								"components.AddModal.dragHint",
-								"请选择或拖拽启动文件或文件夹",
-							)}
-							InputProps={{ readOnly: true }}
-						/>
-						{/* 添加策略切换 */}
-						<Stack spacing={2}>
-							<AddGameModeToggleGroup
-								value={addMode}
-								onChange={setAddMode}
-								disabled={isBusy}
-								sx={{ width: "100%" }}
-							/>
-							{addMode === "single" && (
-								<SingleSourceSelect
-									value={apiSource}
-									onChange={setApiSource}
-									disabled={isBusy}
-								/>
-							)}
-							{!hasBgmAuth &&
-								((addMode === "single" && apiSource === "bgm") ||
-									(addMode === "mixed" &&
-										mixedEnabledSources.includes("bgm"))) && (
-									<Alert severity="info" sx={{ py: 0, px: 1.5 }}>
-										{t(
-											"components.AddModal.bgmNotLoggedInHint",
-											"未登录 Bangumi 账号，部分隐藏条目（如 R18）可能无法被搜索到。",
-										)}
-									</Alert>
-								)}
-						</Stack>
-						{/* 游戏名称输入框 */}
-						<TextField
-							required
-							size="small"
-							id="name"
-							name="game-name"
-							label={
-								addMode === "single"
-									? `${t("components.AddModal.gameName", "游戏名称")} / ${t(
-											"components.AddModal.gameIDTips",
-											"游戏ID",
-										)}`
-									: t("components.AddModal.gameName", "游戏名称")
-							}
-							type="text"
-							fullWidth
-							variant="outlined"
-							autoComplete="off"
-							value={formText}
-							onChange={(event) => setFormText(event.target.value)}
-							onKeyDown={(event) => {
-								if (
-									event.key !== "Enter" ||
-									event.nativeEvent.isComposing ||
-									formText === "" ||
-									isBusy
-								) {
-									return;
-								}
+  return (
+    <>
+      {/* 拖拽遮罩层 */}
+      {isDragging && (
+        <Box className="fixed inset-0 z-[9999] bg-[rgba(25,118,210,0.15)] backdrop-blur-sm flex flex-col items-center justify-center pointer-events-none">
+          <CloudUploadIcon className="text-[80px] text-[#1976d2] mb-2 opacity-90" />
+          <Typography
+            variant="h5"
+            className="text-2xl font-semibold text-[#1976d2] text-center opacity-90"
+          >
+            {t("components.AddModal.dragDropHere", "拖拽文件到这里")}
+          </Typography>
+        </Box>
+      )}
+      <Dialog
+        open={addModalOpen}
+        onClose={(_, reason) => {
+          // 加载时防止关闭弹窗
+          if (reason !== "backdropClick" && !isBusy) {
+            handleCloseModal();
+          }
+        }}
+        closeAfterTransition={false}
+        aria-labelledby="addgame-dialog-title"
+        fullWidth
+        maxWidth={activeTab === "single" ? "sm" : "lg"}
+        slotProps={{
+          paper: {
+            sx:
+              activeTab !== "single"
+                ? {
+                    height: "min(88vh, 920px)",
+                    display: "flex",
+                    flexDirection: "column",
+                  }
+                : undefined,
+          },
+          transition: {
+            onExited: resetState,
+          },
+        }}
+      >
+        {/* 错误提示 */}
+        {error && <Alert severity="error">{error}</Alert>}
+        <DialogTitle>{t("components.AddModal.addGame", "添加游戏")}</DialogTitle>
+        <Tabs
+          value={activeTab}
+          onChange={(_, value: AddModalTab) => setActiveTab(value)}
+          variant="fullWidth"
+        >
+          <Tab
+            value="single"
+            label={t("components.AddModal.singleTab", "单个添加")}
+            disabled={isBusy}
+          />
+          <Tab
+            value="bulk"
+            label={t("components.AddModal.bulkTab", "批量导入")}
+            disabled={isBusy}
+          />
+          <Tab
+            value="cloud"
+            label={t("components.AddModal.cloudTab", "云端收藏")}
+            disabled={isBusy}
+          />
+        </Tabs>
+        <DialogContent sx={{ pt: 2, display: activeTab === "single" ? undefined : "none" }}>
+          {/* single tab 内容：通过 display 控制显隐，避免切换 tab 时卸载 */}
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            {/* 选择本地可执行文件 */}
+            <Button
+              fullWidth
+              variant="contained"
+              onClick={() => void handleSelectLaunchFile()}
+              startIcon={<FileOpenIcon />}
+              disabled={isBusy}
+            >
+              {t("components.AddModal.selectLauncher", "选择启动文件")}
+            </Button>
+            <TextField
+              fullWidth
+              size="small"
+              value={
+                launchSelection.kind === "steam"
+                  ? `Steam · ${launchSelection.target.name} · ${formatSteamAppIdWithPath(launchSelection.target.steam_launch_id, launchSelection.target.localpath)}`
+                  : launchSelection.kind === "local"
+                    ? launchSelection.path
+                    : ""
+              }
+              placeholder={t("components.AddModal.dragHint", "请选择或拖拽启动文件或文件夹")}
+              InputProps={{ readOnly: true }}
+            />
+            {/* 添加策略切换 */}
+            <Stack spacing={2}>
+              <AddGameModeToggleGroup
+                value={addMode}
+                onChange={setAddMode}
+                disabled={isBusy}
+                sx={{ width: "100%" }}
+              />
+              {addMode === "single" && (
+                <SingleSourceSelect value={apiSource} onChange={setApiSource} disabled={isBusy} />
+              )}
+              {!hasBgmAuth &&
+                ((addMode === "single" && apiSource === "bgm") ||
+                  (addMode === "mixed" && mixedEnabledSources.includes("bgm"))) && (
+                  <Alert severity="info" sx={{ py: 0, px: 1.5 }}>
+                    {t(
+                      "components.AddModal.bgmNotLoggedInHint",
+                      "未登录 Bangumi 账号，部分隐藏条目（如 R18）可能无法被搜索到。",
+                    )}
+                  </Alert>
+                )}
+            </Stack>
+            {/* 游戏名称输入框 */}
+            <TextField
+              required
+              size="small"
+              id="name"
+              name="game-name"
+              label={
+                addMode === "single"
+                  ? `${t("components.AddModal.gameName", "游戏名称")} / ${t(
+                      "components.AddModal.gameIDTips",
+                      "游戏ID",
+                    )}`
+                  : t("components.AddModal.gameName", "游戏名称")
+              }
+              type="text"
+              fullWidth
+              variant="outlined"
+              autoComplete="off"
+              value={formText}
+              onChange={(event) => setFormText(event.target.value)}
+              onKeyDown={(event) => {
+                if (
+                  event.key !== "Enter" ||
+                  event.nativeEvent.isComposing ||
+                  formText === "" ||
+                  isBusy
+                ) {
+                  return;
+                }
 
-								event.preventDefault();
-								void handleSubmit();
-							}}
-						/>
-					</Stack>
-				</DialogContent>
-				{/* bulk tab：始终挂载，通过 hidden prop 控制显隐，保持状态在 tab 切换时不丢失 */}
-				<BulkImportTab
-					hidden={activeTab !== "bulk"}
-					onClose={handleCloseModal}
-					addMode={addMode}
-					onAddModeChange={setAddMode}
-					bulkApiSource={resolvedBulkApiSource}
-					onBulkApiSourceChange={setBulkApiSource}
-					scanMode={scanMode}
-					onScanModeChange={setScanMode}
-					scanMaxDepth={scanMaxDepth}
-					onScanMaxDepthChange={setScanMaxDepth}
-					scanFirstLevelExecutables={scanFirstLevelExecutables}
-					onScanFirstLevelExecutablesChange={setScanFirstLevelExecutables}
-					dropBatch={bulkDropQueue[0]}
-					onDropBatchHandled={handleBulkDropBatchHandled}
-				/>
-				<CloudCollectionTab
-					hidden={activeTab !== "cloud"}
-					open={addModalOpen}
-					initialSource={cloudCollectionImportSource ?? undefined}
-					onBusyChange={setCloudBusy}
-					onClose={handleCloseModal}
-				/>
-				{activeTab === "single" && (
-					<DialogActions>
-						{/* 取消按钮 */}
-						<Button
-							variant="outlined"
-							onClick={
-								metadataSearchFlow.isSearching
-									? cancelOngoingRequest
-									: handleCloseModal
-							}
-							disabled={isAddingGame}
-						>
-							{t("components.AddModal.cancel", "取消")}
-						</Button>
-						{/* 确认按钮 */}
-						<Button
-							variant="contained"
-							onClick={handleSubmit}
-							disabled={formText === "" || isBusy}
-							startIcon={isBusy ? <CircularProgress size={20} /> : null}
-						>
-							{isBusy
-								? t("components.AddModal.processing", "处理中...")
-								: t("components.AddModal.confirm", "确认")}
-						</Button>
-					</DialogActions>
-				)}
-			</Dialog>
+                event.preventDefault();
+                void handleSubmit();
+              }}
+            />
+          </Stack>
+        </DialogContent>
+        {/* bulk tab：始终挂载，通过 hidden prop 控制显隐，保持状态在 tab 切换时不丢失 */}
+        <BulkImportTab
+          hidden={activeTab !== "bulk"}
+          onClose={handleCloseModal}
+          addMode={addMode}
+          onAddModeChange={setAddMode}
+          bulkApiSource={resolvedBulkApiSource}
+          onBulkApiSourceChange={setBulkApiSource}
+          scanMode={scanMode}
+          onScanModeChange={setScanMode}
+          scanMaxDepth={scanMaxDepth}
+          onScanMaxDepthChange={setScanMaxDepth}
+          scanFirstLevelExecutables={scanFirstLevelExecutables}
+          onScanFirstLevelExecutablesChange={setScanFirstLevelExecutables}
+          dropBatch={bulkDropQueue[0]}
+          onDropBatchHandled={handleBulkDropBatchHandled}
+        />
+        <CloudCollectionTab
+          hidden={activeTab !== "cloud"}
+          open={addModalOpen}
+          initialSource={cloudCollectionImportSource ?? undefined}
+          onBusyChange={setCloudBusy}
+          onClose={handleCloseModal}
+        />
+        {activeTab === "single" && (
+          <DialogActions>
+            {/* 取消按钮 */}
+            <Button
+              variant="outlined"
+              onClick={metadataSearchFlow.isSearching ? cancelOngoingRequest : handleCloseModal}
+              disabled={isAddingGame}
+            >
+              {t("components.AddModal.cancel", "取消")}
+            </Button>
+            {/* 确认按钮 */}
+            <Button
+              variant="contained"
+              onClick={handleSubmit}
+              disabled={formText === "" || isBusy}
+              startIcon={isBusy ? <CircularProgress size={20} /> : null}
+            >
+              {isBusy
+                ? t("components.AddModal.processing", "处理中...")
+                : t("components.AddModal.confirm", "确认")}
+            </Button>
+          </DialogActions>
+        )}
+      </Dialog>
 
-			<GameSelectDialog
-				open={metadataSearchFlow.searchResultState.open}
-				onClose={metadataSearchFlow.closeSearchResult}
-				sourceCandidates={metadataSearchFlow.searchResultState.results}
-				onSelectCandidate={metadataSearchFlow.selectGame}
-				loading={isBusy}
-				title={t("components.AddModal.selectGame", "选择游戏")}
-				apiSource={metadataSearchFlow.searchResultState.apiSource}
-			/>
-			{metadataSearchFlow.mixedCandidateState.open && (
-				<MixedSourceConfirmDialog
-					open
-					onClose={metadataSearchFlow.closeMixedCandidates}
-					candidates={metadataSearchFlow.mixedCandidateState.candidates}
-					onConfirm={metadataSearchFlow.confirmMixedSelection}
-					loading={isBusy}
-					title={t("components.AlertBox.confirmAddTitle", "确认添加游戏")}
-				/>
-			)}
-		</>
-	);
+      <GameSelectDialog
+        open={metadataSearchFlow.searchResultState.open}
+        onClose={metadataSearchFlow.closeSearchResult}
+        sourceCandidates={metadataSearchFlow.searchResultState.results}
+        onSelectCandidate={metadataSearchFlow.selectGame}
+        loading={isBusy}
+        title={t("components.AddModal.selectGame", "选择游戏")}
+        apiSource={metadataSearchFlow.searchResultState.apiSource}
+      />
+      {metadataSearchFlow.mixedCandidateState.open && (
+        <MixedSourceConfirmDialog
+          open
+          onClose={metadataSearchFlow.closeMixedCandidates}
+          candidates={metadataSearchFlow.mixedCandidateState.candidates}
+          onConfirm={metadataSearchFlow.confirmMixedSelection}
+          loading={isBusy}
+          title={t("components.AlertBox.confirmAddTitle", "确认添加游戏")}
+        />
+      )}
+    </>
+  );
 };
 
 export default AddModal;

@@ -21,38 +21,38 @@
 export type Nullable<T> = T | null;
 
 export type JsonValue =
-	| string
-	| number
-	| boolean
-	| null
-	| JsonValue[]
-	| { [key: string]: JsonValue };
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
 
 /**
  * 深度可空类型 - 将对象的所有属性转换为可空
  */
 export type DeepNullable<T> = {
-	[K in keyof T]?: Nullable<T[K]>;
+  [K in keyof T]?: Nullable<T[K]>;
 };
 
 export interface BatchOperationError {
-	index: number;
-	message: string;
+  index: number;
+  message: string;
 }
 
 export interface BatchOperationResult {
-	total: number;
-	success: number;
-	failed: number;
-	ids?: number[];
-	games?: FullGameData[];
-	errors: BatchOperationError[];
+  total: number;
+  success: number;
+  failed: number;
+  ids?: number[];
+  games?: FullGameData[];
+  errors: BatchOperationError[];
 }
 
 export interface ScanResult {
-	name: string;
-	path: string;
-	executables: string[];
+  name: string;
+  path: string;
+  executables: string[];
 }
 
 export type GameScanMode = "executable" | "first_level_directory" | "steam";
@@ -60,20 +60,20 @@ export type GameDirectoryScanMode = Exclude<GameScanMode, "steam">;
 export type GameLaunchType = "local" | "steam";
 
 export interface OAuthAuth {
-	access_token: string;
-	refresh_token?: Nullable<string>;
-	expires_at?: Nullable<number>;
+  access_token: string;
+  refresh_token?: Nullable<string>;
+  expires_at?: Nullable<number>;
 }
 
 export interface BgmAuth extends OAuthAuth {
-	username?: Nullable<string>;
-	nickname?: Nullable<string>;
+  username?: Nullable<string>;
+  nickname?: Nullable<string>;
 }
 
 export interface HikarinagiAuth extends OAuthAuth {
-	user_id?: Nullable<number>;
-	name?: Nullable<string>;
-	scope?: Nullable<string>;
+  user_id?: Nullable<number>;
+  name?: Nullable<string>;
+  scope?: Nullable<string>;
 }
 
 // ==================== 元数据结构 ====================
@@ -85,17 +85,17 @@ export interface HikarinagiAuth extends OAuthAuth {
  * 注意：所有可选字段使用 undefined（与 Rust Option::None 对应）
  */
 export interface BgmData {
-	image?: string;
-	name?: string;
-	name_cn?: string;
-	aliases?: string[];
-	summary?: string;
-	tags?: string[];
-	rank?: number;
-	score?: number;
-	developer?: string;
-	nsfw?: boolean;
-	date?: string;
+  image?: string;
+  name?: string;
+  name_cn?: string;
+  aliases?: string[];
+  summary?: string;
+  tags?: string[];
+  rank?: number;
+  score?: number;
+  developer?: string;
+  nsfw?: boolean;
+  date?: string;
 }
 
 /**
@@ -105,18 +105,18 @@ export interface BgmData {
  * 注意：多数可选字段使用 undefined；VNDB API 缺失评分/时长时保留 null，避免与 0 混淆
  */
 export interface VndbData {
-	image?: string;
-	name?: string;
-	name_cn?: string;
-	all_titles?: string[];
-	aliases?: string[];
-	summary?: string;
-	tags?: string[];
-	average_hours?: number | null;
-	developer?: string;
-	score?: number | null;
-	nsfw?: boolean;
-	date?: string;
+  image?: string;
+  name?: string;
+  name_cn?: string;
+  all_titles?: string[];
+  aliases?: string[];
+  summary?: string;
+  tags?: string[];
+  average_hours?: number | null;
+  developer?: string;
+  score?: number | null;
+  nsfw?: boolean;
+  date?: string;
 }
 
 /**
@@ -126,73 +126,73 @@ export interface VndbData {
  * 注意：YMGal API 不提供 tags 字段，所有可选字段使用 undefined
  */
 export interface YmgalData {
-	image?: string;
-	name?: string;
-	name_cn?: string;
-	aliases?: string[];
-	summary?: string;
-	tags?: never; // YMGal 不支持标签
-	developer?: string;
-	nsfw?: boolean;
-	date?: string;
+  image?: string;
+  name?: string;
+  name_cn?: string;
+  aliases?: string[];
+  summary?: string;
+  tags?: never; // YMGal 不支持标签
+  developer?: string;
+  nsfw?: boolean;
+  date?: string;
 }
 
 /**
  * Kun 数据结构
  */
 export interface KunData {
-	image?: string;
-	name?: string;
-	name_cn?: string;
-	all_titles?: string[];
-	aliases?: string[];
-	summary?: string;
-	tags?: string[];
-	developer?: string;
-	nsfw?: boolean;
-	date?: string;
+  image?: string;
+  name?: string;
+  name_cn?: string;
+  all_titles?: string[];
+  aliases?: string[];
+  summary?: string;
+  tags?: string[];
+  developer?: string;
+  nsfw?: boolean;
+  date?: string;
 }
 
 /**
  * DLsite 数据结构
  */
 export interface DlsiteData {
-	image?: string;
-	name?: string;
-	summary?: string;
-	tags?: string[];
-	developer?: string;
-	nsfw?: boolean;
-	date?: string;
+  image?: string;
+  name?: string;
+  summary?: string;
+  tags?: string[];
+  developer?: string;
+  nsfw?: boolean;
+  date?: string;
 }
 
 /**
  * ErogameScape 数据结构
  */
 export interface ErogameScapeData {
-	image?: string;
-	name?: string;
-	tags?: string[];
-	developer?: string;
-	score?: number | null;
-	nsfw?: boolean;
-	date?: string;
+  image?: string;
+  name?: string;
+  tags?: string[];
+  developer?: string;
+  score?: number | null;
+  nsfw?: boolean;
+  date?: string;
 }
 
 /**
  * Hikarinagi 数据结构（JSON 列嵌入 games 表）
  */
 export interface HikarinagiData {
-	image?: string;
-	name?: string;
-	name_cn?: string;
-	aliases?: string[];
-	summary?: string;
-	tags?: string[];
-	score?: number | null;
-	developer?: string;
-	nsfw?: boolean;
-	date?: string;
+  image?: string;
+  name?: string;
+  name_cn?: string;
+  aliases?: string[];
+  summary?: string;
+  tags?: string[];
+  score?: number | null;
+  developer?: string;
+  nsfw?: boolean;
+  date?: string;
 }
 
 /**
@@ -204,46 +204,43 @@ export interface HikarinagiData {
  * 注意：CustomData 是用户可编辑的，支持 null 用于清空字段
  */
 export interface CustomData {
-	image?: Nullable<string>;
-	cover_source?: Nullable<SourceType>;
-	name?: Nullable<string>;
-	aliases?: Nullable<string[]>;
-	summary?: Nullable<string>;
-	tags?: Nullable<string[]>;
-	developer?: Nullable<string>;
-	nsfw?: Nullable<boolean>;
-	user_rating?: Nullable<number>;
-	user_review?: Nullable<string>;
+  image?: Nullable<string>;
+  cover_source?: Nullable<SourceType>;
+  name?: Nullable<string>;
+  aliases?: Nullable<string[]>;
+  summary?: Nullable<string>;
+  tags?: Nullable<string[]>;
+  developer?: Nullable<string>;
+  nsfw?: Nullable<boolean>;
+  user_rating?: Nullable<number>;
+  user_review?: Nullable<string>;
 }
 
 export interface SourceScores {
-	bgm?: number;
-	vndb?: number;
-	erogamescape?: number;
-	hikarinagi?: number;
+  bgm?: number;
+  vndb?: number;
+  erogamescape?: number;
+  hikarinagi?: number;
 }
 
 // ==================== 游戏数据类型（DTO 三位一体） ====================
 
 export const SOURCE_TYPES = [
-	"bgm",
-	"vndb",
-	"hikarinagi",
-	"ymgal",
-	"kun",
-	"dlsite",
-	"erogamescape",
+  "bgm",
+  "vndb",
+  "hikarinagi",
+  "ymgal",
+  "kun",
+  "dlsite",
+  "erogamescape",
 ] as const;
 export type SourceType = (typeof SOURCE_TYPES)[number];
-export type CloudCollectionSource = Extract<
-	SourceType,
-	"bgm" | "vndb" | "hikarinagi"
->;
+export type CloudCollectionSource = Extract<SourceType, "bgm" | "vndb" | "hikarinagi">;
 
 export type apiSourceType = SourceType | "mixed";
 
 export function isSourceType(value: string): value is SourceType {
-	return SOURCE_TYPES.includes(value as SourceType);
+  return SOURCE_TYPES.includes(value as SourceType);
 }
 
 /**
@@ -252,32 +249,32 @@ export function isSourceType(value: string): value is SourceType {
 export type IdType = apiSourceType | "custom" | "Whitecloud";
 
 interface GameRuntimePayload {
-	localpath?: Nullable<string>;
-	executable?: Nullable<string>;
-	launch_type?: GameLaunchType;
-	steam_launch_id?: Nullable<string>;
-	savepath?: Nullable<string>;
-	autosave?: number;
-	maxbackups?: number;
-	clear?: number;
-	le_launch?: number;
-	magpie?: number;
+  localpath?: Nullable<string>;
+  executable?: Nullable<string>;
+  launch_type?: GameLaunchType;
+  steam_launch_id?: Nullable<string>;
+  savepath?: Nullable<string>;
+  autosave?: number;
+  maxbackups?: number;
+  clear?: number;
+  le_launch?: number;
+  magpie?: number;
 }
 
 interface GameCustomPayload {
-	custom_data?: Nullable<CustomData>;
+  custom_data?: Nullable<CustomData>;
 }
 
 export interface GameSourceRecord {
-	source: string;
-	external_id: Nullable<string>;
-	data: JsonValue | null;
+  source: string;
+  external_id: Nullable<string>;
+  data: JsonValue | null;
 }
 
 export interface SourceCandidateRecord<TData = unknown> {
-	source: SourceType;
-	external_id: string;
-	data: TData;
+  source: SourceType;
+  external_id: string;
+  data: TData;
 }
 
 /**
@@ -287,14 +284,14 @@ export interface SourceCandidateRecord<TData = unknown> {
  * 数据库主键必定存在，`sources` 包含聚合的真实元数据（以 JSON 存储）。
  */
 export interface FullGameData extends GameRuntimePayload {
-	// --- 主键 ---
-	id: number;
-	id_type?: IdType | string;
-	sources: GameSourceRecord[];
-	custom_data?: Nullable<CustomData>;
-	date?: string;
-	created_at?: number;
-	updated_at?: number;
+  // --- 主键 ---
+  id: number;
+  id_type?: IdType | string;
+  sources: GameSourceRecord[];
+  custom_data?: Nullable<CustomData>;
+  date?: string;
+  created_at?: number;
+  updated_at?: number;
 }
 
 /**
@@ -302,9 +299,9 @@ export interface FullGameData extends GameRuntimePayload {
  * 仅包含来源与自定义元数据，本地运行配置在入库边界单独组装
  */
 export interface GameMetadataDraft extends GameCustomPayload {
-	id_type?: IdType | string;
-	sources: SourceCandidateRecord[];
-	id?: never;
+  id_type?: IdType | string;
+  sources: SourceCandidateRecord[];
+  id?: never;
 }
 
 /**
@@ -315,19 +312,18 @@ export interface GameMetadataDraft extends GameCustomPayload {
  * - 不包含 created_at/updated_at（由数据库自动设置）
  * - id_type 是必需的
  */
-export interface InsertGameParams
-	extends Omit<
-		GameRuntimePayload,
-		"localpath" | "executable" | "savepath" | "steam_launch_id"
-	> {
-	id_type: IdType | string; // 必需字段
-	sources: GameSourceRecord[];
-	date?: string;
-	localpath?: string;
-	executable?: string;
-	steam_launch_id?: string;
-	savepath?: string;
-	custom_data?: Nullable<CustomData>;
+export interface InsertGameParams extends Omit<
+  GameRuntimePayload,
+  "localpath" | "executable" | "savepath" | "steam_launch_id"
+> {
+  id_type: IdType | string; // 必需字段
+  sources: GameSourceRecord[];
+  date?: string;
+  localpath?: string;
+  executable?: string;
+  steam_launch_id?: string;
+  savepath?: string;
+  custom_data?: Nullable<CustomData>;
 }
 
 /**
@@ -341,25 +337,25 @@ export interface InsertGameParams
  * 对应 Rust 后端的 Option<Option<T>> 反序列化
  */
 export interface UpdateGameParams {
-	id_type?: IdType | string;
+  id_type?: IdType | string;
 
-	// --- 核心状态（支持三态） ---
-	date?: Nullable<string>;
-	localpath?: Nullable<string>;
-	executable?: Nullable<string>;
-	launch_type?: GameLaunchType;
-	steam_launch_id?: Nullable<string>;
-	savepath?: Nullable<string>;
-	autosave?: Nullable<number>;
-	maxbackups?: Nullable<number>;
-	clear?: Nullable<number>;
-	le_launch?: Nullable<number>;
-	magpie?: Nullable<number>;
+  // --- 核心状态（支持三态） ---
+  date?: Nullable<string>;
+  localpath?: Nullable<string>;
+  executable?: Nullable<string>;
+  launch_type?: GameLaunchType;
+  steam_launch_id?: Nullable<string>;
+  savepath?: Nullable<string>;
+  autosave?: Nullable<number>;
+  maxbackups?: Nullable<number>;
+  clear?: Nullable<number>;
+  le_launch?: Nullable<number>;
+  magpie?: Nullable<number>;
 
-	// --- 元数据 Payload（支持三态） ---
-	custom_data?: Nullable<CustomData>;
-	upsert_sources?: GameSourceRecord[];
-	remove_sources?: string[];
+  // --- 元数据 Payload（支持三态） ---
+  custom_data?: Nullable<CustomData>;
+  upsert_sources?: GameSourceRecord[];
+  remove_sources?: string[];
 }
 
 /**
@@ -373,13 +369,13 @@ export interface UpdateGameParams {
  * 对应 Rust 后端的 Option<Option<T>> 反序列化
  */
 export interface UpdateSettingsParams {
-	bgmAuth?: Nullable<BgmAuth>;
-	hikarinagiAuth?: Nullable<HikarinagiAuth>;
-	vndbToken?: Nullable<string>;
-	dbBackupPath?: Nullable<string>;
-	installRootPath?: Nullable<string>;
-	lePath?: Nullable<string>;
-	magpiePath?: Nullable<string>;
+  bgmAuth?: Nullable<BgmAuth>;
+  hikarinagiAuth?: Nullable<HikarinagiAuth>;
+  vndbToken?: Nullable<string>;
+  dbBackupPath?: Nullable<string>;
+  installRootPath?: Nullable<string>;
+  lePath?: Nullable<string>;
+  magpiePath?: Nullable<string>;
 }
 
 /**
@@ -388,38 +384,37 @@ export interface UpdateSettingsParams {
  * 所有字段已展平，用于组件直接消费
  * 注意：所有可选字段使用 undefined（与 Rust 后端保持一致）
  */
-export interface GameData
-	extends Omit<
-		GameRuntimePayload,
-		"localpath" | "executable" | "savepath" | "steam_launch_id"
-	> {
-	// 基础字段
-	id: number;
-	id_type?: IdType | string;
-	sourceIds: Partial<Record<SourceType, string>>;
-	date?: string;
-	localpath?: string;
-	executable?: string;
-	steam_launch_id?: string;
-	savepath?: string;
-	custom_data?: CustomData;
-	created_at?: number;
-	updated_at?: number;
+export interface GameData extends Omit<
+  GameRuntimePayload,
+  "localpath" | "executable" | "savepath" | "steam_launch_id"
+> {
+  // 基础字段
+  id: number;
+  id_type?: IdType | string;
+  sourceIds: Partial<Record<SourceType, string>>;
+  date?: string;
+  localpath?: string;
+  executable?: string;
+  steam_launch_id?: string;
+  savepath?: string;
+  custom_data?: CustomData;
+  created_at?: number;
+  updated_at?: number;
 
-	// 展平的元数据字段
-	image?: string;
-	name?: string;
-	name_cn?: string;
-	summary?: string;
-	tags?: string[];
-	rank?: number;
-	score?: number;
-	sourceScores?: SourceScores;
-	developer?: string;
-	all_titles?: string[];
-	aliases?: string[];
-	average_hours?: number;
-	nsfw?: boolean;
+  // 展平的元数据字段
+  image?: string;
+  name?: string;
+  name_cn?: string;
+  summary?: string;
+  tags?: string[];
+  rank?: number;
+  score?: number;
+  sourceScores?: SourceScores;
+  developer?: string;
+  all_titles?: string[];
+  aliases?: string[];
+  average_hours?: number;
+  nsfw?: boolean;
 }
 
 /**
@@ -428,45 +423,45 @@ export interface GameData
 export type TimeTrackingMode = "playtime" | "elapsed";
 
 export interface GameSession {
-	session_id: number; // 会话的唯一标识符
-	game_id: number; // 游戏的唯一标识符
-	start_time: number;
-	end_time?: number;
-	duration?: number; // 分钟
-	date: string;
+  session_id: number; // 会话的唯一标识符
+  game_id: number; // 游戏的唯一标识符
+  start_time: number;
+  end_time?: number;
+  duration?: number; // 分钟
+  date: string;
 }
 
 /**
  * 游戏统计数据（原始）
  */
 export interface GameStatistics {
-	game_id: number; // 游戏的唯一标识符
-	total_time: number; // 分钟
-	session_count: number;
-	last_played?: number;
-	daily_stats?: Array<{ date: string; playtime: number }>; // 新格式: [{date: "YYYY-MM-DD", playtime: minutes}, ...]
+  game_id: number; // 游戏的唯一标识符
+  total_time: number; // 分钟
+  session_count: number;
+  last_played?: number;
+  daily_stats?: Array<{ date: string; playtime: number }>; // 新格式: [{date: "YYYY-MM-DD", playtime: minutes}, ...]
 }
 
 export interface GameLastPlayed {
-	game_id: number;
-	last_played?: number | null;
+  game_id: number;
+  last_played?: number | null;
 }
 
 /**
  * 指定日期范围内的会话开始时段分布。
  */
 export interface StatisticsDistribution {
-	hourly: number[];
-	weekdays: number[];
+  hourly: number[];
+  weekdays: number[];
 }
 
 /** 游戏时间统计 */
 export interface GameTimeStats {
-	totalMinutes: number; // 总分钟数
-	todayMinutes: number; // 今天的分钟数
-	sessionCount: number; // 启动次数
-	lastPlayed: Date | null; // 最后一次游玩时间
-	daily_stats?: Array<{ date: string; playtime: number }>; // 新格式: [{date: "YYYY-MM-DD", playtime: minutes}, ...]
+  totalMinutes: number; // 总分钟数
+  todayMinutes: number; // 今天的分钟数
+  sessionCount: number; // 启动次数
+  lastPlayed: Date | null; // 最后一次游玩时间
+  daily_stats?: Array<{ date: string; playtime: number }>; // 新格式: [{date: "YYYY-MM-DD", playtime: minutes}, ...]
 }
 
 /**
@@ -480,34 +475,31 @@ export type TimeUpdateCallback = (gameId: number, minutes: number) => void;
  * 游戏会话结束结果
  */
 export interface SessionEndResult {
-	recorded: boolean;
-	durationMinutes: number;
+  recorded: boolean;
+  durationMinutes: number;
 }
 
 /** 游戏会话结束回调类型 */
-export type SessionEndCallback = (
-	gameId: number,
-	result: SessionEndResult,
-) => void | Promise<void>;
+export type SessionEndCallback = (gameId: number, result: SessionEndResult) => void | Promise<void>;
 
 /**
  * 停止游戏结果类型
  */
 export interface StopGameResult {
-	success: boolean;
-	message: string;
-	terminated_count: number;
+  success: boolean;
+  message: string;
+  terminated_count: number;
 }
 
 /**
  * 存档备份记录
  */
 export interface SavedataRecord {
-	id: number;
-	game_id: number;
-	file: string; // 对应数据库中的 file 列（备份文件名）
-	backup_time: number;
-	file_size: number;
+  id: number;
+  game_id: number;
+  file: string; // 对应数据库中的 file 列（备份文件名）
+  backup_time: number;
+  file_size: number;
 }
 
 /**

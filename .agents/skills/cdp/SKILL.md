@@ -51,10 +51,12 @@ var pageErrors = [];
 var failedRequests = [];
 page.on("console", (message) => consoleEvents.push({ type: message.type(), text: message.text() }));
 page.on("pageerror", (error) => pageErrors.push(error.message));
-page.on("requestfailed", (request) => failedRequests.push({
-  url: request.url(),
-  error: request.failure()?.errorText,
-}));
+page.on("requestfailed", (request) =>
+  failedRequests.push({
+    url: request.url(),
+    error: request.failure()?.errorText,
+  }),
+);
 ```
 
 优先使用 Playwright locator 查看可访问名称、可见性、文本和 DOM。需要时使用 `page.evaluate` 检查 computed style、尺寸、滚动容器和应用状态。不要仅凭截图猜测原因。

@@ -20,8 +20,8 @@ import type { PlayStatus } from "@/types/collection";
 // ============================================================================
 
 export const playStatusKeys = {
-	all: ["playStatus"] as const,
-	game: (gameId: number) => ["playStatus", "game", gameId] as const,
+  all: ["playStatus"] as const,
+  game: (gameId: number) => ["playStatus", "game", gameId] as const,
 };
 
 // ============================================================================
@@ -29,18 +29,18 @@ export const playStatusKeys = {
 // ============================================================================
 
 export interface UpdatePlayStatusParams {
-	gameId: number;
-	newStatus: PlayStatus;
-	invalidateScope?: "game" | "all";
+  gameId: number;
+  newStatus: PlayStatus;
+  invalidateScope?: "game" | "all";
 }
 
 async function updatePlayStatus({
-	gameId,
-	newStatus,
+  gameId,
+  newStatus,
 }: UpdatePlayStatusParams): Promise<FullGameData> {
-	return gameService.updateGame(gameId, {
-		clear: newStatus,
-	});
+  return gameService.updateGame(gameId, {
+    clear: newStatus,
+  });
 }
 
 /**
@@ -56,21 +56,21 @@ async function updatePlayStatus({
  * });
  */
 export function useUpdatePlayStatus() {
-	const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
 
-	return useMutation<FullGameData, Error, UpdatePlayStatusParams>({
-		mutationFn: updatePlayStatus,
-		onSuccess: (updatedFullGame, { gameId, invalidateScope = "game" }) => {
-			patchGameCaches(queryClient, gameKeys, updatedFullGame);
+  return useMutation<FullGameData, Error, UpdatePlayStatusParams>({
+    mutationFn: updatePlayStatus,
+    onSuccess: (updatedFullGame, { gameId, invalidateScope = "game" }) => {
+      patchGameCaches(queryClient, gameKeys, updatedFullGame);
 
-			if (invalidateScope === "all") {
-				queryClient.invalidateQueries({
-					queryKey: playStatusKeys.all,
-				});
-			}
-			queryClient.invalidateQueries({
-				queryKey: playStatusKeys.game(gameId),
-			});
-		},
-	});
+      if (invalidateScope === "all") {
+        queryClient.invalidateQueries({
+          queryKey: playStatusKeys.all,
+        });
+      }
+      queryClient.invalidateQueries({
+        queryKey: playStatusKeys.game(gameId),
+      });
+    },
+  });
 }

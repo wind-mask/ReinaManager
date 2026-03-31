@@ -59,7 +59,7 @@
 ## 待办事项
 
 - [x] 从文件夹批量导入游戏
-- [x] 对 Linux 平台的基础支持 
+- [x] 对 Linux 平台的基础支持
 - [x] 与 Bangumi 和 VNDB 同步游戏状态
 - [ ] 美化各个页面
 
@@ -68,6 +68,7 @@
 需要从其他 galgame/视觉小说管理器迁移数据？请查看 [reina_migrator](https://github.com/huoshen80/reina_migrator) - 一个用于将其他管理器数据迁移到 ReinaManager 的工具。
 
 当前支持：
+
 - **WhiteCloud v0.4.0** 数据迁移
 
 该迁移工具可帮助您无缝转移游戏库、游玩时间记录和其他数据到 ReinaManager。
@@ -83,7 +84,9 @@
 更多内容，你可以下载最新的发布版本：[下载](https://github.com/huoshen80/ReinaManager/releases)
 
 ## 贡献
+
 ##### 开始
+
 欢迎任何形式的贡献！如果你有改进建议、发现了 bug，或希望提交 Pull Request，请按照以下步骤操作：
 
 1. Fork 本仓库，并从 `main` 分支创建新分支。
@@ -92,6 +95,7 @@
 4. 提交 Pull Request，并清晰描述你的更改内容。
 
 ##### 本地构建与运行项目
+
 1. 确保你已安装 [Node.js](https://nodejs.org/) 和 [Rust](https://www.rust-lang.org/)。
 2. 克隆仓库：
    ```bash
@@ -114,7 +118,9 @@
 感谢你为 ReinaManager 做出的所有贡献！
 
 ## 赞助
+
 如果你觉得这个项目好用，并希望支持项目的开发，可以考虑赞助。非常感谢每个支持者！
+
 - [Sponsor link](https://huoshen80.top/233.html)
 
 ## 感谢

@@ -5,43 +5,43 @@
 
 export { collectionService } from "./collectionService";
 export type {
-	AutoBackupRequest,
-	AutoBackupResult,
-	AutoBackupTrigger,
-	BackupResult,
-	ImportResult,
-	SteamLaunchTarget,
-	SteamLaunchTargetScanResult,
+  AutoBackupRequest,
+  AutoBackupResult,
+  AutoBackupTrigger,
+  BackupResult,
+  ImportResult,
+  SteamLaunchTarget,
+  SteamLaunchTargetScanResult,
 } from "./fileService";
 export { fileService } from "./fileService";
 // 导出所有服务
 export { gameService } from "./gameService";
 export {
-	type GameInstallMetadataRequestedEvent,
-	type GameInstallResultV1,
-	type GameInstallStage,
-	type GameInstallTask,
-	type InstallCompletedEvent,
-	type InstallFailedEvent,
-	type InstallRequest,
-	isGameInstallTask,
-	type Task,
-	type TaskProgressEvent,
-	type TaskStatus,
-	taskService,
+  type GameInstallMetadataRequestedEvent,
+  type GameInstallResultV1,
+  type GameInstallStage,
+  type GameInstallTask,
+  type InstallCompletedEvent,
+  type InstallFailedEvent,
+  type InstallRequest,
+  isGameInstallTask,
+  type Task,
+  type TaskProgressEvent,
+  type TaskStatus,
+  taskService,
 } from "./installService";
 export type {
-	RestoreBackupResult,
-	SavedataBackupDeleteResult,
-	SavedataBackupDeleteStatus,
+  RestoreBackupResult,
+  SavedataBackupDeleteResult,
+  SavedataBackupDeleteStatus,
 } from "./savedataService";
 export { savedataService } from "./savedataService";
 export type {
-	ProxyConfig,
-	SavedataBackupMigrationFailure,
-	SavedataBackupMigrationStatus,
-	SavedataBackupRootMigrationResult,
-	UserSettings,
+  ProxyConfig,
+  SavedataBackupMigrationFailure,
+  SavedataBackupMigrationStatus,
+  SavedataBackupRootMigrationResult,
+  UserSettings,
 } from "./settingsService";
 export { settingsService } from "./settingsService";
 export { statsService } from "./statsService";

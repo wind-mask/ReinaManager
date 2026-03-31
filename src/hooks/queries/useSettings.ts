@@ -5,11 +5,11 @@
  */
 
 import {
-	type QueryClient,
-	queryOptions,
-	useMutation,
-	useQuery,
-	useQueryClient,
+  type QueryClient,
+  queryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
 } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { fetchCurrentUserProfile } from "@/metadata/api/bgm";
@@ -27,25 +27,23 @@ import { saveDataKeys } from "./useSavedata";
 // ============================================================================
 
 export const settingsKeys = {
-	all: ["settings"] as const,
-	allSettings: () => [...settingsKeys.all, "allSettings"] as const,
-	bgmCurrentUserProfile: () =>
-		[...settingsKeys.all, "bgmCurrentUserProfile"] as const,
-	bgmCurrentUserProfileByToken: (token: string) =>
-		[...settingsKeys.bgmCurrentUserProfile(), token] as const,
-	hikarinagiCurrentUserProfile: () =>
-		[...settingsKeys.all, "hikarinagiCurrentUserProfile"] as const,
-	hikarinagiCurrentUserProfileByToken: (token: string) =>
-		[...settingsKeys.hikarinagiCurrentUserProfile(), token] as const,
-	vndbCurrentUserProfile: () =>
-		[...settingsKeys.all, "vndbCurrentUserProfile"] as const,
-	vndbCurrentUserProfileByToken: (token: string) =>
-		[...settingsKeys.vndbCurrentUserProfile(), token] as const,
-	logLevel: () => [...settingsKeys.all, "logLevel"] as const,
+  all: ["settings"] as const,
+  allSettings: () => [...settingsKeys.all, "allSettings"] as const,
+  bgmCurrentUserProfile: () => [...settingsKeys.all, "bgmCurrentUserProfile"] as const,
+  bgmCurrentUserProfileByToken: (token: string) =>
+    [...settingsKeys.bgmCurrentUserProfile(), token] as const,
+  hikarinagiCurrentUserProfile: () =>
+    [...settingsKeys.all, "hikarinagiCurrentUserProfile"] as const,
+  hikarinagiCurrentUserProfileByToken: (token: string) =>
+    [...settingsKeys.hikarinagiCurrentUserProfile(), token] as const,
+  vndbCurrentUserProfile: () => [...settingsKeys.all, "vndbCurrentUserProfile"] as const,
+  vndbCurrentUserProfileByToken: (token: string) =>
+    [...settingsKeys.vndbCurrentUserProfile(), token] as const,
+  logLevel: () => [...settingsKeys.all, "logLevel"] as const,
 };
 
 type SettingsQueryOptions = {
-	enabled?: boolean;
+  enabled?: boolean;
 };
 
 // ============================================================================
@@ -53,18 +51,18 @@ type SettingsQueryOptions = {
 // ============================================================================
 
 function allSettingsQueryOptions() {
-	return queryOptions({
-		queryKey: settingsKeys.allSettings(),
-		queryFn: () => settingsService.getAllSettings(),
-	});
+  return queryOptions({
+    queryKey: settingsKeys.allSettings(),
+    queryFn: () => settingsService.getAllSettings(),
+  });
 }
 
 function bgmCurrentUserProfileQueryOptions(token: string) {
-	return queryOptions({
-		queryKey: settingsKeys.bgmCurrentUserProfileByToken(token),
-		queryFn: () => fetchCurrentUserProfile(token, getNetworkRequestContext()),
-		...remoteQueryOptions,
-	});
+  return queryOptions({
+    queryKey: settingsKeys.bgmCurrentUserProfileByToken(token),
+    queryFn: () => fetchCurrentUserProfile(token, getNetworkRequestContext()),
+    ...remoteQueryOptions,
+  });
 }
 
 // ============================================================================
@@ -76,14 +74,11 @@ function bgmCurrentUserProfileQueryOptions(token: string) {
  * 非组件环境也应优先调用这里，以便复用缓存与失效策略
  */
 export function fetchAllSettings(queryClient: QueryClient) {
-	return queryClient.fetchQuery(allSettingsQueryOptions());
+  return queryClient.fetchQuery(allSettingsQueryOptions());
 }
 
-export function fetchBgmCurrentUserProfile(
-	queryClient: QueryClient,
-	token: string,
-) {
-	return queryClient.fetchQuery(bgmCurrentUserProfileQueryOptions(token));
+export function fetchBgmCurrentUserProfile(queryClient: QueryClient, token: string) {
+  return queryClient.fetchQuery(bgmCurrentUserProfileQueryOptions(token));
 }
 
 // ============================================================================
@@ -94,76 +89,70 @@ export function fetchBgmCurrentUserProfile(
  * 获取当前 VNDB Token 对应的用户资料
  */
 export function useVndbCurrentUserProfile(options?: SettingsQueryOptions) {
-	const { data: settings } = useAllSettings(options);
-	const vndbToken = settings?.vndb_token ?? "";
+  const { data: settings } = useAllSettings(options);
+  const vndbToken = settings?.vndb_token ?? "";
 
-	return useQuery({
-		queryKey: settingsKeys.vndbCurrentUserProfileByToken(vndbToken),
-		queryFn: () =>
-			fetchVndbCurrentUserProfile(vndbToken, getNetworkRequestContext()),
-		enabled: (options?.enabled ?? true) && Boolean(vndbToken),
-		...remoteQueryOptions,
-	});
+  return useQuery({
+    queryKey: settingsKeys.vndbCurrentUserProfileByToken(vndbToken),
+    queryFn: () => fetchVndbCurrentUserProfile(vndbToken, getNetworkRequestContext()),
+    enabled: (options?.enabled ?? true) && Boolean(vndbToken),
+    ...remoteQueryOptions,
+  });
 }
 
 /**
  * 获取当前 Hikarinagi 用户资料
  */
-export function useHikarinagiCurrentUserProfile(
-	options?: SettingsQueryOptions,
-) {
-	const { data: settings } = useAllSettings(options);
-	const hasAuth = Boolean(settings?.hikarinagi_auth?.access_token);
+export function useHikarinagiCurrentUserProfile(options?: SettingsQueryOptions) {
+  const { data: settings } = useAllSettings(options);
+  const hasAuth = Boolean(settings?.hikarinagi_auth?.access_token);
 
-	return useQuery({
-		queryKey: settingsKeys.hikarinagiCurrentUserProfile(),
-		queryFn: () =>
-			withHikarinagiAuth(async (token) => {
-				if (!token) return null;
-				return fetchHikarinagiCurrentUserProfile(
-					token,
-					getNetworkRequestContext(),
-				);
-			}),
-		enabled: (options?.enabled ?? true) && hasAuth,
-		...remoteQueryOptions,
-	});
+  return useQuery({
+    queryKey: settingsKeys.hikarinagiCurrentUserProfile(),
+    queryFn: () =>
+      withHikarinagiAuth(async (token) => {
+        if (!token) return null;
+        return fetchHikarinagiCurrentUserProfile(token, getNetworkRequestContext());
+      }),
+    enabled: (options?.enabled ?? true) && hasAuth,
+    ...remoteQueryOptions,
+  });
 }
 
 /**
  * 获取当前日志级别
  */
 export function useLogLevel(options?: SettingsQueryOptions) {
-	return useQuery({
-		queryKey: settingsKeys.logLevel(),
-		queryFn: () => settingsService.getLogLevel(),
-		enabled: options?.enabled,
-	});
+  return useQuery({
+    queryKey: settingsKeys.logLevel(),
+    queryFn: () => settingsService.getLogLevel(),
+    enabled: options?.enabled,
+  });
 }
 
 /**
  * 获取所有设置
  */
 export function useAllSettings(options?: SettingsQueryOptions) {
-	return useQuery({
-		...allSettingsQueryOptions(),
-		enabled: options?.enabled,
-	});
+  return useQuery({
+    ...allSettingsQueryOptions(),
+    enabled: options?.enabled,
+  });
 }
 
 /**
  * 刷新所有设置缓存
  */
 export function useRefreshSettings() {
-	const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
 
-	return useCallback(
-		() =>
-			queryClient.invalidateQueries({
-				queryKey: settingsKeys.allSettings(),
-			}),
-		[queryClient],
-	);
+  return useCallback(
+    () =>
+      queryClient.invalidateQueries({
+        queryKey: settingsKeys.allSettings(),
+      }),
+    [queryClient],
+  );
 }
 
 // ============================================================================
@@ -174,71 +163,70 @@ export function useRefreshSettings() {
  * 设置日志级别
  */
 export function useSetLogLevel() {
-	const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
 
-	return useMutation({
-		mutationFn: (level: LogLevel) => settingsService.setLogLevel(level),
-		onSuccess: () => {
-			queryClient.invalidateQueries({
-				queryKey: settingsKeys.logLevel(),
-			});
-		},
-	});
+  return useMutation({
+    mutationFn: (level: LogLevel) => settingsService.setLogLevel(level),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: settingsKeys.logLevel(),
+      });
+    },
+  });
 }
 
 /**
  * 批量更新设置
  */
 export function useUpdateSettings() {
-	const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
 
-	return useMutation({
-		mutationFn: (updates: UpdateSettingsParams) =>
-			settingsService.updateSettings(updates),
-		onSuccess: async (_data, updates) => {
-			const invalidations = [
-				queryClient.invalidateQueries({
-					queryKey: settingsKeys.allSettings(),
-				}),
-			];
+  return useMutation({
+    mutationFn: (updates: UpdateSettingsParams) => settingsService.updateSettings(updates),
+    onSuccess: async (_data, updates) => {
+      const invalidations = [
+        queryClient.invalidateQueries({
+          queryKey: settingsKeys.allSettings(),
+        }),
+      ];
 
-			if (updates.bgmAuth !== undefined) {
-				invalidations.push(
-					queryClient.invalidateQueries({
-						queryKey: settingsKeys.bgmCurrentUserProfile(),
-					}),
-				);
-			}
+      if (updates.bgmAuth !== undefined) {
+        invalidations.push(
+          queryClient.invalidateQueries({
+            queryKey: settingsKeys.bgmCurrentUserProfile(),
+          }),
+        );
+      }
 
-			if (updates.vndbToken !== undefined) {
-				invalidations.push(
-					queryClient.invalidateQueries({
-						queryKey: settingsKeys.vndbCurrentUserProfile(),
-					}),
-				);
-			}
+      if (updates.vndbToken !== undefined) {
+        invalidations.push(
+          queryClient.invalidateQueries({
+            queryKey: settingsKeys.vndbCurrentUserProfile(),
+          }),
+        );
+      }
 
-			await Promise.all(invalidations);
-		},
-	});
+      await Promise.all(invalidations);
+    },
+  });
 }
 
 /** 原子迁移存档备份目录并更新配置。 */
 export function useChangeSavedataBackupRoot() {
-	const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
 
-	return useMutation({
-		mutationFn: ({ newPath }: { newPath: string }) =>
-			settingsService.changeSavedataBackupRoot(newPath),
-		onSuccess: () => {
-			void Promise.all([
-				queryClient.invalidateQueries({
-					queryKey: settingsKeys.allSettings(),
-				}),
-				queryClient.invalidateQueries({
-					queryKey: saveDataKeys.all,
-				}),
-			]);
-		},
-	});
+  return useMutation({
+    mutationFn: ({ newPath }: { newPath: string }) =>
+      settingsService.changeSavedataBackupRoot(newPath),
+    onSuccess: () => {
+      void Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: settingsKeys.allSettings(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: saveDataKeys.all,
+        }),
+      ]);
+    },
+  });
 }

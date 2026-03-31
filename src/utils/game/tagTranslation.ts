@@ -10,20 +10,15 @@ import vndbTagTranslationsRaw from "@/locales/_VndbTag_zh_CN.json";
 
 // 过滤掉元数据字段，只保留翻译内容
 const vndbTagTranslations = Object.fromEntries(
-	Object.entries(vndbTagTranslationsRaw).filter(
-		([key]) => !key.startsWith("_"),
-	),
+  Object.entries(vndbTagTranslationsRaw).filter(([key]) => !key.startsWith("_")),
 ) as Record<string, string>;
 
-export function getTagDisplayName(
-	tag: string,
-	enableTranslation: boolean,
-): string {
-	if (!enableTranslation) {
-		return tag;
-	}
+export function getTagDisplayName(tag: string, enableTranslation: boolean): string {
+  if (!enableTranslation) {
+    return tag;
+  }
 
-	return vndbTagTranslations[tag] ?? tag;
+  return vndbTagTranslations[tag] ?? tag;
 }
 
 /**
@@ -32,7 +27,7 @@ export function getTagDisplayName(
  * @returns 翻译后的中文TAG，如果没有找到翻译则返回原TAG
  */
 export function translateTag(tag: string): string {
-	return getTagDisplayName(tag, true);
+  return getTagDisplayName(tag, true);
 }
 
 /**
@@ -41,15 +36,12 @@ export function translateTag(tag: string): string {
  * @param enableTranslation 是否启用翻译，默认为true
  * @returns 翻译后的TAG数组
  */
-export function translateTags(
-	tags: string[],
-	enableTranslation: boolean = true,
-): string[] {
-	if (!enableTranslation || !tags) {
-		return tags || [];
-	}
+export function translateTags(tags: string[], enableTranslation: boolean = true): string[] {
+  if (!enableTranslation || !tags) {
+    return tags || [];
+  }
 
-	return tags.map((tag) => getTagDisplayName(tag, true));
+  return tags.map((tag) => getTagDisplayName(tag, true));
 }
 
 /**
@@ -57,5 +49,5 @@ export function translateTags(
  * @returns VNDB TAG翻译对象
  */
 export function getTagTranslations(): Record<string, string> {
-	return vndbTagTranslations;
+  return vndbTagTranslations;
 }

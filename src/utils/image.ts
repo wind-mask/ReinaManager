@@ -7,51 +7,51 @@ export const BANGUMI_IMAGE_PROXY_PREFIX = "https://imagesp.yurari.moe/bangumi/";
 export const VNDB_IMAGE_PROXY_PREFIX = "https://imagesp.yurari.moe/vndb/";
 
 export function getProxyCacheKey(proxyUrl: string): string {
-	let hash = 2166136261;
-	for (let index = 0; index < proxyUrl.length; index += 1) {
-		hash ^= proxyUrl.charCodeAt(index);
-		hash = Math.imul(hash, 16777619);
-	}
-	return (hash >>> 0).toString(36);
+  let hash = 2166136261;
+  for (let index = 0; index < proxyUrl.length; index += 1) {
+    hash ^= proxyUrl.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
 }
 
 export function buildProxyImageUrl(imageUrl: string, proxyUrl: string): string {
-	const params = new URLSearchParams({
-		url: imageUrl,
-		proxy: getProxyCacheKey(proxyUrl),
-	});
-	return buildTauriProtocolUrl("reina-image", "/", params);
+  const params = new URLSearchParams({
+    url: imageUrl,
+    proxy: getProxyCacheKey(proxyUrl),
+  });
+  return buildTauriProtocolUrl("reina-image", "/", params);
 }
 
 function canUseBackendProxy(parsed: URL, proxyUrl?: string | null): boolean {
-	return (
-		Boolean(proxyUrl?.trim()) &&
-		isTauri() &&
-		parsed.hostname !== "localhost" &&
-		!parsed.hostname.endsWith(".localhost")
-	);
+  return (
+    Boolean(proxyUrl?.trim()) &&
+    isTauri() &&
+    parsed.hostname !== "localhost" &&
+    !parsed.hostname.endsWith(".localhost")
+  );
 }
 
 export function getBackendProxyImageUrl(
-	imageUrl: string,
-	proxyUrl?: string | null,
+  imageUrl: string,
+  proxyUrl?: string | null,
 ): string | undefined {
-	let parsed: URL;
-	try {
-		parsed = new URL(imageUrl);
-	} catch {
-		return undefined;
-	}
+  let parsed: URL;
+  try {
+    parsed = new URL(imageUrl);
+  } catch {
+    return undefined;
+  }
 
-	if (
-		!["http:", "https:"].includes(parsed.protocol) ||
-		!canUseBackendProxy(parsed, proxyUrl) ||
-		!proxyUrl
-	) {
-		return undefined;
-	}
+  if (
+    !["http:", "https:"].includes(parsed.protocol) ||
+    !canUseBackendProxy(parsed, proxyUrl) ||
+    !proxyUrl
+  ) {
+    return undefined;
+  }
 
-	return buildProxyImageUrl(imageUrl, proxyUrl);
+  return buildProxyImageUrl(imageUrl, proxyUrl);
 }
 
 /**
@@ -64,53 +64,52 @@ export function getBackendProxyImageUrl(
  * 4. 若配置了应用内代理且处于 Tauri 环境下，最后追加 reina-image 协议作为 Rust 代理终极兜底。
  */
 export function getImageCandidates(
-	imageUrl: string | null | undefined,
-	proxyUrl?: string | null,
-	isSystemProxyActive?: boolean,
+  imageUrl: string | null | undefined,
+  proxyUrl?: string | null,
+  isSystemProxyActive?: boolean,
 ): string[] {
-	if (!imageUrl) return [];
+  if (!imageUrl) return [];
 
-	let parsed: URL;
-	try {
-		parsed = new URL(imageUrl);
-	} catch {
-		// 非合法 URL（如本地路径、相对路径或 data URI 等），直接返回原字符串
-		return [imageUrl];
-	}
+  let parsed: URL;
+  try {
+    parsed = new URL(imageUrl);
+  } catch {
+    // 非合法 URL（如本地路径、相对路径或 data URI 等），直接返回原字符串
+    return [imageUrl];
+  }
 
-	if (!["http:", "https:"].includes(parsed.protocol)) {
-		return [imageUrl];
-	}
+  if (!["http:", "https:"].includes(parsed.protocol)) {
+    return [imageUrl];
+  }
 
-	const hostname = parsed.hostname;
-	const candidates: string[] = [];
-	const hasEffectiveProxy =
-		Boolean(proxyUrl?.trim()) || Boolean(isSystemProxyActive);
+  const hostname = parsed.hostname;
+  const candidates: string[] = [];
+  const hasEffectiveProxy = Boolean(proxyUrl?.trim()) || Boolean(isSystemProxyActive);
 
-	if (hostname === BANGUMI_IMAGE_HOST) {
-		const mirrorUrl = `${BANGUMI_IMAGE_PROXY_PREFIX}${imageUrl}`;
-		// 镜像优先 -> 原站
-		candidates.push(mirrorUrl, imageUrl);
-	} else if (hostname === VNDB_IMAGE_HOST) {
-		const mirrorUrl = `${VNDB_IMAGE_PROXY_PREFIX}${imageUrl}`;
-		if (hasEffectiveProxy) {
-			// 有代理：镜像优先 -> 原站
-			candidates.push(mirrorUrl, imageUrl);
-		} else {
-			// 无代理：原站优先 -> 镜像
-			candidates.push(imageUrl, mirrorUrl);
-		}
-	} else {
-		candidates.push(imageUrl);
-	}
+  if (hostname === BANGUMI_IMAGE_HOST) {
+    const mirrorUrl = `${BANGUMI_IMAGE_PROXY_PREFIX}${imageUrl}`;
+    // 镜像优先 -> 原站
+    candidates.push(mirrorUrl, imageUrl);
+  } else if (hostname === VNDB_IMAGE_HOST) {
+    const mirrorUrl = `${VNDB_IMAGE_PROXY_PREFIX}${imageUrl}`;
+    if (hasEffectiveProxy) {
+      // 有代理：镜像优先 -> 原站
+      candidates.push(mirrorUrl, imageUrl);
+    } else {
+      // 无代理：原站优先 -> 镜像
+      candidates.push(imageUrl, mirrorUrl);
+    }
+  } else {
+    candidates.push(imageUrl);
+  }
 
-	// 如果配置了代理，在最后加上后端代理协议兜底
-	if (canUseBackendProxy(parsed, proxyUrl) && proxyUrl) {
-		const proxyProtocolUrl = buildProxyImageUrl(imageUrl, proxyUrl);
-		if (!candidates.includes(proxyProtocolUrl)) {
-			candidates.push(proxyProtocolUrl);
-		}
-	}
+  // 如果配置了代理，在最后加上后端代理协议兜底
+  if (canUseBackendProxy(parsed, proxyUrl) && proxyUrl) {
+    const proxyProtocolUrl = buildProxyImageUrl(imageUrl, proxyUrl);
+    if (!candidates.includes(proxyProtocolUrl)) {
+      candidates.push(proxyProtocolUrl);
+    }
+  }
 
-	return candidates;
+  return candidates;
 }

@@ -1,253 +1,235 @@
 import { useMutation } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
+import { useAddGame, useAllGames, useBatchAddGames } from "@/hooks/queries/useGames";
 import {
-	useAddGame,
-	useAllGames,
-	useBatchAddGames,
-} from "@/hooks/queries/useGames";
-import {
-	type BatchImportGameCandidate,
-	buildBulkImportGameData,
-	buildInsertGameData,
-	type GameIdentityPayload,
-	type GameRuntimeInsertOptions,
-	getGameIdentityKeys,
+  type BatchImportGameCandidate,
+  buildBulkImportGameData,
+  buildInsertGameData,
+  type GameIdentityPayload,
+  type GameRuntimeInsertOptions,
+  getGameIdentityKeys,
 } from "@/metadata/data/metadata";
 import { getSourceIdFromRecords } from "@/metadata/sourceRecord";
 import i18n from "@/providers/i18n";
 import { createCloudPlayStatusContext } from "@/services/cloudPlayStatus";
-import type {
-	BatchOperationResult,
-	GameMetadataDraft,
-	InsertGameParams,
-} from "@/types";
+import type { BatchOperationResult, GameMetadataDraft, InsertGameParams } from "@/types";
 import type { PlayStatus } from "@/types/collection";
 import { getUserErrorMessage } from "@/utils/errors";
 
 export interface BulkImportActionInput extends BatchImportGameCandidate {
-	status?: string;
-	playStatus?: PlayStatus;
+  status?: string;
+  playStatus?: PlayStatus;
 }
 
 export interface BulkImportPreparationError {
-	itemIndex: number;
-	message: string;
+  itemIndex: number;
+  message: string;
 }
 
 export interface BulkImportPendingPayload {
-	itemIndex: number;
-	payloadIndex: number;
+  itemIndex: number;
+  payloadIndex: number;
 }
 
 export interface BulkImportActionResult {
-	pendingPayloads: BulkImportPendingPayload[];
-	duplicateItemIndices: number[];
-	preparationErrors: BulkImportPreparationError[];
-	batchResult?: BatchOperationResult;
-	mutationError?: string;
+  pendingPayloads: BulkImportPendingPayload[];
+  duplicateItemIndices: number[];
+  preparationErrors: BulkImportPreparationError[];
+  batchResult?: BatchOperationResult;
+  mutationError?: string;
 }
 
 export function useGameDuplicateChecker() {
-	const { data: allGames = [] } = useAllGames();
-	const existingGameKeys = useMemo(() => {
-		const keys = new Set<string>();
-		for (const game of allGames) {
-			for (const key of getGameIdentityKeys(game)) {
-				keys.add(key);
-			}
-		}
-		return keys;
-	}, [allGames]);
+  const { data: allGames = [] } = useAllGames();
+  const existingGameKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const game of allGames) {
+      for (const key of getGameIdentityKeys(game)) {
+        keys.add(key);
+      }
+    }
+    return keys;
+  }, [allGames]);
 
-	const checkGameExists = useCallback(
-		(gameData: GameIdentityPayload) => {
-			return getGameIdentityKeys(gameData).some((key) =>
-				existingGameKeys.has(key),
-			);
-		},
-		[existingGameKeys],
-	);
+  const checkGameExists = useCallback(
+    (gameData: GameIdentityPayload) => {
+      return getGameIdentityKeys(gameData).some((key) => existingGameKeys.has(key));
+    },
+    [existingGameKeys],
+  );
 
-	return {
-		checkGameExists,
-	};
+  return {
+    checkGameExists,
+  };
 }
 
 export function useSingleGameAddActions() {
-	const addGameMutation = useAddGame();
-	const { checkGameExists } = useGameDuplicateChecker();
-	const metadataAddActionMutation = useMutation({
-		mutationFn: async ({
-			gameData,
-			runtimeOptions,
-		}: {
-			gameData: GameMetadataDraft;
-			runtimeOptions?: GameRuntimeInsertOptions;
-		}) => {
-			const insertData = await buildInsertGameData(gameData, runtimeOptions);
+  const addGameMutation = useAddGame();
+  const { checkGameExists } = useGameDuplicateChecker();
+  const metadataAddActionMutation = useMutation({
+    mutationFn: async ({
+      gameData,
+      runtimeOptions,
+    }: {
+      gameData: GameMetadataDraft;
+      runtimeOptions?: GameRuntimeInsertOptions;
+    }) => {
+      const insertData = await buildInsertGameData(gameData, runtimeOptions);
 
-			if (checkGameExists(insertData)) {
-				throw new Error(i18n.t("components.AddModal.gameExists", "游戏已存在"));
-			}
+      if (checkGameExists(insertData)) {
+        throw new Error(i18n.t("components.AddModal.gameExists", "游戏已存在"));
+      }
 
-			return addGameMutation.mutateAsync(insertData);
-		},
-	});
+      return addGameMutation.mutateAsync(insertData);
+    },
+  });
 
-	const addGameFromMetadata = useCallback(
-		async (
-			gameData: GameMetadataDraft,
-			runtimeOptions?: GameRuntimeInsertOptions,
-		) => {
-			return metadataAddActionMutation.mutateAsync({
-				gameData,
-				runtimeOptions,
-			});
-		},
-		[metadataAddActionMutation],
-	);
+  const addGameFromMetadata = useCallback(
+    async (gameData: GameMetadataDraft, runtimeOptions?: GameRuntimeInsertOptions) => {
+      return metadataAddActionMutation.mutateAsync({
+        gameData,
+        runtimeOptions,
+      });
+    },
+    [metadataAddActionMutation],
+  );
 
-	return {
-		addGameFromMetadata,
-		isAddingGame: metadataAddActionMutation.isPending,
-	};
+  return {
+    addGameFromMetadata,
+    isAddingGame: metadataAddActionMutation.isPending,
+  };
 }
 
 export function useBulkGameAddActions() {
-	const batchAddGamesMutation = useBatchAddGames();
-	const { checkGameExists } = useGameDuplicateChecker();
-	const [isPreparingGames, setIsPreparingGames] = useState(false);
+  const batchAddGamesMutation = useBatchAddGames();
+  const { checkGameExists } = useGameDuplicateChecker();
+  const [isPreparingGames, setIsPreparingGames] = useState(false);
 
-	const addGamesFromBulkImport = useCallback(
-		async (items: BulkImportActionInput[]): Promise<BulkImportActionResult> => {
-			setIsPreparingGames(true);
-			try {
-				const payloads: InsertGameParams[] = [];
-				const queuedIds = new Set<string>();
-				const duplicateItemIndices: number[] = [];
-				const preparationErrors: BulkImportPreparationError[] = [];
-				const pendingPayloads: BulkImportPendingPayload[] = [];
-				// 云端游玩状态同步只预取已接入账号的数据源。
-				const cloudBgmIds = new Set<string>();
-				const cloudVndbIds = new Set<string>();
-				const cloudHikarinagiIds = new Set<string>();
-				for (const item of items) {
-					if (item.status === "imported") {
-						continue;
-					}
-					if (item.skipCloudStatusLookup) {
-						continue;
-					}
-					const bgmId = item.matchedData
-						? getSourceIdFromRecords(item.matchedData, "bgm")
-						: undefined;
-					const vndbId = item.matchedData
-						? getSourceIdFromRecords(item.matchedData, "vndb")
-						: undefined;
-					const hikarinagiId = item.matchedData
-						? getSourceIdFromRecords(item.matchedData, "hikarinagi")
-						: undefined;
-					if (bgmId) {
-						cloudBgmIds.add(bgmId);
-					}
-					if (vndbId) {
-						cloudVndbIds.add(vndbId);
-					}
-					if (hikarinagiId) {
-						cloudHikarinagiIds.add(hikarinagiId);
-					}
-				}
-				const cloudStatusContext = await createCloudPlayStatusContext({
-					bgmIds: cloudBgmIds,
-					vndbIds: cloudVndbIds,
-					hikarinagiIds: cloudHikarinagiIds,
-				});
+  const addGamesFromBulkImport = useCallback(
+    async (items: BulkImportActionInput[]): Promise<BulkImportActionResult> => {
+      setIsPreparingGames(true);
+      try {
+        const payloads: InsertGameParams[] = [];
+        const queuedIds = new Set<string>();
+        const duplicateItemIndices: number[] = [];
+        const preparationErrors: BulkImportPreparationError[] = [];
+        const pendingPayloads: BulkImportPendingPayload[] = [];
+        // 云端游玩状态同步只预取已接入账号的数据源。
+        const cloudBgmIds = new Set<string>();
+        const cloudVndbIds = new Set<string>();
+        const cloudHikarinagiIds = new Set<string>();
+        for (const item of items) {
+          if (item.status === "imported") {
+            continue;
+          }
+          if (item.skipCloudStatusLookup) {
+            continue;
+          }
+          const bgmId = item.matchedData
+            ? getSourceIdFromRecords(item.matchedData, "bgm")
+            : undefined;
+          const vndbId = item.matchedData
+            ? getSourceIdFromRecords(item.matchedData, "vndb")
+            : undefined;
+          const hikarinagiId = item.matchedData
+            ? getSourceIdFromRecords(item.matchedData, "hikarinagi")
+            : undefined;
+          if (bgmId) {
+            cloudBgmIds.add(bgmId);
+          }
+          if (vndbId) {
+            cloudVndbIds.add(vndbId);
+          }
+          if (hikarinagiId) {
+            cloudHikarinagiIds.add(hikarinagiId);
+          }
+        }
+        const cloudStatusContext = await createCloudPlayStatusContext({
+          bgmIds: cloudBgmIds,
+          vndbIds: cloudVndbIds,
+          hikarinagiIds: cloudHikarinagiIds,
+        });
 
-				for (let index = 0; index < items.length; index++) {
-					if (items[index].status === "imported") {
-						continue;
-					}
+        for (let index = 0; index < items.length; index++) {
+          if (items[index].status === "imported") {
+            continue;
+          }
 
-					let payload: InsertGameParams;
-					try {
-						payload = await buildBulkImportGameData(
-							items[index],
-							cloudStatusContext,
-						);
-					} catch (error) {
-						const message = getUserErrorMessage(
-							error,
-							i18n.t.bind(i18n),
-							i18n.t("errors.unknownError", "未知错误"),
-						);
-						preparationErrors.push({
-							itemIndex: index,
-							message,
-						});
-						continue;
-					}
+          let payload: InsertGameParams;
+          try {
+            payload = await buildBulkImportGameData(items[index], cloudStatusContext);
+          } catch (error) {
+            const message = getUserErrorMessage(
+              error,
+              i18n.t.bind(i18n),
+              i18n.t("errors.unknownError", "未知错误"),
+            );
+            preparationErrors.push({
+              itemIndex: index,
+              message,
+            });
+            continue;
+          }
 
-					const identityKeys = getGameIdentityKeys(payload);
-					const existsInLibrary = checkGameExists(payload);
-					const duplicatedInCurrentBatch = identityKeys.some((key) =>
-						queuedIds.has(key),
-					);
+          const identityKeys = getGameIdentityKeys(payload);
+          const existsInLibrary = checkGameExists(payload);
+          const duplicatedInCurrentBatch = identityKeys.some((key) => queuedIds.has(key));
 
-					if (existsInLibrary || duplicatedInCurrentBatch) {
-						duplicateItemIndices.push(index);
-						continue;
-					}
+          if (existsInLibrary || duplicatedInCurrentBatch) {
+            duplicateItemIndices.push(index);
+            continue;
+          }
 
-					for (const key of identityKeys) {
-						queuedIds.add(key);
-					}
+          for (const key of identityKeys) {
+            queuedIds.add(key);
+          }
 
-					pendingPayloads.push({
-						itemIndex: index,
-						payloadIndex: payloads.length,
-					});
-					payloads.push(payload);
-				}
+          pendingPayloads.push({
+            itemIndex: index,
+            payloadIndex: payloads.length,
+          });
+          payloads.push(payload);
+        }
 
-				if (payloads.length === 0) {
-					return {
-						pendingPayloads,
-						duplicateItemIndices,
-						preparationErrors,
-					};
-				}
+        if (payloads.length === 0) {
+          return {
+            pendingPayloads,
+            duplicateItemIndices,
+            preparationErrors,
+          };
+        }
 
-				try {
-					const batchResult = await batchAddGamesMutation.mutateAsync(payloads);
-					return {
-						pendingPayloads,
-						duplicateItemIndices,
-						preparationErrors,
-						batchResult,
-					};
-				} catch (error) {
-					const mutationError = getUserErrorMessage(
-						error,
-						i18n.t.bind(i18n),
-						i18n.t("errors.unknownError", "未知错误"),
-					);
-					return {
-						pendingPayloads,
-						duplicateItemIndices,
-						preparationErrors,
-						mutationError,
-					};
-				}
-			} finally {
-				setIsPreparingGames(false);
-			}
-		},
-		[batchAddGamesMutation, checkGameExists],
-	);
+        try {
+          const batchResult = await batchAddGamesMutation.mutateAsync(payloads);
+          return {
+            pendingPayloads,
+            duplicateItemIndices,
+            preparationErrors,
+            batchResult,
+          };
+        } catch (error) {
+          const mutationError = getUserErrorMessage(
+            error,
+            i18n.t.bind(i18n),
+            i18n.t("errors.unknownError", "未知错误"),
+          );
+          return {
+            pendingPayloads,
+            duplicateItemIndices,
+            preparationErrors,
+            mutationError,
+          };
+        }
+      } finally {
+        setIsPreparingGames(false);
+      }
+    },
+    [batchAddGamesMutation, checkGameExists],
+  );
 
-	return {
-		addGamesFromBulkImport,
-		checkGameExists,
-		isAddingGames: isPreparingGames,
-	};
+  return {
+    addGamesFromBulkImport,
+    checkGameExists,
+    isAddingGames: isPreparingGames,
+  };
 }

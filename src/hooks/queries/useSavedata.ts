@@ -9,12 +9,7 @@
  * - Mutations：数据操作 hooks
  */
 
-import {
-	type QueryClient,
-	useMutation,
-	useQuery,
-	useQueryClient,
-} from "@tanstack/react-query";
+import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createGameSavedataBackup } from "@/services/fs/savedataBackup";
 import { savedataService } from "@/services/invoke";
 import type { SavedataRecord } from "@/types";
@@ -24,24 +19,24 @@ import type { SavedataRecord } from "@/types";
 // ============================================================================
 
 export const saveDataKeys = {
-	all: ["saveData"] as const,
-	backups: (gameId: number) => ["saveData", "backups", gameId] as const,
-	backupCount: (gameId: number) => ["saveData", "backupCount", gameId] as const,
+  all: ["saveData"] as const,
+  backups: (gameId: number) => ["saveData", "backups", gameId] as const,
+  backupCount: (gameId: number) => ["saveData", "backupCount", gameId] as const,
 };
 
 interface CreateBackupParams {
-	gameId: number;
-	savePath: string;
+  gameId: number;
+  savePath: string;
 }
 
 interface DeleteBackupParams {
-	gameId: number;
-	backup: SavedataRecord;
+  gameId: number;
+  backup: SavedataRecord;
 }
 
 interface RestoreBackupParams {
-	backup: SavedataRecord;
-	savePath: string;
+  backup: SavedataRecord;
+  savePath: string;
 }
 
 // ============================================================================
@@ -54,22 +49,22 @@ interface RestoreBackupParams {
  * @returns QueryResult<SavedataRecord[]>
  */
 function useSaveDataBackups(gameId: number) {
-	return useQuery({
-		queryKey: saveDataKeys.backups(gameId),
-		queryFn: async () => {
-			return savedataService.getSavedataRecords(gameId);
-		},
-		enabled: !!gameId,
-	});
+  return useQuery({
+    queryKey: saveDataKeys.backups(gameId),
+    queryFn: async () => {
+      return savedataService.getSavedataRecords(gameId);
+    },
+    enabled: !!gameId,
+  });
 }
 
 export function useSaveDataBackupCount(gameId: number) {
-	return useQuery({
-		queryKey: saveDataKeys.backupCount(gameId),
-		queryFn: async () => {
-			return savedataService.getSavedataCount(gameId);
-		},
-	});
+  return useQuery({
+    queryKey: saveDataKeys.backupCount(gameId),
+    queryFn: async () => {
+      return savedataService.getSavedataCount(gameId);
+    },
+  });
 }
 
 // ============================================================================
@@ -80,84 +75,84 @@ export function useSaveDataBackupCount(gameId: number) {
  * 创建备份并同步刷新缓存 普通异步函数
  */
 export async function createBackupAndSync(
-	queryClient: QueryClient,
-	{ gameId, savePath }: CreateBackupParams,
+  queryClient: QueryClient,
+  { gameId, savePath }: CreateBackupParams,
 ) {
-	const backupInfo = await createGameSavedataBackup(gameId, savePath);
+  const backupInfo = await createGameSavedataBackup(gameId, savePath);
 
-	await queryClient.invalidateQueries({
-		queryKey: saveDataKeys.backups(gameId),
-	});
-	await queryClient.invalidateQueries({
-		queryKey: saveDataKeys.backupCount(gameId),
-	});
+  await queryClient.invalidateQueries({
+    queryKey: saveDataKeys.backups(gameId),
+  });
+  await queryClient.invalidateQueries({
+    queryKey: saveDataKeys.backupCount(gameId),
+  });
 
-	return backupInfo;
+  return backupInfo;
 }
 
 /**
  * 创建备份
  */
 function useCreateBackup() {
-	const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
 
-	return useMutation({
-		mutationFn: async ({ gameId, savePath }: CreateBackupParams) => {
-			return createBackupAndSync(queryClient, { gameId, savePath });
-		},
-	});
+  return useMutation({
+    mutationFn: async ({ gameId, savePath }: CreateBackupParams) => {
+      return createBackupAndSync(queryClient, { gameId, savePath });
+    },
+  });
 }
 
 /**
  * 删除备份
  */
 function useDeleteBackup() {
-	const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
 
-	return useMutation({
-		mutationFn: async ({ backup }: DeleteBackupParams) => {
-			return savedataService.deleteBackup(backup.id);
-		},
-		onSettled: (_, __, variables) => {
-			// 无论成功失败都刷新备份列表
-			queryClient.invalidateQueries({
-				queryKey: saveDataKeys.backups(variables.gameId),
-			});
-			queryClient.invalidateQueries({
-				queryKey: saveDataKeys.backupCount(variables.gameId),
-			});
-		},
-	});
+  return useMutation({
+    mutationFn: async ({ backup }: DeleteBackupParams) => {
+      return savedataService.deleteBackup(backup.id);
+    },
+    onSettled: (_, __, variables) => {
+      // 无论成功失败都刷新备份列表
+      queryClient.invalidateQueries({
+        queryKey: saveDataKeys.backups(variables.gameId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: saveDataKeys.backupCount(variables.gameId),
+      });
+    },
+  });
 }
 
 function useDeleteBackupRecord() {
-	const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
 
-	return useMutation({
-		mutationFn: async ({ backup }: DeleteBackupParams) => {
-			return savedataService.deleteBackupRecord(backup.id);
-		},
-		onSettled: (_, __, variables) => {
-			queryClient.invalidateQueries({
-				queryKey: saveDataKeys.backups(variables.gameId),
-			});
-			queryClient.invalidateQueries({
-				queryKey: saveDataKeys.backupCount(variables.gameId),
-			});
-		},
-	});
+  return useMutation({
+    mutationFn: async ({ backup }: DeleteBackupParams) => {
+      return savedataService.deleteBackupRecord(backup.id);
+    },
+    onSettled: (_, __, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: saveDataKeys.backups(variables.gameId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: saveDataKeys.backupCount(variables.gameId),
+      });
+    },
+  });
 }
 
 /**
  * 恢复备份
  */
 function useRestoreBackup() {
-	return useMutation({
-		mutationFn: async ({ backup, savePath }: RestoreBackupParams) => {
-			// 恢复备份，并将后端确定的实际恢复路径返回给页面
-			return savedataService.restoreBackup(backup.id, savePath);
-		},
-	});
+  return useMutation({
+    mutationFn: async ({ backup, savePath }: RestoreBackupParams) => {
+      // 恢复备份，并将后端确定的实际恢复路径返回给页面
+      return savedataService.restoreBackup(backup.id, savePath);
+    },
+  });
 }
 
 /**
@@ -165,21 +160,21 @@ function useRestoreBackup() {
  * 用于页面层单入口消费
  */
 export function useSaveDataResources(gameId: number) {
-	const backupsQuery = useSaveDataBackups(gameId);
+  const backupsQuery = useSaveDataBackups(gameId);
 
-	const createBackupMutation = useCreateBackup();
-	const deleteBackupMutation = useDeleteBackup();
-	const deleteBackupRecordMutation = useDeleteBackupRecord();
-	const restoreBackupMutation = useRestoreBackup();
+  const createBackupMutation = useCreateBackup();
+  const deleteBackupMutation = useDeleteBackup();
+  const deleteBackupRecordMutation = useDeleteBackupRecord();
+  const restoreBackupMutation = useRestoreBackup();
 
-	return {
-		// queries
-		backupList: backupsQuery.data ?? [],
+  return {
+    // queries
+    backupList: backupsQuery.data ?? [],
 
-		// mutations
-		createBackupMutation,
-		deleteBackupMutation,
-		deleteBackupRecordMutation,
-		restoreBackupMutation,
-	};
+    // mutations
+    createBackupMutation,
+    deleteBackupMutation,
+    deleteBackupRecordMutation,
+    restoreBackupMutation,
+  };
 }

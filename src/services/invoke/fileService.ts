@@ -7,235 +7,225 @@ import type { GameDirectoryScanMode, ScanResult } from "@/types";
 import { BaseService } from "./base";
 
 export interface BackupResult {
-	success: boolean;
-	path: string | null;
-	message: string;
+  success: boolean;
+  path: string | null;
+  message: string;
 }
 
 export interface ImportResult {
-	success: boolean;
-	message: string;
-	backup_path: string | null;
+  success: boolean;
+  message: string;
+  backup_path: string | null;
 }
 
 export type AutoBackupTrigger = "scheduled" | "exit";
 
 export interface AutoBackupRequest {
-	trigger: AutoBackupTrigger;
-	includeCovers: boolean;
-	maxAutoBackups: number;
+  trigger: AutoBackupTrigger;
+  includeCovers: boolean;
+  maxAutoBackups: number;
 }
 
 export interface AutoBackupResult {
-	batchId: string;
-	database: BackupResult;
-	covers: BackupResult | null;
-	warnings: string[];
+  batchId: string;
+  database: BackupResult;
+  covers: BackupResult | null;
+  warnings: string[];
 }
 
 export interface PortableModeResult {
-	is_portable: boolean;
+  is_portable: boolean;
 }
 
 export type UserPathKind = "file" | "directory" | "missing" | "other";
 
 export interface UserPathInspection {
-	resolved_path: string;
-	kind: UserPathKind;
+  resolved_path: string;
+  kind: UserPathKind;
 }
 
 export interface DroppedLocalPathResult {
-	kind:
-		| "executable"
-		| "single_executable"
-		| "multiple_executables"
-		| "no_executable"
-		| "invalid";
-	path: string | null;
-	directory: string | null;
+  kind: "executable" | "single_executable" | "multiple_executables" | "no_executable" | "invalid";
+  path: string | null;
+  directory: string | null;
 }
 
 export interface SteamLaunchTarget {
-	steam_launch_id: string;
-	name: string;
-	localpath?: string;
-	executable?: string;
+  steam_launch_id: string;
+  name: string;
+  localpath?: string;
+  executable?: string;
 }
 
 export interface SteamLaunchTargetScanResult {
-	targets: SteamLaunchTarget[];
-	warnings: string[];
+  targets: SteamLaunchTarget[];
+  warnings: string[];
 }
 
 export interface SteamLaunchTargetScanOptions {
-	excludeExisting?: boolean;
+  excludeExisting?: boolean;
 }
 
 export interface BulkImportPathCandidate {
-	name: string;
-	path?: string;
-	executables: string[];
-	selected_exe?: string;
-	launch_type?: "steam";
-	steam_launch_id?: string;
+  name: string;
+  path?: string;
+  executables: string[];
+  selected_exe?: string;
+  launch_type?: "steam";
+  steam_launch_id?: string;
 }
 
 export type BulkImportPathIssueCode =
-	| "unsupported_path"
-	| "read_failed"
-	| "invalid_steam_shortcut"
-	| "steam_target_not_found"
-	| "already_in_library"
-	| "duplicate_in_batch";
+  | "unsupported_path"
+  | "read_failed"
+  | "invalid_steam_shortcut"
+  | "steam_target_not_found"
+  | "already_in_library"
+  | "duplicate_in_batch";
 
 export interface BulkImportPathIssue {
-	path: string;
-	code: BulkImportPathIssueCode;
-	message: string;
+  path: string;
+  code: BulkImportPathIssueCode;
+  message: string;
 }
 
 export interface BulkImportPathResult {
-	candidates: BulkImportPathCandidate[];
-	issues: BulkImportPathIssue[];
+  candidates: BulkImportPathCandidate[];
+  issues: BulkImportPathIssue[];
 }
 
 class FileService extends BaseService {
-	/** 解析用户配置路径并读取当前文件系统状态。 */
-	async inspectUserPath(path: string): Promise<UserPathInspection> {
-		return this.invoke<UserPathInspection>("inspect_user_path", { path });
-	}
-	/** 扫描本机可用的 Steam 启动目标。 */
-	async scanSteamLaunchTargets(
-		options: SteamLaunchTargetScanOptions = {},
-	): Promise<SteamLaunchTargetScanResult> {
-		const { excludeExisting = false } = options;
-		return this.invoke<SteamLaunchTargetScanResult>(
-			"scan_steam_launch_targets",
-			{ excludeExisting },
-		);
-	}
+  /** 解析用户配置路径并读取当前文件系统状态。 */
+  async inspectUserPath(path: string): Promise<UserPathInspection> {
+    return this.invoke<UserPathInspection>("inspect_user_path", { path });
+  }
+  /** 扫描本机可用的 Steam 启动目标。 */
+  async scanSteamLaunchTargets(
+    options: SteamLaunchTargetScanOptions = {},
+  ): Promise<SteamLaunchTargetScanResult> {
+    const { excludeExisting = false } = options;
+    return this.invoke<SteamLaunchTargetScanResult>("scan_steam_launch_targets", {
+      excludeExisting,
+    });
+  }
 
-	/** 解析单个 Steam `.url`(`.desktop`) 快捷方式并匹配本机 Steam 库。 */
-	async resolveSteamShortcutFile(path: string): Promise<SteamLaunchTarget> {
-		return this.invoke<SteamLaunchTarget>("resolve_steam_shortcut_file", {
-			path,
-		});
-	}
+  /** 解析单个 Steam `.url`(`.desktop`) 快捷方式并匹配本机 Steam 库。 */
+  async resolveSteamShortcutFile(path: string): Promise<SteamLaunchTarget> {
+    return this.invoke<SteamLaunchTarget>("resolve_steam_shortcut_file", {
+      path,
+    });
+  }
 
-	/** 将混合拖拽路径解析为批量导入候选，并逐项返回跳过原因。 */
-	async resolveBulkImportPaths(paths: string[]): Promise<BulkImportPathResult> {
-		return this.invoke<BulkImportPathResult>("resolve_bulk_import_paths", {
-			paths,
-		});
-	}
+  /** 将混合拖拽路径解析为批量导入候选，并逐项返回跳过原因。 */
+  async resolveBulkImportPaths(paths: string[]): Promise<BulkImportPathResult> {
+    return this.invoke<BulkImportPathResult>("resolve_bulk_import_paths", {
+      paths,
+    });
+  }
 
-	/**
-	 * 扫描目录下的游戏文件夹
-	 */
-	async scanDirectoryForGames(
-		path: string,
-		maxDepth: number,
-		scanMode: GameDirectoryScanMode,
-		scanExecutables: boolean,
-	): Promise<ScanResult[]> {
-		return this.invoke<ScanResult[]>("scan_directory_for_games", {
-			path,
-			maxDepth,
-			scanMode,
-			scanExecutables,
-		});
-	}
+  /**
+   * 扫描目录下的游戏文件夹
+   */
+  async scanDirectoryForGames(
+    path: string,
+    maxDepth: number,
+    scanMode: GameDirectoryScanMode,
+    scanExecutables: boolean,
+  ): Promise<ScanResult[]> {
+    return this.invoke<ScanResult[]>("scan_directory_for_games", {
+      path,
+      maxDepth,
+      scanMode,
+      scanExecutables,
+    });
+  }
 
-	/**
-	 * 打开目录
-	 */
-	async openDirectory(dirPath: string): Promise<void> {
-		return this.invoke<void>("open_directory", { dirPath });
-	}
+  /**
+   * 打开目录
+   */
+  async openDirectory(dirPath: string): Promise<void> {
+    return this.invoke<void>("open_directory", { dirPath });
+  }
 
-	/**
-	 * 解析拖拽路径，避免前端 fs scope 限制
-	 */
-	async resolveDroppedLocalPath(
-		droppedPath: string,
-	): Promise<DroppedLocalPathResult> {
-		return this.invoke<DroppedLocalPathResult>("resolve_dropped_local_path", {
-			droppedPath,
-		});
-	}
+  /**
+   * 解析拖拽路径，避免前端 fs scope 限制
+   */
+  async resolveDroppedLocalPath(droppedPath: string): Promise<DroppedLocalPathResult> {
+    return this.invoke<DroppedLocalPathResult>("resolve_dropped_local_path", {
+      droppedPath,
+    });
+  }
 
-	/**
-	 * 判断当前是否为便携模式
-	 */
-	async isPortableMode(): Promise<PortableModeResult> {
-		return this.invoke<PortableModeResult>("is_portable_mode");
-	}
+  /**
+   * 判断当前是否为便携模式
+   */
+  async isPortableMode(): Promise<PortableModeResult> {
+    return this.invoke<PortableModeResult>("is_portable_mode");
+  }
 
-	/**
-	 * 复制文件
-	 */
-	async copyFile(src: string, dst: string): Promise<void> {
-		return this.invoke<void>("copy_file", { src, dst });
-	}
+  /**
+   * 复制文件
+   */
+  async copyFile(src: string, dst: string): Promise<void> {
+    return this.invoke<void>("copy_file", { src, dst });
+  }
 
-	/**
-	 * 删除文件
-	 */
-	async deleteFile(filePath: string): Promise<void> {
-		return this.invoke<void>("delete_file", { filePath });
-	}
+  /**
+   * 删除文件
+   */
+  async deleteFile(filePath: string): Promise<void> {
+    return this.invoke<void>("delete_file", { filePath });
+  }
 
-	/**
-	 * 从剪贴板导入图片到临时文件
-	 */
-	async importClipboardImageToTemp(gameId: number): Promise<string> {
-		return this.invoke<string>("import_clipboard_image_to_temp", { gameId });
-	}
+  /**
+   * 从剪贴板导入图片到临时文件
+   */
+  async importClipboardImageToTemp(gameId: number): Promise<string> {
+    return this.invoke<string>("import_clipboard_image_to_temp", { gameId });
+  }
 
-	/**
-	 * 删除指定游戏的自定义封面
-	 */
-	async deleteGameCovers(gameId: number, coversDir: string): Promise<void> {
-		return this.invoke<void>("delete_game_covers", { gameId, coversDir });
-	}
+  /**
+   * 删除指定游戏的自定义封面
+   */
+  async deleteGameCovers(gameId: number, coversDir: string): Promise<void> {
+    return this.invoke<void>("delete_game_covers", { gameId, coversDir });
+  }
 
-	/**
-	 * 删除本地的云端封面缓存
-	 */
-	async deleteCloudCoverCache(gameId: number): Promise<void> {
-		return this.invoke<void>("delete_cloud_cache", { gameId });
-	}
+  /**
+   * 删除本地的云端封面缓存
+   */
+  async deleteCloudCoverCache(gameId: number): Promise<void> {
+    return this.invoke<void>("delete_cloud_cache", { gameId });
+  }
 
-	/**
-	 * 备份数据库
-	 */
-	async backupDatabase(): Promise<BackupResult> {
-		return this.invoke<BackupResult>("backup_database");
-	}
+  /**
+   * 备份数据库
+   */
+  async backupDatabase(): Promise<BackupResult> {
+    return this.invoke<BackupResult>("backup_database");
+  }
 
-	async openDatabaseBackupFolder(): Promise<void> {
-		return this.invoke<void>("open_database_backup_folder");
-	}
+  async openDatabaseBackupFolder(): Promise<void> {
+    return this.invoke<void>("open_database_backup_folder");
+  }
 
-	/**
-	 * 备份自定义封面（仅自定义封面，不含云端缓存）
-	 */
-	async backupCustomCovers(): Promise<BackupResult> {
-		return this.invoke<BackupResult>("backup_custom_covers");
-	}
+  /**
+   * 备份自定义封面（仅自定义封面，不含云端缓存）
+   */
+  async backupCustomCovers(): Promise<BackupResult> {
+    return this.invoke<BackupResult>("backup_custom_covers");
+  }
 
-	async createAutoBackup(
-		request: AutoBackupRequest,
-	): Promise<AutoBackupResult> {
-		return this.invoke<AutoBackupResult>("create_auto_backup", { request });
-	}
+  async createAutoBackup(request: AutoBackupRequest): Promise<AutoBackupResult> {
+    return this.invoke<AutoBackupResult>("create_auto_backup", { request });
+  }
 
-	/**
-	 * 导入数据库
-	 */
-	async importDatabase(sourcePath: string): Promise<ImportResult> {
-		return this.invoke<ImportResult>("import_database", { sourcePath });
-	}
+  /**
+   * 导入数据库
+   */
+  async importDatabase(sourcePath: string): Promise<ImportResult> {
+    return this.invoke<ImportResult>("import_database", { sourcePath });
+  }
 }
 
 export const fileService = new FileService();

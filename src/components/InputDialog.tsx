@@ -20,100 +20,90 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 interface InputDialogProps {
-	open: boolean;
-	onClose: () => void;
-	onConfirm: (value: string) => Promise<void>;
-	title: string;
-	label: string;
-	placeholder?: string;
-	defaultValue?: string;
+  open: boolean;
+  onClose: () => void;
+  onConfirm: (value: string) => Promise<void>;
+  title: string;
+  label: string;
+  placeholder?: string;
+  defaultValue?: string;
 }
 
 export const InputDialog: React.FC<InputDialogProps> = ({
-	open,
-	onClose,
-	onConfirm,
-	title,
-	label,
-	placeholder,
-	defaultValue = "",
+  open,
+  onClose,
+  onConfirm,
+  title,
+  label,
+  placeholder,
+  defaultValue = "",
 }) => {
-	const { t } = useTranslation();
-	const [value, setValue] = useState(defaultValue);
-	const [isProcessing, setIsProcessing] = useState(false);
+  const { t } = useTranslation();
+  const [value, setValue] = useState(defaultValue);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-	const handleConfirm = async () => {
-		const trimmedValue = value.trim();
-		if (!trimmedValue) return;
+  const handleConfirm = async () => {
+    const trimmedValue = value.trim();
+    if (!trimmedValue) return;
 
-		setIsProcessing(true);
-		try {
-			await onConfirm(trimmedValue);
-			setValue("");
-			onClose();
-		} catch (error) {
-			console.error("操作失败:", error);
-		} finally {
-			setIsProcessing(false);
-		}
-	};
+    setIsProcessing(true);
+    try {
+      await onConfirm(trimmedValue);
+      setValue("");
+      onClose();
+    } catch (error) {
+      console.error("操作失败:", error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
-	const handleClose = () => {
-		if (!isProcessing) {
-			setValue("");
-			onClose();
-		}
-	};
+  const handleClose = () => {
+    if (!isProcessing) {
+      setValue("");
+      onClose();
+    }
+  };
 
-	return (
-		<Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-			<DialogTitle>
-				<Box display="flex" alignItems="center" justifyContent="space-between">
-					<Typography variant="h6">{title}</Typography>
-					<IconButton
-						onClick={handleClose}
-						size="small"
-						disabled={isProcessing}
-					>
-						<CloseIcon />
-					</IconButton>
-				</Box>
-			</DialogTitle>
-			<DialogContent>
-				<TextField
-					autoFocus
-					fullWidth
-					label={label}
-					placeholder={placeholder}
-					value={value}
-					onChange={(e) => setValue(e.target.value)}
-					onKeyDown={(e) => {
-						if (
-							e.key === "Enter" &&
-							!e.nativeEvent.isComposing &&
-							value.trim()
-						) {
-							handleConfirm();
-						}
-					}}
-					disabled={isProcessing}
-					sx={{ mt: 1 }}
-				/>
-			</DialogContent>
-			<DialogActions>
-				<Button onClick={handleClose} disabled={isProcessing}>
-					{t("common.cancel", "取消")}
-				</Button>
-				<Button
-					onClick={handleConfirm}
-					variant="contained"
-					disabled={!value.trim() || isProcessing}
-				>
-					{isProcessing
-						? t("common.saving", "保存中...")
-						: t("common.confirm", "确认")}
-				</Button>
-			</DialogActions>
-		</Dialog>
-	);
+  return (
+    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+      <DialogTitle>
+        <Box display="flex" alignItems="center" justifyContent="space-between">
+          <Typography variant="h6">{title}</Typography>
+          <IconButton onClick={handleClose} size="small" disabled={isProcessing}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
+      </DialogTitle>
+      <DialogContent>
+        <TextField
+          autoFocus
+          fullWidth
+          label={label}
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.nativeEvent.isComposing && value.trim()) {
+              handleConfirm();
+            }
+          }}
+          disabled={isProcessing}
+          sx={{ mt: 1 }}
+        />
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={handleClose} disabled={isProcessing}>
+          {t("common.cancel", "取消")}
+        </Button>
+        <Button
+          onClick={handleConfirm}
+          variant="contained"
+          disabled={!value.trim() || isProcessing}
+        >
+          {isProcessing ? t("common.saving", "保存中...") : t("common.confirm", "确认")}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
 };

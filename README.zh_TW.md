@@ -68,6 +68,7 @@
 需要從其他 galgame/視覺小說管理器遷移數據？請查看 [reina_migrator](https://github.com/huoshen80/reina_migrator) - 一個用於將其他管理器數據遷移到 ReinaManager 的工具。
 
 當前支持：
+
 - **WhiteCloud v0.4.0** 數據遷移
 
 該遷移工具可幫助您無縫轉移遊戲庫、遊玩時間記錄和其他數據到 ReinaManager。
@@ -83,7 +84,9 @@
 更多資訊，您可以下載最新的發布版本：[下載](https://github.com/huoshen80/ReinaManager/releases)
 
 ## 貢獻
+
 ##### 開始
+
 歡迎各種形式的貢獻！如果你有改進建議、發現了 bug，或想提交 Pull Request，請依照以下步驟：
 
 1. Fork 本倉庫，並從 `main` 分支建立新分支。
@@ -92,6 +95,7 @@
 4. 提交 Pull Request，並清楚描述你的更改內容。
 
 ##### 本機建構與執行專案
+
 1. 確保已安裝 [Node.js](https://nodejs.org/) 及 [Rust](https://www.rust-lang.org/)。
 2. Clone 倉庫：
    ```bash
@@ -114,7 +118,9 @@
 感謝你為 ReinaManager 做出的所有貢獻！
 
 ## 贊助
+
 如果你覺得這個專案好用，並希望支持項目的開發，可以考慮贊助。非常感謝每個支持者！
+
 - [Sponsor link](https://huoshen80.top/233.html)
 
 ## 感謝

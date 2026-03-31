@@ -31,14 +31,14 @@ import { getUserErrorMessage } from "@/utils/errors";
  * @returns 格式化的时长字符串，如 "1:23:45" 或 "23:45" 或 "0:05"
  */
 const formatPlayTime = (minutes: number, seconds: number): string => {
-	const hours = Math.floor(minutes / 60);
-	const mins = minutes % 60;
-	const secs = seconds;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  const secs = seconds;
 
-	if (hours > 0) {
-		return `${hours}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-	}
-	return `${mins}:${secs.toString().padStart(2, "0")}`;
+  if (hours > 0) {
+    return `${hours}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  }
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
 };
 
 /**
@@ -53,182 +53,166 @@ const formatPlayTime = (minutes: number, seconds: number): string => {
  * @returns {JSX.Element} 启动按钮或运行中提示
  */
 export const LaunchModal = () => {
-	const { t } = useTranslation();
-	const disabledFallback = (
-		<Button startIcon={<PlayArrowIcon />} disabled>
-			{t("components.LaunchModal.launchGame", "启动游戏")}
-		</Button>
-	);
+  const { t } = useTranslation();
+  const disabledFallback = (
+    <Button startIcon={<PlayArrowIcon />} disabled>
+      {t("components.LaunchModal.launchGame", "启动游戏")}
+    </Button>
+  );
 
-	return (
-		<SelectedGameGuard
-			fallback={disabledFallback}
-			loadingFallback={disabledFallback}
-			notFoundFallback={disabledFallback}
-		>
-			{(selectedGame) => <LaunchModalContent selectedGame={selectedGame} />}
-		</SelectedGameGuard>
-	);
+  return (
+    <SelectedGameGuard
+      fallback={disabledFallback}
+      loadingFallback={disabledFallback}
+      notFoundFallback={disabledFallback}
+    >
+      {(selectedGame) => <LaunchModalContent selectedGame={selectedGame} />}
+    </SelectedGameGuard>
+  );
 };
 
 interface LaunchModalContentProps {
-	selectedGame: GameData;
+  selectedGame: GameData;
 }
 
 function LaunchModalContent({ selectedGame }: LaunchModalContentProps) {
-	const { t } = useTranslation();
-	const selectedGameId = selectedGame.id;
-	const { launchGame, syncLocalPath } = useGameLaunchFlow();
-	const { stopGame, isThisGameRunning, realTimeState } = useGamePlayStore(
-		useShallow((s) => ({
-			stopGame: s.stopGame,
-			isThisGameRunning: s.runningGameIds.has(selectedGameId),
-			realTimeState: s.gameRealTimeStates[selectedGameId] ?? null,
-		})),
-	);
-	const hasLocalPath = Boolean(selectedGame.localpath);
-	const sessionTimeTrackingMode = realTimeState?.timeTrackingMode;
+  const { t } = useTranslation();
+  const selectedGameId = selectedGame.id;
+  const { launchGame, syncLocalPath } = useGameLaunchFlow();
+  const { stopGame, isThisGameRunning, realTimeState } = useGamePlayStore(
+    useShallow((s) => ({
+      stopGame: s.stopGame,
+      isThisGameRunning: s.runningGameIds.has(selectedGameId),
+      realTimeState: s.gameRealTimeStates[selectedGameId] ?? null,
+    })),
+  );
+  const hasLocalPath = Boolean(selectedGame.localpath);
+  const sessionTimeTrackingMode = realTimeState?.timeTrackingMode;
 
-	// 用于 elapsed 模式下的前端计时器显示
-	const timerRef = useRef<HTMLSpanElement>(null);
-	const [stopping, setStopping] = useState(false);
+  // 用于 elapsed 模式下的前端计时器显示
+  const timerRef = useRef<HTMLSpanElement>(null);
+  const [stopping, setStopping] = useState(false);
 
-	useEffect(() => {
-		if (
-			sessionTimeTrackingMode !== "elapsed" ||
-			!isThisGameRunning ||
-			!realTimeState?.startTime
-		) {
-			return;
-		}
+  useEffect(() => {
+    if (sessionTimeTrackingMode !== "elapsed" || !isThisGameRunning || !realTimeState?.startTime) {
+      return;
+    }
 
-		const startTime = realTimeState.startTime;
+    const startTime = realTimeState.startTime;
 
-		const updateDisplay = () => {
-			if (!timerRef.current) return;
+    const updateDisplay = () => {
+      if (!timerRef.current) return;
 
-			const now = Math.floor(Date.now() / 1000);
-			const elapsed = now - startTime;
-			const minutes = Math.floor(elapsed / 60);
-			const seconds = elapsed % 60;
-			timerRef.current.textContent = formatPlayTime(minutes, seconds);
-		};
+      const now = Math.floor(Date.now() / 1000);
+      const elapsed = now - startTime;
+      const minutes = Math.floor(elapsed / 60);
+      const seconds = elapsed % 60;
+      timerRef.current.textContent = formatPlayTime(minutes, seconds);
+    };
 
-		updateDisplay();
+    updateDisplay();
 
-		const intervalId = setInterval(updateDisplay, 1000);
+    const intervalId = setInterval(updateDisplay, 1000);
 
-		return () => {
-			clearInterval(intervalId);
-		};
-	}, [sessionTimeTrackingMode, isThisGameRunning, realTimeState?.startTime]);
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [sessionTimeTrackingMode, isThisGameRunning, realTimeState?.startTime]);
 
-	const handleStartGame = () => {
-		void launchGame(selectedGame);
-	};
+  const handleStartGame = () => {
+    void launchGame(selectedGame);
+  };
 
-	const handleSyncLocalPath = () => {
-		void syncLocalPath(selectedGame);
-	};
+  const handleSyncLocalPath = () => {
+    void syncLocalPath(selectedGame);
+  };
 
-	const handleStopGame = async () => {
-		setStopping(true);
-		try {
-			const res = await stopGame(selectedGameId);
-			if (!res.success) {
-				snackbar.error(
-					res.message ||
-						t("components.LaunchModal.stopFailed", "游戏停止失败:"),
-				);
-			}
-		} catch (error) {
-			snackbar.error(
-				`${t("components.LaunchModal.stopFailed", "游戏停止失败:")}: ${getUserErrorMessage(error, t)}`,
-			);
-		} finally {
-			setStopping(false);
-		}
-	};
+  const handleStopGame = async () => {
+    setStopping(true);
+    try {
+      const res = await stopGame(selectedGameId);
+      if (!res.success) {
+        snackbar.error(res.message || t("components.LaunchModal.stopFailed", "游戏停止失败:"));
+      }
+    } catch (error) {
+      snackbar.error(
+        `${t("components.LaunchModal.stopFailed", "游戏停止失败:")}: ${getUserErrorMessage(error, t)}`,
+      );
+    } finally {
+      setStopping(false);
+    }
+  };
 
-	const content = (() => {
-		if (stopping) {
-			return (
-				<Button startIcon={<StopIcon />} disabled>
-					{t("components.LaunchModal.stoppingGame", "停止游戏中...")}
-				</Button>
-			);
-		}
+  const content = (() => {
+    if (stopping) {
+      return (
+        <Button startIcon={<StopIcon />} disabled>
+          {t("components.LaunchModal.stoppingGame", "停止游戏中...")}
+        </Button>
+      );
+    }
 
-		if (isThisGameRunning && realTimeState) {
-			const { currentSessionMinutes, currentSessionSeconds } = realTimeState;
-			const initialTimeDisplay = formatPlayTime(
-				currentSessionMinutes,
-				currentSessionSeconds,
-			);
+    if (isThisGameRunning && realTimeState) {
+      const { currentSessionMinutes, currentSessionSeconds } = realTimeState;
+      const initialTimeDisplay = formatPlayTime(currentSessionMinutes, currentSessionSeconds);
 
-			const elapsedInitial = realTimeState.startTime
-				? Math.floor(Date.now() / 1000) - realTimeState.startTime
-				: 0;
-			const elapsedInitialDisplay = formatPlayTime(
-				Math.floor(elapsedInitial / 60),
-				elapsedInitial % 60,
-			);
+      const elapsedInitial = realTimeState.startTime
+        ? Math.floor(Date.now() / 1000) - realTimeState.startTime
+        : 0;
+      const elapsedInitialDisplay = formatPlayTime(
+        Math.floor(elapsedInitial / 60),
+        elapsedInitial % 60,
+      );
 
-			return (
-				<Button
-					startIcon={<StopIcon />}
-					onClick={handleStopGame}
-					className="rounded-2xl"
-					color="error"
-					variant="outlined"
-				>
-					<TimerIcon fontSize="small" color="disabled" />
-					<Typography
-						ref={timerRef}
-						className="ml-1"
-						variant="button"
-						component="span"
-						color="textDisabled"
-						sx={{ fontVariantNumeric: "tabular-nums" }}
-					>
-						{sessionTimeTrackingMode === "elapsed"
-							? elapsedInitialDisplay
-							: initialTimeDisplay}
-					</Typography>
-				</Button>
-			);
-		}
+      return (
+        <Button
+          startIcon={<StopIcon />}
+          onClick={handleStopGame}
+          className="rounded-2xl"
+          color="error"
+          variant="outlined"
+        >
+          <TimerIcon fontSize="small" color="disabled" />
+          <Typography
+            ref={timerRef}
+            className="ml-1"
+            variant="button"
+            component="span"
+            color="textDisabled"
+            sx={{ fontVariantNumeric: "tabular-nums" }}
+          >
+            {sessionTimeTrackingMode === "elapsed" ? elapsedInitialDisplay : initialTimeDisplay}
+          </Typography>
+        </Button>
+      );
+    }
 
-		switch (selectedGame.launch_type ?? "local") {
-			case "steam":
-				return hasLocalPath ? (
-					<Button startIcon={<PlayArrowIcon />} onClick={handleStartGame}>
-						{t("components.LaunchModal.launchWithSteam", "通过 Steam 启动")}
-					</Button>
-				) : (
-					<Button startIcon={<PlayArrowIcon />} disabled>
-						{t(
-							"components.LaunchModal.steamMonitorPathMissing",
-							"Steam 游戏监控目录缺失，请重新关联",
-						)}
-					</Button>
-				);
-			case "local":
-				return hasLocalPath ? (
-					<Button startIcon={<PlayArrowIcon />} onClick={handleStartGame}>
-						{t("components.LaunchModal.launchGame", "启动游戏")}
-					</Button>
-				) : (
-					<Button
-						startIcon={<SyncIcon />}
-						onClick={handleSyncLocalPath}
-						variant="text"
-					>
-						{t("components.LaunchModal.syncLocalPath", "同步本地")}
-					</Button>
-				);
-		}
-	})();
+    switch (selectedGame.launch_type ?? "local") {
+      case "steam":
+        return hasLocalPath ? (
+          <Button startIcon={<PlayArrowIcon />} onClick={handleStartGame}>
+            {t("components.LaunchModal.launchWithSteam", "通过 Steam 启动")}
+          </Button>
+        ) : (
+          <Button startIcon={<PlayArrowIcon />} disabled>
+            {t(
+              "components.LaunchModal.steamMonitorPathMissing",
+              "Steam 游戏监控目录缺失，请重新关联",
+            )}
+          </Button>
+        );
+      case "local":
+        return hasLocalPath ? (
+          <Button startIcon={<PlayArrowIcon />} onClick={handleStartGame}>
+            {t("components.LaunchModal.launchGame", "启动游戏")}
+          </Button>
+        ) : (
+          <Button startIcon={<SyncIcon />} onClick={handleSyncLocalPath} variant="text">
+            {t("components.LaunchModal.syncLocalPath", "同步本地")}
+          </Button>
+        );
+    }
+  })();
 
-	return content;
+  return content;
 }

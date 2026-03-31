@@ -11,11 +11,11 @@ import { AppError } from "@/utils/errors";
 import { USER_AGENT } from "../constants";
 import type { MetadataRequestContext } from "../sourceAdapter";
 import {
-	createGameCandidate,
-	createSourceCandidateRecord,
-	getCandidateSourceData,
-	getCandidateSourceId,
-	mergeCandidateSources,
+  createGameCandidate,
+  createSourceCandidateRecord,
+  getCandidateSourceData,
+  getCandidateSourceId,
+  mergeCandidateSources,
 } from "../sourceCandidate";
 import http, { type TauriHttpOptions } from "./http";
 import { fetchVndbById } from "./vndb";
@@ -23,131 +23,122 @@ import { fetchVndbById } from "./vndb";
 const KUN_API_BASE = "https://www.kungal.com/api";
 
 const KUN_JSON_HEADERS = {
-	Accept: "application/json",
-	"User-Agent": USER_AGENT,
+  Accept: "application/json",
+  "User-Agent": USER_AGENT,
 } as const;
 
 export interface GalgameDetailTag {
-	name: string;
-	galgame_count: number;
-	spoiler_level: number;
+  name: string;
+  galgame_count: number;
+  spoiler_level: number;
 }
 
 export interface GalgameOfficialItem {
-	name: string;
+  name: string;
 }
 
 export interface GalgameDetailResponse {
-	id: number;
-	vndb_id: string;
-	name: string;
-	name_original?: string;
-	original_language?: string;
-	effective_banner_url?: string;
-	content_limit: "sfw" | "nsfw";
-	intro_text?: string;
-	age_limit: "all" | "r18";
-	alias: string[];
-	official: GalgameOfficialItem[];
-	tag: GalgameDetailTag[];
-	release_date: string | null;
+  id: number;
+  vndb_id: string;
+  name: string;
+  name_original?: string;
+  original_language?: string;
+  effective_banner_url?: string;
+  content_limit: "sfw" | "nsfw";
+  intro_text?: string;
+  age_limit: "all" | "r18";
+  alias: string[];
+  official: GalgameOfficialItem[];
+  tag: GalgameDetailTag[];
+  release_date: string | null;
 }
 
 export interface SearchResultGalgame {
-	id: number;
-	name: string;
-	name_original?: string;
-	effective_banner_url?: string;
-	release_date?: string | null;
+  id: number;
+  name: string;
+  name_original?: string;
+  effective_banner_url?: string;
+  release_date?: string | null;
 }
 
 export interface KunApiResponse<T> {
-	code: number;
-	message: string;
-	data?: T;
+  code: number;
+  message: string;
+  data?: T;
 }
 
 export interface KunPaginatedData<T> {
-	items: T[];
-	total: number;
+  items: T[];
+  total: number;
 }
 
 interface KunFetchOptions extends MetadataRequestContext {
-	enrichVndb?: boolean;
+  enrichVndb?: boolean;
 }
 
 function normalizeKunText(value?: string): string | undefined {
-	if (typeof value !== "string" || !value.trim()) {
-		return undefined;
-	}
+  if (typeof value !== "string" || !value.trim()) {
+    return undefined;
+  }
 
-	return value.replace(/\\\r?\n/g, "\n").trim();
+  return value.replace(/\\\r?\n/g, "\n").trim();
 }
 
 function extractAllTitles(...titles: Array<string | undefined>): string[] {
-	return Array.from(
-		new Set(
-			titles
-				.map((title) => normalizeKunText(title))
-				.filter((title): title is string => Boolean(title)),
-		),
-	);
+  return Array.from(
+    new Set(
+      titles
+        .map((title) => normalizeKunText(title))
+        .filter((title): title is string => Boolean(title)),
+    ),
+  );
 }
 
-function extractKunTags(
-	tags: GalgameDetailTag[] | undefined,
-	filterLevel: number,
-): string[] {
-	if (!Array.isArray(tags) || tags.length === 0) {
-		return [];
-	}
+function extractKunTags(tags: GalgameDetailTag[] | undefined, filterLevel: number): string[] {
+  if (!Array.isArray(tags) || tags.length === 0) {
+    return [];
+  }
 
-	return tags
-		.toSorted((a, b) => (b.galgame_count || 0) - (a.galgame_count || 0))
-		.filter((tag) => (tag.spoiler_level ?? 0) <= filterLevel)
-		.map((tag) => tag.name?.trim())
-		.filter((name): name is string => Boolean(name));
+  return tags
+    .toSorted((a, b) => (b.galgame_count || 0) - (a.galgame_count || 0))
+    .filter((tag) => (tag.spoiler_level ?? 0) <= filterLevel)
+    .map((tag) => tag.name?.trim())
+    .filter((name): name is string => Boolean(name));
 }
 
-function extractDeveloper(
-	official?: GalgameOfficialItem[],
-): string | undefined {
-	if (!Array.isArray(official) || official.length === 0) {
-		return undefined;
-	}
+function extractDeveloper(official?: GalgameOfficialItem[]): string | undefined {
+  if (!Array.isArray(official) || official.length === 0) {
+    return undefined;
+  }
 
-	const names = Array.from(
-		new Set(
-			official
-				.map((item) => item.name?.trim())
-				.filter((name): name is string => Boolean(name)),
-		),
-	);
+  const names = Array.from(
+    new Set(
+      official.map((item) => item.name?.trim()).filter((name): name is string => Boolean(name)),
+    ),
+  );
 
-	if (names.length === 0) {
-		return undefined;
-	}
+  if (names.length === 0) {
+    return undefined;
+  }
 
-	return names.join("/");
+  return names.join("/");
 }
 
 function computeNsfw(payload: GalgameDetailResponse): boolean {
-	const contentLimitNsfw = payload.content_limit === "nsfw";
-	return contentLimitNsfw || payload.age_limit === "r18";
+  const contentLimitNsfw = payload.content_limit === "nsfw";
+  return contentLimitNsfw || payload.age_limit === "r18";
 }
 
-function buildKunRateLimitedOptions(
-	options: TauriHttpOptions = {},
-): TauriHttpOptions {
-	return {
-		...options,
-		headers: {
-			...KUN_JSON_HEADERS,
-			"Content-Type": "application/json",
-			...options.headers,
-		},
-		rateLimit: { source: "kun" },
-	};
+function buildKunRateLimitedOptions(options: TauriHttpOptions = {}): TauriHttpOptions {
+  return {
+    ...options,
+    headers: {
+      ...KUN_JSON_HEADERS,
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+    rateLimit: { source: "kun" },
+  };
 }
 
 /**
@@ -156,47 +147,39 @@ function buildKunRateLimitedOptions(
  * @returns 转换后的 GameMetadataDraft
  */
 const transformKunData = (
-	kunData: GalgameDetailResponse,
-	filterLevel: number,
+  kunData: GalgameDetailResponse,
+  filterLevel: number,
 ): GameMetadataDraft => {
-	const name = normalizeKunText(kunData.name);
-	const originalName = normalizeKunText(kunData.name_original) ?? name;
+  const name = normalizeKunText(kunData.name);
+  const originalName = normalizeKunText(kunData.name_original) ?? name;
 
-	const sourceData: KunData = {
-		image: kunData.effective_banner_url,
-		name: originalName,
-		name_cn: name,
-		all_titles: extractAllTitles(originalName, name),
-		aliases: Array.from(
-			new Set(
-				(kunData.alias || []).map((alias) => alias.trim()).filter(Boolean),
-			),
-		),
-		summary: normalizeKunText(kunData.intro_text),
-		tags: kunData.vndb_id
-			? undefined
-			: extractKunTags(kunData.tag, filterLevel),
-		developer: extractDeveloper(kunData.official),
-		nsfw: computeNsfw(kunData),
-		date: kunData.release_date ?? undefined,
-	};
+  const sourceData: KunData = {
+    image: kunData.effective_banner_url,
+    name: originalName,
+    name_cn: name,
+    all_titles: extractAllTitles(originalName, name),
+    aliases: Array.from(
+      new Set((kunData.alias || []).map((alias) => alias.trim()).filter(Boolean)),
+    ),
+    summary: normalizeKunText(kunData.intro_text),
+    tags: kunData.vndb_id ? undefined : extractKunTags(kunData.tag, filterLevel),
+    developer: extractDeveloper(kunData.official),
+    nsfw: computeNsfw(kunData),
+    date: kunData.release_date ?? undefined,
+  };
 
-	const result: GameMetadataDraft = {
-		...createGameCandidate({
-			idType: "kun",
-			source: createSourceCandidateRecord(
-				"kun",
-				String(kunData.id),
-				sourceData,
-			),
-		}),
-	};
+  const result: GameMetadataDraft = {
+    ...createGameCandidate({
+      idType: "kun",
+      source: createSourceCandidateRecord("kun", String(kunData.id), sourceData),
+    }),
+  };
 
-	if (import.meta.env.DEV) {
-		console.log("[Kungal API] Transformed Data:", result);
-	}
+  if (import.meta.env.DEV) {
+    console.log("[Kungal API] Transformed Data:", result);
+  }
 
-	return result;
+  return result;
 };
 
 /**
@@ -204,74 +187,67 @@ const transformKunData = (
  * @param id Kungal 游戏 ID
  */
 export async function fetchGalgameById(
-	id: string,
-	options: KunFetchOptions,
+  id: string,
+  options: KunFetchOptions,
 ): Promise<GameMetadataDraft> {
-	const { enrichVndb = true, proxyUrl, signal, spoilerLevel } = options;
-	const url = `${KUN_API_BASE}/galgame/${id}`;
+  const { enrichVndb = true, proxyUrl, signal, spoilerLevel } = options;
+  const url = `${KUN_API_BASE}/galgame/${id}`;
 
-	const resp = await http.get<KunApiResponse<GalgameDetailResponse>>(
-		url,
-		buildKunRateLimitedOptions({
-			params: {
-				galgame_id: Number(id),
-			},
-			signal,
-			proxyUrl,
-		}),
-	);
+  const resp = await http.get<KunApiResponse<GalgameDetailResponse>>(
+    url,
+    buildKunRateLimitedOptions({
+      params: {
+        galgame_id: Number(id),
+      },
+      signal,
+      proxyUrl,
+    }),
+  );
 
-	const kunData = resp.data?.data;
+  const kunData = resp.data?.data;
 
-	if (!kunData) {
-		throw new AppError({
-			code: "metadata_not_found",
-			message: `Kungal game not found: ${id}`,
-		});
-	}
+  if (!kunData) {
+    throw new AppError({
+      code: "metadata_not_found",
+      message: `Kungal game not found: ${id}`,
+    });
+  }
 
-	const kunResult = transformKunData(kunData, spoilerLevel);
-	const vndbId = kunData.vndb_id;
+  const kunResult = transformKunData(kunData, spoilerLevel);
+  const vndbId = kunData.vndb_id;
 
-	if (!enrichVndb || !vndbId) {
-		return kunResult;
-	}
+  if (!enrichVndb || !vndbId) {
+    return kunResult;
+  }
 
-	try {
-		const vndbResult = await fetchVndbById(vndbId, options);
+  try {
+    const vndbResult = await fetchVndbById(vndbId, options);
 
-		return {
-			...kunResult,
-			id_type: "mixed",
-			sources: mergeCandidateSources([kunResult, vndbResult]),
-		};
-	} catch (error) {
-		if (import.meta.env.DEV) {
-			console.warn(
-				`[Kungal API] VNDB 增强失败，回退到 Kungal 原始数据: ${vndbId}`,
-				error,
-			);
-		}
+    return {
+      ...kunResult,
+      id_type: "mixed",
+      sources: mergeCandidateSources([kunResult, vndbResult]),
+    };
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.warn(`[Kungal API] VNDB 增强失败，回退到 Kungal 原始数据: ${vndbId}`, error);
+    }
 
-		const kunSourceData = getCandidateSourceData<KunData>(kunResult, "kun");
-		return {
-			...kunResult,
-			id_type: "kun",
-			sources: kunSourceData
-				? [
-						createSourceCandidateRecord(
-							"kun",
-							getCandidateSourceId(kunResult, "kun") ?? id,
-							{
-								...kunSourceData,
-								// VNDB 不可用时，保留鲲源自身 tags，避免 kun 源整体失效。
-								tags: extractKunTags(kunData.tag, spoilerLevel),
-							},
-						),
-					]
-				: kunResult.sources,
-		};
-	}
+    const kunSourceData = getCandidateSourceData<KunData>(kunResult, "kun");
+    return {
+      ...kunResult,
+      id_type: "kun",
+      sources: kunSourceData
+        ? [
+            createSourceCandidateRecord("kun", getCandidateSourceId(kunResult, "kun") ?? id, {
+              ...kunSourceData,
+              // VNDB 不可用时，保留鲲源自身 tags，避免 kun 源整体失效。
+              tags: extractKunTags(kunData.tag, spoilerLevel),
+            }),
+          ]
+        : kunResult.sources,
+    };
+  }
 }
 
 /**
@@ -283,59 +259,54 @@ export async function fetchGalgameById(
  * 说明：该参数只用于“首条补全”场景，禁止对搜索结果列表逐条补全。
  */
 export async function searchGalgame(
-	keywords: string,
-	page = 1,
-	limit = 12,
-	fetchDetailById = false,
-	options: KunFetchOptions,
+  keywords: string,
+  page = 1,
+  limit = 12,
+  fetchDetailById = false,
+  options: KunFetchOptions,
 ): Promise<GameMetadataDraft[]> {
-	const resp = await http.get<
-		KunApiResponse<KunPaginatedData<SearchResultGalgame>>
-	>(
-		`${KUN_API_BASE}/search`,
-		buildKunRateLimitedOptions({
-			params: {
-				keywords,
-				type: "galgame",
-				page,
-				limit,
-			},
-			signal: options.signal,
-			proxyUrl: options.proxyUrl,
-		}),
-	);
+  const resp = await http.get<KunApiResponse<KunPaginatedData<SearchResultGalgame>>>(
+    `${KUN_API_BASE}/search`,
+    buildKunRateLimitedOptions({
+      params: {
+        keywords,
+        type: "galgame",
+        page,
+        limit,
+      },
+      signal: options.signal,
+      proxyUrl: options.proxyUrl,
+    }),
+  );
 
-	const items = resp.data?.data?.items;
+  const items = resp.data?.data?.items;
 
-	if (!Array.isArray(items)) {
-		throw new AppError({
-			code: "metadata_not_found",
-			message: `Kungal search failed for: ${keywords}`,
-		});
-	}
+  if (!Array.isArray(items)) {
+    throw new AppError({
+      code: "metadata_not_found",
+      message: `Kungal search failed for: ${keywords}`,
+    });
+  }
 
-	const results = items.map((item) => ({
-		...createGameCandidate({
-			idType: "kun",
-			source: createSourceCandidateRecord("kun", String(item.id), {
-				name:
-					normalizeKunText(item.name_original) ?? normalizeKunText(item.name),
-				name_cn: normalizeKunText(item.name),
-				all_titles: extractAllTitles(item.name_original, item.name),
-				image: item.effective_banner_url,
-				date: item.release_date ?? undefined,
-			}),
-		}),
-	}));
+  const results = items.map((item) => ({
+    ...createGameCandidate({
+      idType: "kun",
+      source: createSourceCandidateRecord("kun", String(item.id), {
+        name: normalizeKunText(item.name_original) ?? normalizeKunText(item.name),
+        name_cn: normalizeKunText(item.name),
+        all_titles: extractAllTitles(item.name_original, item.name),
+        image: item.effective_banner_url,
+        date: item.release_date ?? undefined,
+      }),
+    }),
+  }));
 
-	// 如果启用二步请求且有结果，用第一个结果的 ID 获取完整详情
-	const firstResultId = results[0]
-		? getCandidateSourceId(results[0], "kun")
-		: undefined;
-	if (fetchDetailById && firstResultId) {
-		const detailedData = await fetchGalgameById(firstResultId, options);
-		return [detailedData];
-	}
+  // 如果启用二步请求且有结果，用第一个结果的 ID 获取完整详情
+  const firstResultId = results[0] ? getCandidateSourceId(results[0], "kun") : undefined;
+  if (fetchDetailById && firstResultId) {
+    const detailedData = await fetchGalgameById(firstResultId, options);
+    return [detailedData];
+  }
 
-	return results;
+  return results;
 }

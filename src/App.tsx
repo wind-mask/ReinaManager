@@ -14,37 +14,37 @@ import { initBgmAuthRefresh } from "@/services/oauth/bgmAuthSession";
 import { initHikarinagiAuthRefresh } from "@/services/oauth/hikarinagiAuthSession";
 
 const App: React.FC = () => {
-	const { t } = useTranslation();
+  const { t } = useTranslation();
 
-	useEffect(() => {
-		void initBgmAuthRefresh();
-		void initHikarinagiAuthRefresh();
-	}, []);
+  useEffect(() => {
+    void initBgmAuthRefresh();
+    void initHikarinagiAuthRefresh();
+  }, []);
 
-	// 从路由配置动态生成导航菜单
-	const Navigation = appRoutes
-		.filter((route) => !route.hideInMenu) // 过滤掉标记为隐藏的路由
-		.map((route) => ({
-			segment: route.path,
-			title: t(route.title), // 使用 t 函数翻译标题
-			icon: route.icon,
-			pattern: route.navPattern, // 使用 navPattern
-		}));
+  // 从路由配置动态生成导航菜单
+  const Navigation = appRoutes
+    .filter((route) => !route.hideInMenu) // 过滤掉标记为隐藏的路由
+    .map((route) => ({
+      segment: route.path,
+      title: t(route.title), // 使用 t 函数翻译标题
+      icon: route.icon,
+      pattern: route.navPattern, // 使用 navPattern
+    }));
 
-	return (
-		<SnackbarProvider
-			maxSnack={3}
-			autoHideDuration={3000}
-			anchorOrigin={{ vertical: "top", horizontal: "center" }}
-		>
-			<SnackbarUtilsConfigurator />
-			<ToolpadReactRouterAppProvider navigation={Navigation}>
-				{isTauri() && <WindowsHandler />}
-				{isTauri() && <InstallRequestHandler />}
-				<Outlet />
-			</ToolpadReactRouterAppProvider>
-		</SnackbarProvider>
-	);
+  return (
+    <SnackbarProvider
+      maxSnack={3}
+      autoHideDuration={3000}
+      anchorOrigin={{ vertical: "top", horizontal: "center" }}
+    >
+      <SnackbarUtilsConfigurator />
+      <ToolpadReactRouterAppProvider navigation={Navigation}>
+        {isTauri() && <WindowsHandler />}
+        {isTauri() && <InstallRequestHandler />}
+        <Outlet />
+      </ToolpadReactRouterAppProvider>
+    </SnackbarProvider>
+  );
 };
 
 export default App;

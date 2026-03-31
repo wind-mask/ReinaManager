@@ -16,123 +16,117 @@
 import type { BgmAuth, BgmData, GameMetadataDraft } from "@/types";
 import { AppError, isApiRateLimitError, isHttpStatus } from "@/utils/errors";
 import { USER_AGENT } from "../constants";
-import {
-	createGameCandidate,
-	createSourceCandidateRecord,
-} from "../sourceCandidate";
-import http, {
-	type NetworkRequestContext,
-	type TauriHttpOptions,
-} from "./http";
+import { createGameCandidate, createSourceCandidateRecord } from "../sourceCandidate";
+import http, { type NetworkRequestContext, type TauriHttpOptions } from "./http";
 
 const BGM_API_BASE_URL = "https://api.bgm.tv/v0";
 const BGM_OAUTH_BASE_URL = "https://bgm.tv/oauth";
 
 const BGM_JSON_HEADERS = {
-	Accept: "application/json",
-	"User-Agent": USER_AGENT,
+  Accept: "application/json",
+  "User-Agent": USER_AGENT,
 } as const;
 
 interface BgmSubjectInfoboxValue {
-	v: string;
+  v: string;
 }
 
 interface BgmSubjectInfoboxItem {
-	key: string;
-	value: string | Array<string | BgmSubjectInfoboxValue>;
+  key: string;
+  value: string | Array<string | BgmSubjectInfoboxValue>;
 }
 
 interface BgmSubjectTag {
-	name: string;
-	/** 搜索接口返回有效总数，条目详情和收藏接口固定返回 0。 */
-	total_count: number;
+  name: string;
+  /** 搜索接口返回有效总数，条目详情和收藏接口固定返回 0。 */
+  total_count: number;
 }
 
 interface BgmSubjectResponse {
-	id: number;
-	name: string;
-	name_cn: string;
-	summary: string;
-	nsfw: boolean;
-	date?: string;
-	images: { large: string };
-	infobox?: BgmSubjectInfoboxItem[];
-	rating: { rank: number; score: number };
-	tags: BgmSubjectTag[];
+  id: number;
+  name: string;
+  name_cn: string;
+  summary: string;
+  nsfw: boolean;
+  date?: string;
+  images: { large: string };
+  infobox?: BgmSubjectInfoboxItem[];
+  rating: { rank: number; score: number };
+  tags: BgmSubjectTag[];
 }
 
 interface BgmSearchResponse {
-	data: BgmSubjectResponse[];
+  data: BgmSubjectResponse[];
 }
 
 export interface BgmUserCollection {
-	subject_id: number;
-	type: number;
-	rate?: number;
-	comment?: string | null;
-	subject?: {
-		id: number;
-		name: string;
-		name_cn: string;
-		date?: string;
-		images?: { large?: string; common?: string };
-	};
+  subject_id: number;
+  type: number;
+  rate?: number;
+  comment?: string | null;
+  subject?: {
+    id: number;
+    name: string;
+    name_cn: string;
+    date?: string;
+    images?: { large?: string; common?: string };
+  };
 }
 
 export interface BgmUserCollectionModifyPayload {
-	type?: number;
-	rate?: number;
-	comment?: string;
-	private?: boolean;
-	tags?: string[];
+  type?: number;
+  rate?: number;
+  comment?: string;
+  private?: boolean;
+  tags?: string[];
 }
 
 interface BgmUserCollectionsResponse {
-	total?: number;
-	limit?: number;
-	offset?: number;
-	data?: BgmUserCollection[];
+  total?: number;
+  limit?: number;
+  offset?: number;
+  data?: BgmUserCollection[];
 }
 
 export interface BgmUserCollectionsPage {
-	total: number;
-	limit: number;
-	offset: number;
-	data: BgmUserCollection[];
+  total: number;
+  limit: number;
+  offset: number;
+  data: BgmUserCollection[];
 }
 
 export interface BgmUserProfile {
-	id: number;
-	username: string;
-	nickname: string;
-	sign?: string;
-	avatar: { large: string; medium: string; small: string };
+  id: number;
+  username: string;
+  nickname: string;
+  sign?: string;
+  avatar: { large: string; medium: string; small: string };
 }
 
 export interface BgmTokenStatus {
-	access_token: string;
-	client_id: string;
-	expires: number | null;
-	scope: string | null;
+  access_token: string;
+  client_id: string;
+  expires: number | null;
+  scope: string | null;
 }
 
 function buildBgmAuthHeaders(token?: string) {
-	const headers: Record<string, string> = { ...BGM_JSON_HEADERS };
-	if (token) {
-		headers.Authorization = `Bearer ${token}`;
-	}
-	return { headers };
+  const headers: Record<string, string> = { ...BGM_JSON_HEADERS };
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  return { headers };
 }
 
 function buildBgmRateLimitedOptions(
-	token?: string,
-	context: NetworkRequestContext = {},
+  token?: string,
+  context: NetworkRequestContext = {},
 ): TauriHttpOptions {
-	return {
-		...buildBgmAuthHeaders(token),
-		...context,
-		rateLimit: { source: "bgm" as const },
-	};
+  return {
+    ...buildBgmAuthHeaders(token),
+    ...context,
+    rateLimit: { source: "bgm" as const },
+  };
 }
 
 const SENSITIVE_KEYWORDS = ["台独", "港独", "藏独", "分裂", "反华", "辱华"];
@@ -145,63 +139,57 @@ const DEVELOPER_KEYWORDS = ["开发", "游戏开发商", "开发商"];
  * @returns 过滤后的标签字符串数组，不包含敏感词。
  */
 function filterSensitiveTags(tags: string[]): string[] {
-	return tags.filter(
-		(tag) => !SENSITIVE_KEYWORDS.some((kw) => tag.includes(kw)),
-	);
+  return tags.filter((tag) => !SENSITIVE_KEYWORDS.some((kw) => tag.includes(kw)));
 }
 
 // 新增：将 BGM API 返回对象转换为统一的结构
 const transformBgmData = (BGMdata: BgmSubjectResponse): GameMetadataDraft => {
-	// 处理 aliases 字段：可能是数组或字符串
-	const aliasesRaw = BGMdata.infobox?.find((k) => k.key === "别名")?.value;
+  // 处理 aliases 字段：可能是数组或字符串
+  const aliasesRaw = BGMdata.infobox?.find((k) => k.key === "别名")?.value;
 
-	let aliasesArray: string[] = [];
-	if (Array.isArray(aliasesRaw)) {
-		// 如果是数组，提取每个对象的 v 字段
-		aliasesArray = aliasesRaw.map((k) => (typeof k === "string" ? k : k.v));
-	} else if (typeof aliasesRaw === "string") {
-		// 如果是字符串，直接包装成数组
-		aliasesArray = [aliasesRaw];
-	}
+  let aliasesArray: string[] = [];
+  if (Array.isArray(aliasesRaw)) {
+    // 如果是数组，提取每个对象的 v 字段
+    aliasesArray = aliasesRaw.map((k) => (typeof k === "string" ? k : k.v));
+  } else if (typeof aliasesRaw === "string") {
+    // 如果是字符串，直接包装成数组
+    aliasesArray = [aliasesRaw];
+  }
 
-	const bgmData: BgmData = {
-		date: BGMdata.date,
-		image: BGMdata.images?.large,
-		summary: BGMdata.summary,
-		name: BGMdata.name,
-		name_cn: BGMdata.name_cn,
-		aliases: aliasesArray,
-		tags: filterSensitiveTags(
-			(BGMdata.tags || [])
-				.filter((tag) => tag.total_count !== 1)
-				.map((tag) => tag.name),
-		),
-		rank: BGMdata.rating?.rank,
-		score: BGMdata.rating?.score,
-		developer: (() => {
-			const developers =
-				BGMdata.infobox?.flatMap((item) => {
-					if (DEVELOPER_KEYWORDS.includes(item.key)) {
-						if (typeof item.value !== "string") return [];
-						return item.value
-							.split(/、|×/g)
-							.map((name: string) => name.trim())
-							.filter((name: string) => name.length > 0);
-					}
-					return [];
-				}) ?? [];
-			const uniqueDevelopers = [...new Set(developers)];
-			return uniqueDevelopers.length > 0
-				? uniqueDevelopers.join("/")
-				: undefined;
-		})(),
-		nsfw: BGMdata.nsfw,
-	};
+  const bgmData: BgmData = {
+    date: BGMdata.date,
+    image: BGMdata.images?.large,
+    summary: BGMdata.summary,
+    name: BGMdata.name,
+    name_cn: BGMdata.name_cn,
+    aliases: aliasesArray,
+    tags: filterSensitiveTags(
+      (BGMdata.tags || []).filter((tag) => tag.total_count !== 1).map((tag) => tag.name),
+    ),
+    rank: BGMdata.rating?.rank,
+    score: BGMdata.rating?.score,
+    developer: (() => {
+      const developers =
+        BGMdata.infobox?.flatMap((item) => {
+          if (DEVELOPER_KEYWORDS.includes(item.key)) {
+            if (typeof item.value !== "string") return [];
+            return item.value
+              .split(/、|×/g)
+              .map((name: string) => name.trim())
+              .filter((name: string) => name.length > 0);
+          }
+          return [];
+        }) ?? [];
+      const uniqueDevelopers = [...new Set(developers)];
+      return uniqueDevelopers.length > 0 ? uniqueDevelopers.join("/") : undefined;
+    })(),
+    nsfw: BGMdata.nsfw,
+  };
 
-	return createGameCandidate({
-		idType: "bgm",
-		source: createSourceCandidateRecord("bgm", String(BGMdata.id), bgmData),
-	});
+  return createGameCandidate({
+    idType: "bgm",
+    source: createSourceCandidateRecord("bgm", String(BGMdata.id), bgmData),
+  });
 };
 
 /**
@@ -212,25 +200,25 @@ const transformBgmData = (BGMdata: BgmSubjectResponse): GameMetadataDraft => {
  * @returns 返回游戏详细信息对象
  */
 export async function fetchBgmById(
-	id: string,
-	token?: string,
-	context: NetworkRequestContext = {},
+  id: string,
+  token?: string,
+  context: NetworkRequestContext = {},
 ): Promise<GameMetadataDraft> {
-	const BGMdata = (
-		await http.get<BgmSubjectResponse>(
-			`${BGM_API_BASE_URL}/subjects/${id}`,
-			buildBgmRateLimitedOptions(token, context),
-		)
-	).data;
+  const BGMdata = (
+    await http.get<BgmSubjectResponse>(
+      `${BGM_API_BASE_URL}/subjects/${id}`,
+      buildBgmRateLimitedOptions(token, context),
+    )
+  ).data;
 
-	if (!BGMdata?.id) {
-		throw new AppError({
-			code: "metadata_not_found",
-			message: `Bangumi subject not found: ${id}`,
-		});
-	}
+  if (!BGMdata?.id) {
+    throw new AppError({
+      code: "metadata_not_found",
+      message: `Bangumi subject not found: ${id}`,
+    });
+  }
 
-	return transformBgmData(BGMdata);
+  return transformBgmData(BGMdata);
 }
 
 /**
@@ -242,31 +230,31 @@ export async function fetchBgmById(
  * @returns 返回游戏详细信息数组
  */
 export async function fetchBgmByName(
-	name: string,
-	token?: string,
-	limit = 25,
-	context: NetworkRequestContext = {},
+  name: string,
+  token?: string,
+  limit = 25,
+  context: NetworkRequestContext = {},
 ): Promise<GameMetadataDraft[]> {
-	const keyword = name.trim();
-	const resp = (
-		await http.post<BgmSearchResponse>(
-			`${BGM_API_BASE_URL}/search/subjects`,
-			{
-				keyword: keyword,
-				filter: {
-					type: [4], // 4 = 游戏类型
-				},
-			},
-			{
-				...buildBgmRateLimitedOptions(token, context),
-				params: { limit },
-			},
-		)
-	).data;
+  const keyword = name.trim();
+  const resp = (
+    await http.post<BgmSearchResponse>(
+      `${BGM_API_BASE_URL}/search/subjects`,
+      {
+        keyword: keyword,
+        filter: {
+          type: [4], // 4 = 游戏类型
+        },
+      },
+      {
+        ...buildBgmRateLimitedOptions(token, context),
+        params: { limit },
+      },
+    )
+  ).data;
 
-	const rawResults = Array.isArray(resp.data) ? resp.data : [];
+  const rawResults = Array.isArray(resp.data) ? resp.data : [];
 
-	return rawResults.map((item) => transformBgmData(item));
+  return rawResults.map((item) => transformBgmData(item));
 }
 
 /**
@@ -284,44 +272,44 @@ export async function fetchBgmByName(
  * // 返回: [{ id_type, sources }, ...]
  */
 export async function fetchBgmByIds(
-	ids: string[],
-	token?: string,
-	context: NetworkRequestContext = {},
+  ids: string[],
+  token?: string,
+  context: NetworkRequestContext = {},
 ): Promise<GameMetadataDraft[]> {
-	if (ids.length === 0) {
-		return [];
-	}
+  if (ids.length === 0) {
+    return [];
+  }
 
-	const allResults: GameMetadataDraft[] = [];
-	let hasRequestFailure = false;
+  const allResults: GameMetadataDraft[] = [];
+  let hasRequestFailure = false;
 
-	for (const id of ids) {
-		try {
-			const BGMdata = (
-				await http.get<BgmSubjectResponse>(
-					`${BGM_API_BASE_URL}/subjects/${id}`,
-					buildBgmRateLimitedOptions(token, context),
-				)
-			).data;
+  for (const id of ids) {
+    try {
+      const BGMdata = (
+        await http.get<BgmSubjectResponse>(
+          `${BGM_API_BASE_URL}/subjects/${id}`,
+          buildBgmRateLimitedOptions(token, context),
+        )
+      ).data;
 
-			if (BGMdata?.id) {
-				allResults.push(transformBgmData(BGMdata));
-			}
-		} catch (error) {
-			if (isApiRateLimitError(error)) throw error;
-			if (isHttpStatus(error, 401)) throw error;
-			hasRequestFailure = true;
-		}
-	}
+      if (BGMdata?.id) {
+        allResults.push(transformBgmData(BGMdata));
+      }
+    } catch (error) {
+      if (isApiRateLimitError(error)) throw error;
+      if (isHttpStatus(error, 401)) throw error;
+      hasRequestFailure = true;
+    }
+  }
 
-	if (allResults.length === 0 && hasRequestFailure) {
-		throw new AppError({
-			code: "metadata_request_failed",
-			message: `Bangumi batch fetch failed for ${ids.length} ids`,
-		});
-	}
+  if (allResults.length === 0 && hasRequestFailure) {
+    throw new AppError({
+      code: "metadata_request_failed",
+      message: `Bangumi batch fetch failed for ${ids.length} ids`,
+    });
+  }
 
-	return allResults;
+  return allResults;
 }
 
 /**
@@ -329,74 +317,70 @@ export async function fetchBgmByIds(
  * @param token Bangumi API 访问令牌
  * @returns 当前用户资料。
  */
-export async function fetchCurrentUserProfile(
-	token: string,
-	context: NetworkRequestContext = {},
-) {
-	const res = await http.get<BgmUserProfile>(
-		`${BGM_API_BASE_URL}/me`,
-		buildBgmRateLimitedOptions(token, context),
-	);
-	return res.data;
+export async function fetchCurrentUserProfile(token: string, context: NetworkRequestContext = {}) {
+  const res = await http.get<BgmUserProfile>(
+    `${BGM_API_BASE_URL}/me`,
+    buildBgmRateLimitedOptions(token, context),
+  );
+  return res.data;
 }
 
 export async function fetchBgmTokenStatus(
-	token: string,
-	context: NetworkRequestContext = {},
+  token: string,
+  context: NetworkRequestContext = {},
 ): Promise<BgmTokenStatus> {
-	const res = await http.post<BgmTokenStatus>(
-		`${BGM_OAUTH_BASE_URL}/token_status`,
-		null,
-		{ ...buildBgmAuthHeaders(token), ...context },
-	);
-	return res.data;
+  const res = await http.post<BgmTokenStatus>(`${BGM_OAUTH_BASE_URL}/token_status`, null, {
+    ...buildBgmAuthHeaders(token),
+    ...context,
+  });
+  return res.data;
 }
 
 export function getBgmAvatarUrl(username?: string | null) {
-	return username
-		? `${BGM_API_BASE_URL}/users/${encodeURIComponent(username)}/avatar?type=large`
-		: undefined;
+  return username
+    ? `${BGM_API_BASE_URL}/users/${encodeURIComponent(username)}/avatar?type=large`
+    : undefined;
 }
 
 export async function buildManualBgmAuth(
-	accessToken: string,
-	context: NetworkRequestContext = {},
+  accessToken: string,
+  context: NetworkRequestContext = {},
 ): Promise<BgmAuth | null> {
-	if (!accessToken) return null;
+  if (!accessToken) return null;
 
-	const [tokenStatus, profile] = await Promise.all([
-		fetchBgmTokenStatus(accessToken, context),
-		fetchCurrentUserProfile(accessToken, context),
-	]);
+  const [tokenStatus, profile] = await Promise.all([
+    fetchBgmTokenStatus(accessToken, context),
+    fetchCurrentUserProfile(accessToken, context),
+  ]);
 
-	return {
-		access_token: accessToken,
-		refresh_token: null,
-		expires_at: tokenStatus?.expires ?? null,
-		username: profile.username,
-		nickname: profile.nickname,
-	};
+  return {
+    access_token: accessToken,
+    refresh_token: null,
+    expires_at: tokenStatus?.expires ?? null,
+    username: profile.username,
+    nickname: profile.nickname,
+  };
 }
 
 export async function completeBgmAuth(
-	auth: BgmAuth,
-	context: NetworkRequestContext = {},
+  auth: BgmAuth,
+  context: NetworkRequestContext = {},
 ): Promise<BgmAuth> {
-	const [tokenStatus, profile] = await Promise.all([
-		auth.expires_at == null
-			? fetchBgmTokenStatus(auth.access_token, context)
-			: Promise.resolve(null),
-		auth.username && auth.nickname
-			? Promise.resolve(null)
-			: fetchCurrentUserProfile(auth.access_token, context),
-	]);
+  const [tokenStatus, profile] = await Promise.all([
+    auth.expires_at == null
+      ? fetchBgmTokenStatus(auth.access_token, context)
+      : Promise.resolve(null),
+    auth.username && auth.nickname
+      ? Promise.resolve(null)
+      : fetchCurrentUserProfile(auth.access_token, context),
+  ]);
 
-	return {
-		...auth,
-		expires_at: auth.expires_at ?? tokenStatus?.expires ?? null,
-		username: auth.username ?? profile?.username ?? null,
-		nickname: auth.nickname ?? profile?.nickname ?? null,
-	};
+  return {
+    ...auth,
+    expires_at: auth.expires_at ?? tokenStatus?.expires ?? null,
+    username: auth.username ?? profile?.username ?? null,
+    nickname: auth.nickname ?? profile?.nickname ?? null,
+  };
 }
 
 /**
@@ -407,89 +391,89 @@ export async function completeBgmAuth(
  * @returns 收藏数据对象或 null
  */
 export async function fetchUserCollection(
-	username: string,
-	subjectId: string,
-	token: string,
-	context: NetworkRequestContext = {},
+  username: string,
+  subjectId: string,
+  token: string,
+  context: NetworkRequestContext = {},
 ) {
-	try {
-		const res = await http.get<{
-			type: number;
-			rate?: number;
-			comment?: string;
-		}>(
-			`${BGM_API_BASE_URL}/users/${username}/collections/${subjectId}`,
-			buildBgmRateLimitedOptions(token, context),
-		);
-		return res.data;
-	} catch (error) {
-		if (isHttpStatus(error, 404)) return null;
-		throw error;
-	}
+  try {
+    const res = await http.get<{
+      type: number;
+      rate?: number;
+      comment?: string;
+    }>(
+      `${BGM_API_BASE_URL}/users/${username}/collections/${subjectId}`,
+      buildBgmRateLimitedOptions(token, context),
+    );
+    return res.data;
+  } catch (error) {
+    if (isHttpStatus(error, 404)) return null;
+    throw error;
+  }
 }
 
 export async function fetchUserGameCollections(
-	username: string,
-	token: string,
-	context: NetworkRequestContext = {},
+  username: string,
+  token: string,
+  context: NetworkRequestContext = {},
 ): Promise<BgmUserCollection[]> {
-	const collections: BgmUserCollection[] = [];
-	const limit = 50;
-	let page = await fetchUserGameCollectionsPage(
-		username,
-		token,
-		{
-			limit,
-			offset: 0,
-		},
-		context,
-	);
-	collections.push(...page.data);
+  const collections: BgmUserCollection[] = [];
+  const limit = 50;
+  let page = await fetchUserGameCollectionsPage(
+    username,
+    token,
+    {
+      limit,
+      offset: 0,
+    },
+    context,
+  );
+  collections.push(...page.data);
 
-	while (true) {
-		const nextOffset = page.offset + page.limit;
-		if (page.data.length === 0 || nextOffset >= page.total) {
-			break;
-		}
-		page = await fetchUserGameCollectionsPage(
-			username,
-			token,
-			{
-				limit,
-				offset: nextOffset,
-			},
-			context,
-		);
-		collections.push(...page.data);
-	}
+  while (true) {
+    const nextOffset = page.offset + page.limit;
+    if (page.data.length === 0 || nextOffset >= page.total) {
+      break;
+    }
+    page = await fetchUserGameCollectionsPage(
+      username,
+      token,
+      {
+        limit,
+        offset: nextOffset,
+      },
+      context,
+    );
+    collections.push(...page.data);
+  }
 
-	return collections;
+  return collections;
 }
 
 export async function fetchUserGameCollectionsPage(
-	username: string,
-	token: string,
-	params: { limit: number; offset: number },
-	context: NetworkRequestContext = {},
+  username: string,
+  token: string,
+  params: { limit: number; offset: number },
+  context: NetworkRequestContext = {},
 ): Promise<BgmUserCollectionsPage> {
-	const res = await http.get<BgmUserCollectionsResponse>(
-		`${BGM_API_BASE_URL}/users/${username}/collections`,
-		{
-			...buildBgmRateLimitedOptions(token, context),
-			params: {
-				subject_type: 4,
-				limit: params.limit,
-				offset: params.offset,
-			},
-		},
-	);
+  const res = await http.get<BgmUserCollectionsResponse>(
+    `${BGM_API_BASE_URL}/users/${username}/collections`,
+    {
+      ...buildBgmRateLimitedOptions(token, context),
+      params: {
+        subject_type: 4,
+        limit: params.limit,
+        offset: params.offset,
+      },
+    },
+  );
 
-	return {
-		total: res.data?.total ?? 0,
-		limit: res.data?.limit ?? params.limit,
-		offset: res.data?.offset ?? params.offset,
-		data: Array.isArray(res.data?.data) ? res.data.data : [],
-	};
+  return {
+    total: res.data?.total ?? 0,
+    limit: res.data?.limit ?? params.limit,
+    offset: res.data?.offset ?? params.offset,
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+  };
 }
 /**
  * 更新当前用户的条目收藏状态
@@ -498,16 +482,16 @@ export async function fetchUserGameCollectionsPage(
  * @param token Bangumi API 访问令牌
  */
 export async function updateUserCollection(
-	subjectId: string,
-	payload: BgmUserCollectionModifyPayload,
-	token: string,
-	context: NetworkRequestContext = {},
+  subjectId: string,
+  payload: BgmUserCollectionModifyPayload,
+  token: string,
+  context: NetworkRequestContext = {},
 ): Promise<boolean> {
-	await http.post(
-		`${BGM_API_BASE_URL}/users/-/collections/${subjectId}`,
-		payload,
-		buildBgmRateLimitedOptions(token, context),
-	);
-	// HTTP 204 does not return response body
-	return true;
+  await http.post(
+    `${BGM_API_BASE_URL}/users/-/collections/${subjectId}`,
+    payload,
+    buildBgmRateLimitedOptions(token, context),
+  );
+  // HTTP 204 does not return response body
+  return true;
 }

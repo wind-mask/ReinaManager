@@ -9,19 +9,44 @@
 
 ![Status](https://img.shields.io/badge/status-active-brightgreen) ![Stage](https://img.shields.io/badge/stage-beta-blue) ![Build Status](https://github.com/huoshen80/ReinaManager/actions/workflows/build.yml/badge.svg) ![Release](https://img.shields.io/github/v/release/huoshen80/ReinaManager) ![Downloads](https://img.shields.io/github/downloads/huoshen80/ReinaManager/total)
 
-[![QQ Group](https://img.shields.io/badge/QQ%20Group-556984160-12B7F5?logo=tencentqq&logoColor=white)](https://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=KHB4Pm2fmtyWv3OklLNxDxkjIKtiwMBj&authKey=2KeSnTCv%2By6ORWuEOYEZx9q63pRrCKkQRK8VqpaOiGZUS1zZ%2BNVmCbRkN3F2lpc7&noverify=0&group_code=556984160) [![wakatime](https://wakatime.com/badge/user/36a51c62-bf3b-4b81-9993-0e5b0e7ed309/project/efb3bd00-20c2-40de-98b6-e2f4a24bc120.svg)](https://wakatime.com/badge/user/36a51c62-bf3b-4b81-9993-0e5b0e7ed309/project/efb3bd00-20c2-40de-98b6-e2f4a24bc120)
+[![QQ群](https://img.shields.io/badge/QQ群-556984160-12B7F5?logo=tencentqq&logoColor=white)](https://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=KHB4Pm2fmtyWv3OklLNxDxkjIKtiwMBj&authKey=2KeSnTCv%2By6ORWuEOYEZx9q63pRrCKkQRK8VqpaOiGZUS1zZ%2BNVmCbRkN3F2lpc7&noverify=0&group_code=556984160) [![wakatime](https://wakatime.com/badge/user/36a51c62-bf3b-4b81-9993-0e5b0e7ed309/project/efb3bd00-20c2-40de-98b6-e2f4a24bc120.svg)](https://wakatime.com/badge/user/36a51c62-bf3b-4b81-9993-0e5b0e7ed309/project/efb3bd00-20c2-40de-98b6-e2f4a24bc120)
 
-Development time tracked since v0.9.0
+开发时间统计自 v0.9.0 版本起
 
-<p align="center">English|<a href="./README.zh_CN.md">中文</a>|<a href="./README.zh_TW.md">繁體中文</a>|<a href="./README.ja_JP.md">日本語</a></p>
+<p align="center"><a href="./README.md">English</a>|中文|<a href="./README.zh_TW.md">繁體中文</a>|<a href="./README.ja_JP.md">日本語</a></p>
 
-<h5>A lightweight galgame/visual-novel manager,Under development...</h5>
+<h5>一个轻量级的galgame/视觉小说管理工具，正在开发中...</h5>
 
-The `Reina` in the name is the character <a href="https://vndb.org/c64303"><b>妃 玲奈(Kisaki Reina)</b></a> from game <a href="https://vndb.org/v21852"><b>金色ラブリッチェ(Kin'iro Loveriche)</b></a>
+名称中的 `Reina` 来源于游戏 <a href="https://vndb.org/v21852"><b>金色ラブリッチェ(Kin'iro Loveriche)</b></a> 中的角色 <a href="https://vndb.org/c64303"><b>妃 玲奈(Kisaki Reina)</b></a>
 
 </div>
 
-## Stacks
+## Linux 分支注释
+
+本分支为适配的linux分支，完整功能参考release的变更日志，下列文档可能不准确，仅供参考：
+
+- [x] 启动管理功能依赖于`systemd`(version>=211)，即[org.freedesktop.systemd1 — The D-Bus interface of systemd](https://www.freedesktop.org/software/systemd/man/latest/org.freedesktop.systemd1.html)接口。
+      使用可配置的启动脚本启动游戏，默认为`wine`（推荐使用[umu-launcher](https://github.com/Open-Wine-Components/umu-launcher)结合（各版本）[Proton](https://github.com/ValveSoftware/Proton)）
+- [x] 使用xcb监控x11（含xwaylnad）启动的游戏的窗口，包括聚焦时间
+- [x] 设置中的开机自启，请确保桌面环境支持[XDG Autostart specification](https://specifications.freedesktop.org/autostart/latest/)
+- [x] 桌面托盘tray
+- [?] wayland下的游戏窗口和聚焦监控
+
+  现在支持`KDE`及`niri`下的窗口聚焦监控。
+
+合并前请自行构建或参见如下：
+
+### Debian Ubuntu RedHat
+
+参考[release](https://github.com/wind-mask/ReinaManager/releases/)中的`deb`和`rpm`构建
+
+### 一般Linux
+
+⚠️!注意：AppImage的原生wayland可能不可用，必须有X兼容环境（如xwayland）
+
+参考[release](https://github.com/wind-mask/ReinaManager/releases/)中的`AppImage`构建
+
+## 技术栈
 
 - Tauri 2.0
 
@@ -41,87 +66,93 @@ The `Reina` in the name is the character <a href="https://vndb.org/c64303"><b>�
 
 - SeaORM
 
-## Features
+## 功能特性
 
-- 🌐 **Multi-source Data Integration** - Seamlessly fetch and merge game metadata from multiple source APIs
-- 🔍 **Powerful Search** - Quickly search games by titles, aliases, custom names, and other information
-- 🗂️ **Filter and Sort** - Filter and sort games across multiple dimensions, such as source, status, tags, and more
-- 📚 **Collection Management** - Organize your game library with groups and categories, with support for drag and drop sorting
-- 🎮 **Play Time Tracking** - Automatic gameplay session recording with detailed play time statistics and history
-- 🎨 **Customization** - Customize game covers, names, descriptions, tags, and other information to build your own game library
-- 🔄 **Batch Operations** - Support bulk import, add and update game metadata from APIs
-- 🌍 **Multi-language Support** - Complete i18n support, including Simplified Chinese, Traditional Chinese, English, Japanese, and more
-- 🔒 **NSFW Filter** - Hide or cover NSFW content with a simple toggle
-- 💾 **Savedata Backup** - Support manual and automatic backup of game savedata
-- 🚀 **System Integration** - Auto-start on boot and minimize to system tray
-- 🛠️ **Tool Integration** - Launch games with Locale Emulator locale switching and Magpie upscaling integration
+- 🌐 **多源数据整合** - 无缝获取合并展示多源 API 的游戏元数据
+- 🔍 **强大的搜索** - 通过游戏标题、别名、自定义名称及其他信息快速搜索游戏
+- 🗂️ **筛选排序** - 对游戏进行多维度的筛选和排序，如按来源、状态、标签等
+- 📚 **收藏管理** - 通过分组和分类组织游戏库，并支持拖拽排序
+- 🎮 **游戏时长追踪** - 自动记录游戏会话，提供详细的游玩时间统计和历史记录
+- 🎨 **个性化定制** - 支持自定义游戏封面、名称、简介、标签等信息，打造专属游戏库
+- 🔄 **批量操作** - 支持从 API 批量导入、添加和更新游戏元数据
+- 🌍 **多语言支持** - 提供完整的国际化支持，包含简体中文、繁体中文、英文、日文等语言
+- 🔒 **NSFW 过滤** - 通过简单的开关隐藏或遮盖 NSFW 内容
+- 💾 **存档备份** - 支持手动和自动备份游戏存档
+- 🚀 **系统集成** - 开机自启动和最小化到系统托盘
+- 🛠️ **工具集成** - 启动游戏可联动 Locale Emulator 转区和 Magpie 放大
 
-## Todo
+## 待办事项
 
-- [x] Bulk import games from folders
-- [x] Basic support for the Linux platform
-- [x] Sync game status with Bangumi and VNDB
-- [ ] Beautify individual pages
+- [x] 从文件夹批量导入游戏
+- [x] 对 Linux 平台的基础支持
+- [x] 与 Bangumi 和 VNDB 同步游戏状态
+- [ ] 美化各个页面
 
-## Migration
+## 迁移
 
-Need to migrate your data from other galgame/visual-novel managers? Check out [reina_migrator](https://github.com/huoshen80/reina_migrator) - a tool for migrating others manager data into ReinaManager.
+需要从其他 galgame/视觉小说管理器迁移数据？请查看 [reina_migrator](https://github.com/huoshen80/reina_migrator) - 一个用于将其他管理器数据迁移到 ReinaManager 的工具。
 
-Currently supports:
-- **WhiteCloud v0.4.0** data migration
+当前支持：
 
-The migrator helps you seamlessly transfer your game library, play time records, and other data from supported managers to ReinaManager.
+- **WhiteCloud v0.4.0** 数据迁移
 
-## Screenshots
+该迁移工具可帮助您无缝转移游戏库、游玩时间记录和其他数据到 ReinaManager。
 
-![Home](screenshots/home.png)
-![Library](screenshots/library.png)
-![Detail](screenshots/detail.png)
-![Stats](screenshots/stats.png)
-![Collection](screenshots/collection.png)
+## 截图
 
-For more, you can download the latest Release Version: [Download](https://github.com/huoshen80/ReinaManager/releases)
+![主页](screenshots/home.png)
+![游戏库](screenshots/library.png)
+![详情页](screenshots/detail.png)
+![统计](screenshots/stats.png)
+![收藏](screenshots/collection.png)
 
-## Contribution
-##### Start
-Contributions are welcome! If you have suggestions for improvements, bug reports, or want to submit a pull request, please follow these steps:
+更多内容，你可以下载最新的发布版本：[下载](https://github.com/huoshen80/ReinaManager/releases)
 
-1. Fork this repository and create your branch from `main`.
-2. If you have fixed a bug or added a feature, please try to conduct the corresponding tests (This project uses Biome to format and lint code).
-3. Ensure your code follows the existing style and passes all checks.
-4. Submit a pull request with a clear description of your changes.
+## 贡献
 
-##### How to build and run the project locally
-1. Make sure you have [Node.js](https://nodejs.org/) and [Rust](https://www.rust-lang.org/) installed on your machine.
-2. Clone the repository:
+##### 开始
+
+欢迎任何形式的贡献！如果你有改进建议、发现了 bug，或希望提交 Pull Request，请按照以下步骤操作：
+
+1. Fork 本仓库，并从 `main` 分支创建新分支。
+2. 如果修复了 bug 或新增了功能，请尽量进行相应测试（本项目使用 Biome 格式化和检查代码）。
+3. 保证代码风格与现有代码一致，并通过所有检查。
+4. 提交 Pull Request，并清晰描述你的更改内容。
+
+##### 本地构建与运行项目
+
+1. 确保你已安装 [Node.js](https://nodejs.org/) 和 [Rust](https://www.rust-lang.org/)。
+2. 克隆仓库：
    ```bash
    git clone https://github.com/huoshen80/ReinaManager.git
    cd ReinaManager
    ```
-3. Install the dependencies:
+3. 安装依赖：
    ```bash
    pnpm install
    ```
-4. Run the development server:
+4. 运行开发服务器：
    ```bash
    pnpm tauri dev
    ```
-5. Build the application for production:
+5. 构建生产版本：
    ```bash
    pnpm tauri build
    ```
 
-Thank you for all the contributions you have made to ReinaManager!
+感谢你为 ReinaManager 做出的所有贡献！
 
-## Sponsor
-If you find this project helpful and would like to support its development, you can consider sponsoring. Your support is greatly appreciated!
+## 赞助
+
+如果你觉得这个项目好用，并希望支持项目的开发，可以考虑赞助。非常感谢每个支持者！
+
 - [Sponsor link](https://huoshen80.top/233.html)
 
-## Acknowledgements
+## 感谢
 
 - **[Bangumi](https://bangumi.tv/)** - Bangumi 番组计划
 
-- **[VNDB](https://vndb.org/)** - the visual novel database
+- **[VNDB](https://vndb.org/)** - 视觉小说数据库
 
 - **[Ymgal](https://www.ymgal.games/)** - 月幕Galgame
 
@@ -129,17 +160,17 @@ If you find this project helpful and would like to support its development, you 
 
 - **[Hikarinagi](https://www.hikarinagi.org/)** - 你和同好的ACGN社区
 
-- **[Shionlib](https://shionlib.com/)** - A Visual Novel/Galgame Archive
+- **[Shionlib](https://shionlib.com/)** - 免费、开源、零门槛的 视觉小说/Galgame 档案库
 
-Special thanks to these platforms for providing public APIs, data, and resources!
+特别感谢这些平台提供的公共 API 和数据以及资源！
 
-- **[7-Zip ZS (7-Zip-zstd)](https://github.com/mcmilk/7-Zip-zstd)** - a 7-Zip fork with additional compression codecs including Zstandard, based on [7-Zip](https://www.7-zip.org/).
+- **[7-Zip ZS (7-Zip-zstd)](https://github.com/mcmilk/7-Zip-zstd)** - 基于 [7-Zip](https://www.7-zip.org/) 的增强分支，提供 Zstandard 等额外压缩算法支持。
 
-## License
+## 许可证
 
-This project is licensed under the [AGPL-3.0 license](https://github.com/huoshen80/ReinaManager#AGPL-3.0-1-ov-file)
+本项目采用 [AGPL-3.0 许可证](https://github.com/huoshen80/ReinaManager#AGPL-3.0-1-ov-file)
 
-## Star History
+## Star 历史
 
 <a href="https://www.star-history.com/?repos=huoshen80%2FReinaManager&type=date&legend=top-left">
  <picture>

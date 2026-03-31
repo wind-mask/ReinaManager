@@ -1,10 +1,10 @@
 import { open } from "@tauri-apps/plugin-dialog";
 import {
-	type AutoBackupResult,
-	type AutoBackupTrigger,
-	type BackupResult,
-	fileService,
-	type ImportResult,
+  type AutoBackupResult,
+  type AutoBackupTrigger,
+  type BackupResult,
+  fileService,
+  type ImportResult,
 } from "@/services/invoke";
 
 /**
@@ -20,14 +20,14 @@ import {
  * @returns 备份结果，包含备份文件的路径
  */
 export async function backupDatabase(): Promise<BackupResult> {
-	try {
-		const result = await fileService.backupDatabase();
-		console.log(`数据库已备份到: ${result.path}`);
-		return result;
-	} catch (error) {
-		console.error("备份数据库失败:", error);
-		throw error;
-	}
+  try {
+    const result = await fileService.backupDatabase();
+    console.log(`数据库已备份到: ${result.path}`);
+    return result;
+  } catch (error) {
+    console.error("备份数据库失败:", error);
+    throw error;
+  }
 }
 
 /**
@@ -40,16 +40,16 @@ export async function backupDatabase(): Promise<BackupResult> {
  * @returns 备份结果，包含备份文件的路径
  */
 export async function backupCustomCovers(): Promise<BackupResult> {
-	try {
-		const result = await fileService.backupCustomCovers();
-		if (result.path) {
-			console.log(`自定义封面已备份到: ${result.path}`);
-		}
-		return result;
-	} catch (error) {
-		console.error("备份自定义封面失败:", error);
-		throw error;
-	}
+  try {
+    const result = await fileService.backupCustomCovers();
+    if (result.path) {
+      console.log(`自定义封面已备份到: ${result.path}`);
+    }
+    return result;
+  } catch (error) {
+    console.error("备份自定义封面失败:", error);
+    throw error;
+  }
 }
 
 /**
@@ -58,22 +58,22 @@ export async function backupCustomCovers(): Promise<BackupResult> {
  * 后端会使用自动备份专用文件名，并只清理旧的自动备份文件。
  */
 export async function createAutoBackup(
-	trigger: AutoBackupTrigger,
-	includeCovers: boolean,
-	maxBackups: number,
+  trigger: AutoBackupTrigger,
+  includeCovers: boolean,
+  maxBackups: number,
 ): Promise<AutoBackupResult> {
-	try {
-		const result = await fileService.createAutoBackup({
-			trigger,
-			includeCovers,
-			maxAutoBackups: maxBackups,
-		});
-		console.log(`自动备份完成: ${result.database.path}`);
-		return result;
-	} catch (error) {
-		console.error("自动备份失败:", error);
-		throw error;
-	}
+  try {
+    const result = await fileService.createAutoBackup({
+      trigger,
+      includeCovers,
+      maxAutoBackups: maxBackups,
+    });
+    console.log(`自动备份完成: ${result.database.path}`);
+    return result;
+  } catch (error) {
+    console.error("自动备份失败:", error);
+    throw error;
+  }
 }
 
 /**
@@ -94,19 +94,19 @@ export async function createAutoBackup(
  * @returns Promise<ImportResult | null> 导入成功返回结果对象，取消返回 null
  */
 export async function importDatabase(): Promise<ImportResult | null> {
-	// 打开文件选择对话框
-	const filePath = await open({
-		filters: [{ name: "SQLite Database", extensions: ["db"] }],
-		multiple: false,
-		directory: false,
-	});
+  // 打开文件选择对话框
+  const filePath = await open({
+    filters: [{ name: "SQLite Database", extensions: ["db"] }],
+    multiple: false,
+    directory: false,
+  });
 
-	if (!filePath) {
-		return null; // 用户取消
-	}
+  if (!filePath) {
+    return null; // 用户取消
+  }
 
-	// 调用后端命令导入数据库
-	const result = await fileService.importDatabase(filePath);
+  // 调用后端命令导入数据库
+  const result = await fileService.importDatabase(filePath);
 
-	return result;
+  return result;
 }

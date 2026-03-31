@@ -1,194 +1,176 @@
 import type { InsertGameParams } from "@/types";
 import { BaseService } from "./base";
 
-export type TaskStatus =
-	| "pending"
-	| "running"
-	| "paused"
-	| "completed"
-	| "failed"
-	| "cancelled";
+export type TaskStatus = "pending" | "running" | "paused" | "completed" | "failed" | "cancelled";
 
 export type GameInstallStage =
-	| "downloading"
-	| "verifying"
-	| "extracting"
-	| "organizing"
-	| "scanning"
-	| "matching_metadata"
-	| "importing_game";
+  | "downloading"
+  | "verifying"
+  | "extracting"
+  | "organizing"
+  | "scanning"
+  | "matching_metadata"
+  | "importing_game";
 
 export interface InstallRequest {
-	v: number;
-	provider: string;
-	resource_id: string;
-	url: string;
-	file_name: string;
-	archive_format: string;
-	archive_password?: string | null;
-	size: number;
-	checksum_algo?: "sha256" | "blake3" | null;
-	checksum?: string | null;
-	expires_at?: number | null;
-	bgm_id?: string | null;
-	vndb_id?: string | null;
-	hikarinagi_id?: string | null;
-	title: string;
+  v: number;
+  provider: string;
+  resource_id: string;
+  url: string;
+  file_name: string;
+  archive_format: string;
+  archive_password?: string | null;
+  size: number;
+  checksum_algo?: "sha256" | "blake3" | null;
+  checksum?: string | null;
+  expires_at?: number | null;
+  bgm_id?: string | null;
+  vndb_id?: string | null;
+  hikarinagi_id?: string | null;
+  title: string;
 }
 
 export interface GameInstallResultV1 {
-	version: 1;
-	game_id?: number | null;
-	install_path: string;
-	executable?: string | null;
-	created_new_game?: boolean | null;
-	matched_by?: "bgm" | "vndb" | "hikarinagi" | null;
+  version: 1;
+  game_id?: number | null;
+  install_path: string;
+  executable?: string | null;
+  created_new_game?: boolean | null;
+  matched_by?: "bgm" | "vndb" | "hikarinagi" | null;
 }
 
 export interface GameInstallPayloadV1 extends InstallRequest {
-	install_root: string;
+  install_root: string;
 }
 
 export interface Task {
-	id: number;
-	task_type: string;
-	title: string;
-	status: TaskStatus;
-	stage?: string | null;
-	payload_json: unknown;
-	result_json?: unknown | null;
-	progress_current: number;
-	progress_total?: number | null;
-	progress_unit?: string | null;
-	bytes_per_second?: number | null;
-	received_bytes?: number | null;
-	displayed_progress?: number;
-	recovery_target?: number;
-	dedupe_key?: string | null;
-	error_code?: string | null;
-	error_message?: string | null;
-	created_at: number;
-	started_at?: number | null;
-	updated_at: number;
-	finished_at?: number | null;
+  id: number;
+  task_type: string;
+  title: string;
+  status: TaskStatus;
+  stage?: string | null;
+  payload_json: unknown;
+  result_json?: unknown | null;
+  progress_current: number;
+  progress_total?: number | null;
+  progress_unit?: string | null;
+  bytes_per_second?: number | null;
+  received_bytes?: number | null;
+  displayed_progress?: number;
+  recovery_target?: number;
+  dedupe_key?: string | null;
+  error_code?: string | null;
+  error_message?: string | null;
+  created_at: number;
+  started_at?: number | null;
+  updated_at: number;
+  finished_at?: number | null;
 }
 
 export interface GameInstallTask extends Task {
-	task_type: "game_install";
-	stage?: GameInstallStage | null;
-	payload_json: GameInstallPayloadV1;
-	result_json?: GameInstallResultV1 | null;
+  task_type: "game_install";
+  stage?: GameInstallStage | null;
+  payload_json: GameInstallPayloadV1;
+  result_json?: GameInstallResultV1 | null;
 }
 
 export function isGameInstallTask(task: Task): task is GameInstallTask {
-	return task.task_type === "game_install";
+  return task.task_type === "game_install";
 }
 
 export interface InstallRequestRejection {
-	code: string;
-	message: string;
+  code: string;
+  message: string;
 }
 
 export interface TaskProgressEvent {
-	task_id: number;
-	status: TaskStatus;
-	stage?: string | null;
-	progress_current: number;
-	progress_total?: number | null;
-	progress_unit?: string | null;
-	bytes_per_second?: number | null;
-	received_bytes?: number | null;
+  task_id: number;
+  status: TaskStatus;
+  stage?: string | null;
+  progress_current: number;
+  progress_total?: number | null;
+  progress_unit?: string | null;
+  bytes_per_second?: number | null;
+  received_bytes?: number | null;
 }
 
 export interface GameInstallMetadataRequestedEvent {
-	task_id: number;
+  task_id: number;
 }
 
 export interface InstallCompletedEvent {
-	task_id: number;
-	game_id: number;
-	result_path: string;
-	executable?: string | null;
-	executable_missing: boolean;
-	used_actual_path: boolean;
+  task_id: number;
+  game_id: number;
+  result_path: string;
+  executable?: string | null;
+  executable_missing: boolean;
+  used_actual_path: boolean;
 }
 
 export interface InstallFailedEvent {
-	task_id: number;
-	game_id?: number | null;
-	error_code: string;
-	error_message: string;
+  task_id: number;
+  game_id?: number | null;
+  error_code: string;
+  error_message: string;
 }
 
 class TaskService extends BaseService {
-	takePendingRequests(): Promise<InstallRequest[]> {
-		return this.invoke<InstallRequest[]>("take_pending_install_requests");
-	}
+  takePendingRequests(): Promise<InstallRequest[]> {
+    return this.invoke<InstallRequest[]>("take_pending_install_requests");
+  }
 
-	takePendingRejections(): Promise<InstallRequestRejection[]> {
-		return this.invoke<InstallRequestRejection[]>(
-			"take_pending_install_rejections",
-		);
-	}
+  takePendingRejections(): Promise<InstallRequestRejection[]> {
+    return this.invoke<InstallRequestRejection[]>("take_pending_install_rejections");
+  }
 
-	createGameInstallTask(
-		request: InstallRequest,
-		installRoot: string,
-	): Promise<GameInstallTask> {
-		return this.invoke<GameInstallTask>("create_game_install_task", {
-			request,
-			installRoot,
-		});
-	}
+  createGameInstallTask(request: InstallRequest, installRoot: string): Promise<GameInstallTask> {
+    return this.invoke<GameInstallTask>("create_game_install_task", {
+      request,
+      installRoot,
+    });
+  }
 
-	listTasks(): Promise<Task[]> {
-		return this.invoke<Task[]>("list_tasks");
-	}
+  listTasks(): Promise<Task[]> {
+    return this.invoke<Task[]>("list_tasks");
+  }
 
-	retryTask(
-		taskId: number,
-		payload?: InstallRequest,
-		archivePassword?: string,
-	): Promise<Task> {
-		return this.invoke<Task>("retry_task", {
-			taskId,
-			payload: payload ?? null,
-			archivePassword: archivePassword ?? null,
-		});
-	}
+  retryTask(taskId: number, payload?: InstallRequest, archivePassword?: string): Promise<Task> {
+    return this.invoke<Task>("retry_task", {
+      taskId,
+      payload: payload ?? null,
+      archivePassword: archivePassword ?? null,
+    });
+  }
 
-	pauseTask(taskId: number): Promise<Task> {
-		return this.invoke<Task>("pause_task", { taskId });
-	}
+  pauseTask(taskId: number): Promise<Task> {
+    return this.invoke<Task>("pause_task", { taskId });
+  }
 
-	resumeTask(taskId: number): Promise<Task> {
-		return this.invoke<Task>("resume_task", { taskId });
-	}
+  resumeTask(taskId: number): Promise<Task> {
+    return this.invoke<Task>("resume_task", { taskId });
+  }
 
-	cancelTask(taskId: number): Promise<Task> {
-		return this.invoke<Task>("cancel_task", { taskId });
-	}
+  cancelTask(taskId: number): Promise<Task> {
+    return this.invoke<Task>("cancel_task", { taskId });
+  }
 
-	deleteTask(taskId: number): Promise<void> {
-		return this.invoke<void>("delete_task", { taskId });
-	}
+  deleteTask(taskId: number): Promise<void> {
+    return this.invoke<void>("delete_task", { taskId });
+  }
 
-	completeGameInstall(
-		taskId: number,
-		metadata: InsertGameParams,
-	): Promise<Task> {
-		return this.invoke<Task>("complete_game_install_task", {
-			taskId,
-			metadata,
-		});
-	}
+  completeGameInstall(taskId: number, metadata: InsertGameParams): Promise<Task> {
+    return this.invoke<Task>("complete_game_install_task", {
+      taskId,
+      metadata,
+    });
+  }
 
-	failGameInstallMetadata(taskId: number, errorMessage: string): Promise<Task> {
-		return this.invoke<Task>("fail_game_install_metadata", {
-			taskId,
-			errorMessage,
-		});
-	}
+  failGameInstallMetadata(taskId: number, errorMessage: string): Promise<Task> {
+    return this.invoke<Task>("fail_game_install_metadata", {
+      taskId,
+      errorMessage,
+    });
+  }
 }
 
 export const taskService = new TaskService();

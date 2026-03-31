@@ -18,149 +18,141 @@ import type { GameMetadataDraft, VndbData } from "@/types";
 import { AppError, isApiRateLimitError } from "@/utils/errors";
 import { USER_AGENT } from "../constants";
 import type { MetadataRequestContext } from "../sourceAdapter";
-import {
-	createGameCandidate,
-	createSourceCandidateRecord,
-} from "../sourceCandidate";
-import http, {
-	type NetworkRequestContext,
-	type TauriHttpOptions,
-} from "./http";
+import { createGameCandidate, createSourceCandidateRecord } from "../sourceCandidate";
+import http, { type NetworkRequestContext, type TauriHttpOptions } from "./http";
 
 const VNDB_API_BASE = "https://api.vndb.org/kana";
 const VNDB_JSON_HEADERS = {
-	Accept: "application/json",
-	"Content-Type": "application/json",
-	"User-Agent": USER_AGENT,
+  Accept: "application/json",
+  "Content-Type": "application/json",
+  "User-Agent": USER_AGENT,
 } as const;
 
 const VNDB_FIELDS =
-	"id,titles{title,lang,main},aliases,image{url},released,rating,tags{name,rating,spoiler},description,developers{name},length_minutes";
+  "id,titles{title,lang,main},aliases,image{url},released,rating,tags{name,rating,spoiler},description,developers{name},length_minutes";
 const VNDB_USER_COLLECTION_FIELDS = "id, labels{id, label}";
 
-function buildVndbRateLimitedOptions(
-	context: NetworkRequestContext = {},
-): TauriHttpOptions {
-	return {
-		...context,
-		headers: {
-			...VNDB_JSON_HEADERS,
-		},
-		rateLimit: { source: "vndb" as const },
-	};
+function buildVndbRateLimitedOptions(context: NetworkRequestContext = {}): TauriHttpOptions {
+  return {
+    ...context,
+    headers: {
+      ...VNDB_JSON_HEADERS,
+    },
+    rateLimit: { source: "vndb" as const },
+  };
 }
 
 function buildVndbRateLimitedAuthOptions(
-	token: string,
-	context: NetworkRequestContext = {},
+  token: string,
+  context: NetworkRequestContext = {},
 ): TauriHttpOptions {
-	return {
-		...context,
-		headers: {
-			...VNDB_JSON_HEADERS,
-			Authorization: `Token ${token}`,
-		},
-		rateLimit: { source: "vndb" as const },
-	};
+  return {
+    ...context,
+    headers: {
+      ...VNDB_JSON_HEADERS,
+      Authorization: `Token ${token}`,
+    },
+    rateLimit: { source: "vndb" as const },
+  };
 }
 
 /**
  * VNDB 标题对象接口。
  */
 interface VndbTitle {
-	title: string;
-	lang: string;
-	main: boolean;
+  title: string;
+  lang: string;
+  main: boolean;
 }
 
 /**
  * VNDB API 原始数据接口
  */
 interface VndbVisualNovelResponse {
-	id: string;
-	titles: VndbTitle[];
-	aliases: string[];
-	image: { url: string } | null;
-	released: string | null;
-	rating: number | null;
-	tags: { name: string; rating: number; spoiler: 0 | 1 | 2 }[];
-	description: string | null;
-	developers: { name: string }[];
-	length_minutes: number | null;
+  id: string;
+  titles: VndbTitle[];
+  aliases: string[];
+  image: { url: string } | null;
+  released: string | null;
+  rating: number | null;
+  tags: { name: string; rating: number; spoiler: 0 | 1 | 2 }[];
+  description: string | null;
+  developers: { name: string }[];
+  length_minutes: number | null;
 }
 
 interface VndbQueryResponse<T> {
-	results: T[];
-	more: boolean;
-	count?: number;
+  results: T[];
+  more: boolean;
+  count?: number;
 }
 
 export interface VndbAuthInfo {
-	id: string;
-	username: string;
-	permissions: string[];
+  id: string;
+  username: string;
+  permissions: string[];
 }
 
 export interface VndbUserLabel {
-	id: number;
-	label: string;
-	private: boolean;
-	count: number;
+  id: number;
+  label: string;
+  private: boolean;
+  count: number;
 }
 
 interface VndbUserLabelsResponse {
-	labels: VndbUserLabel[];
+  labels: VndbUserLabel[];
 }
 
 export interface VndbUserCollectionLabel {
-	id: number;
-	label: string;
+  id: number;
+  label: string;
 }
 
 export interface VndbUserCollectionItem {
-	id: string;
-	labels: VndbUserCollectionLabel[];
+  id: string;
+  labels: VndbUserCollectionLabel[];
 }
 
 export interface VndbUserImportItem extends VndbUserCollectionItem {
-	metadata: GameMetadataDraft;
-	notes?: string | null;
-	vote?: number | null;
+  metadata: GameMetadataDraft;
+  notes?: string | null;
+  vote?: number | null;
 }
 
 interface VndbUserImportResponse extends VndbUserCollectionItem {
-	notes?: string | null;
-	vn?: Omit<VndbVisualNovelResponse, "id"> & { id?: string };
-	vote?: number | null;
+  notes?: string | null;
+  vn?: Omit<VndbVisualNovelResponse, "id"> & { id?: string };
+  vote?: number | null;
 }
 
 export interface VndbUserCollectionsPage {
-	results: VndbUserCollectionItem[];
-	more: boolean;
-	count?: number;
+  results: VndbUserCollectionItem[];
+  more: boolean;
+  count?: number;
 }
 
 export interface UpdateVndbUserCollectionPayload {
-	vote?: number | null;
-	notes?: string | null;
-	started?: string | null;
-	finished?: string | null;
-	labels?: number[];
-	labels_set?: number[];
-	labels_unset?: number[];
+  vote?: number | null;
+  notes?: string | null;
+  started?: string | null;
+  finished?: string | null;
+  labels?: number[];
+  labels_set?: number[];
+  labels_unset?: number[];
 }
 
 async function resolveVndbUserId(
-	token: string,
-	userId?: string,
-	context: NetworkRequestContext = {},
+  token: string,
+  userId?: string,
+  context: NetworkRequestContext = {},
 ) {
-	if (userId) {
-		return userId;
-	}
+  if (userId) {
+    return userId;
+  }
 
-	const authInfo = await fetchVndbCurrentUserProfile(token, context);
-	return authInfo?.id ?? null;
+  const authInfo = await fetchVndbCurrentUserProfile(token, context);
+  return authInfo?.id ?? null;
 }
 
 /**
@@ -168,66 +160,56 @@ async function resolveVndbUserId(
  * @private
  */
 function transformVndbData(
-	VNDBdata: VndbVisualNovelResponse,
-	filterLevel: number,
-	update_batch?: boolean,
+  VNDBdata: VndbVisualNovelResponse,
+  filterLevel: number,
+  update_batch?: boolean,
 ): GameMetadataDraft {
-	// 处理标题信息
-	const titles = VNDBdata.titles.map((title: VndbTitle) => ({
-		title: title.title,
-		lang: title.lang,
-		main: title.main,
-	}));
+  // 处理标题信息
+  const titles = VNDBdata.titles.map((title: VndbTitle) => ({
+    title: title.title,
+    lang: title.lang,
+    main: title.main,
+  }));
 
-	const mainTitle =
-		titles.find((title) => title.main)?.title ?? titles[0]?.title ?? "";
-	const chineseTitle =
-		titles.find(
-			(title: VndbTitle) =>
-				title.lang === "zh-Hans" ||
-				title.lang === "zh-Hant" ||
-				title.lang === "zh",
-		)?.title || "";
+  const mainTitle = titles.find((title) => title.main)?.title ?? titles[0]?.title ?? "";
+  const chineseTitle =
+    titles.find(
+      (title: VndbTitle) =>
+        title.lang === "zh-Hans" || title.lang === "zh-Hant" || title.lang === "zh",
+    )?.title || "";
 
-	// 提取所有标题
-	const allTitles: string[] = titles.map((title: VndbTitle) => title.title);
+  // 提取所有标题
+  const allTitles: string[] = titles.map((title: VndbTitle) => title.title);
 
-	// 根据 spoilerLevel 过滤标签
-	const filtered_tags = VNDBdata.tags
-		.toSorted((a, b) => b.rating - a.rating)
-		.filter(({ spoiler }) => spoiler <= filterLevel)
-		.map(({ name }) => name);
-	const releasedDate = VNDBdata.released ?? undefined;
+  // 根据 spoilerLevel 过滤标签
+  const filtered_tags = VNDBdata.tags
+    .toSorted((a, b) => b.rating - a.rating)
+    .filter(({ spoiler }) => spoiler <= filterLevel)
+    .map(({ name }) => name);
+  const releasedDate = VNDBdata.released ?? undefined;
 
-	const vndbData: VndbData = {
-		date: releasedDate,
-		image: VNDBdata.image?.url,
-		summary: VNDBdata.description ?? undefined,
-		name: mainTitle,
-		name_cn: chineseTitle,
-		all_titles: allTitles,
-		aliases: VNDBdata.aliases || [],
-		tags: filtered_tags,
-		score:
-			VNDBdata.rating == null
-				? null
-				: Number((VNDBdata.rating / 10).toFixed(2)),
-		developer: VNDBdata.developers
-			?.map((dev: { name: string }) => dev.name)
-			.join("/"),
-		average_hours:
-			VNDBdata.length_minutes == null
-				? null
-				: Number((VNDBdata.length_minutes / 60).toFixed(1)),
-		nsfw: !filtered_tags.includes("No Sexual Content"),
-	};
+  const vndbData: VndbData = {
+    date: releasedDate,
+    image: VNDBdata.image?.url,
+    summary: VNDBdata.description ?? undefined,
+    name: mainTitle,
+    name_cn: chineseTitle,
+    all_titles: allTitles,
+    aliases: VNDBdata.aliases || [],
+    tags: filtered_tags,
+    score: VNDBdata.rating == null ? null : Number((VNDBdata.rating / 10).toFixed(2)),
+    developer: VNDBdata.developers?.map((dev: { name: string }) => dev.name).join("/"),
+    average_hours:
+      VNDBdata.length_minutes == null ? null : Number((VNDBdata.length_minutes / 60).toFixed(1)),
+    nsfw: !filtered_tags.includes("No Sexual Content"),
+  };
 
-	return {
-		...createGameCandidate({
-			idType: update_batch ? undefined : "vndb",
-			source: createSourceCandidateRecord("vndb", VNDBdata.id, vndbData),
-		}),
-	};
+  return {
+    ...createGameCandidate({
+      idType: update_batch ? undefined : "vndb",
+      source: createSourceCandidateRecord("vndb", VNDBdata.id, vndbData),
+    }),
+  };
 }
 
 /**
@@ -242,36 +224,34 @@ function transformVndbData(
  * @returns {Promise<GameMetadataDraft[]>} 包含游戏详细信息的数组。
  */
 export async function fetchVndbByName(
-	name: string,
-	context: MetadataRequestContext,
-	id?: string,
-	limit = 25,
+  name: string,
+  context: MetadataRequestContext,
+  id?: string,
+  limit = 25,
 ): Promise<GameMetadataDraft[]> {
-	// 构建 API 请求体
-	const requestBody = {
-		filters: id ? ["id", "=", id] : ["search", "=", name],
-		fields:
-			"id, titles.title, titles.lang, titles.main, aliases, image.url, released, rating, tags.name,tags.rating,tags.spoiler,description,developers.name,length_minutes",
-		results: limit,
-		...(id ? {} : { sort: "searchrank" }),
-	};
+  // 构建 API 请求体
+  const requestBody = {
+    filters: id ? ["id", "=", id] : ["search", "=", name],
+    fields:
+      "id, titles.title, titles.lang, titles.main, aliases, image.url, released, rating, tags.name,tags.rating,tags.spoiler,description,developers.name,length_minutes",
+    results: limit,
+    ...(id ? {} : { sort: "searchrank" }),
+  };
 
-	// 调用 VNDB API
-	const rawResults = (
-		await http.post<VndbQueryResponse<VndbVisualNovelResponse>>(
-			`${VNDB_API_BASE}/vn`,
-			requestBody,
-			buildVndbRateLimitedOptions(context),
-		)
-	).data.results;
+  // 调用 VNDB API
+  const rawResults = (
+    await http.post<VndbQueryResponse<VndbVisualNovelResponse>>(
+      `${VNDB_API_BASE}/vn`,
+      requestBody,
+      buildVndbRateLimitedOptions(context),
+    )
+  ).data.results;
 
-	if (!rawResults || rawResults.length === 0) {
-		return [];
-	}
+  if (!rawResults || rawResults.length === 0) {
+    return [];
+  }
 
-	return rawResults.map((VNDBdata) =>
-		transformVndbData(VNDBdata, context.spoilerLevel),
-	);
+  return rawResults.map((VNDBdata) => transformVndbData(VNDBdata, context.spoilerLevel));
 }
 
 /**
@@ -281,17 +261,17 @@ export async function fetchVndbByName(
  * @returns {Promise<GameMetadataDraft>} 包含游戏详细信息的对象。
  */
 export async function fetchVndbById(
-	id: string,
-	context: MetadataRequestContext,
+  id: string,
+  context: MetadataRequestContext,
 ): Promise<GameMetadataDraft> {
-	const result = await fetchVndbByName("", context, id, 25);
-	if (result.length === 0) {
-		throw new AppError({
-			code: "metadata_not_found",
-			message: `VNDB entry not found: ${id}`,
-		});
-	}
-	return result[0];
+  const result = await fetchVndbByName("", context, id, 25);
+  if (result.length === 0) {
+    throw new AppError({
+      code: "metadata_not_found",
+      message: `VNDB entry not found: ${id}`,
+    });
+  }
+  return result[0];
 }
 
 /**
@@ -309,65 +289,67 @@ export async function fetchVndbById(
  * // 返回: [{ id_type, sources }, ...]
  */
 export async function fetchVNDBByIds(
-	ids: string[],
-	context: MetadataRequestContext,
+  ids: string[],
+  context: MetadataRequestContext,
 ): Promise<GameMetadataDraft[]> {
-	if (ids.length === 0) {
-		return [];
-	}
+  if (ids.length === 0) {
+    return [];
+  }
 
-	// 分批处理，每批最多 100 个 ID；请求节奏由统一限速队列控制。
-	const batchSize = 100;
-	const batches: string[][] = [];
+  // 分批处理，每批最多 100 个 ID；请求节奏由统一限速队列控制。
+  const batchSize = 100;
+  const batches: string[][] = [];
 
-	for (let i = 0; i < ids.length; i += batchSize) {
-		batches.push(ids.slice(i, i + batchSize));
-	}
+  for (let i = 0; i < ids.length; i += batchSize) {
+    batches.push(ids.slice(i, i + batchSize));
+  }
 
-	const fetchBatch = async (batch: string[]): Promise<GameMetadataDraft[]> => {
-		// 构建 OR 过滤器：["or", ["id", "=", "v1"], ["id", "=", "v2"], ...]
-		const filters: (string | string[])[] = ["or"];
-		for (const id of batch) {
-			filters.push(["id", "=", id]);
-		}
+  const fetchBatch = async (batch: string[]): Promise<GameMetadataDraft[]> => {
+    // 构建 OR 过滤器：["or", ["id", "=", "v1"], ["id", "=", "v2"], ...]
+    const filters: (string | string[])[] = ["or"];
+    for (const id of batch) {
+      filters.push(["id", "=", id]);
+    }
 
-		const requestBody = {
-			filters,
-			fields: VNDB_FIELDS,
-			results: Math.min(batch.length, 100),
-		};
+    const requestBody = {
+      filters,
+      fields: VNDB_FIELDS,
+      results: Math.min(batch.length, 100),
+    };
 
-		const response = await http.post<
-			VndbQueryResponse<VndbVisualNovelResponse>
-		>(`${VNDB_API_BASE}/vn`, requestBody, buildVndbRateLimitedOptions(context));
+    const response = await http.post<VndbQueryResponse<VndbVisualNovelResponse>>(
+      `${VNDB_API_BASE}/vn`,
+      requestBody,
+      buildVndbRateLimitedOptions(context),
+    );
 
-		const results = response.data.results;
+    const results = response.data.results;
 
-		if (!results || results.length === 0) {
-			return [];
-		}
+    if (!results || results.length === 0) {
+      return [];
+    }
 
-		return results.map((vndbData: VndbVisualNovelResponse) =>
-			transformVndbData(vndbData, context.spoilerLevel, true),
-		);
-	};
+    return results.map((vndbData: VndbVisualNovelResponse) =>
+      transformVndbData(vndbData, context.spoilerLevel, true),
+    );
+  };
 
-	const allResults: GameMetadataDraft[] = [];
+  const allResults: GameMetadataDraft[] = [];
 
-	for (let i = 0; i < batches.length; i++) {
-		try {
-			allResults.push(...(await fetchBatch(batches[i])));
-		} catch (error) {
-			if (isApiRateLimitError(error)) throw error;
-			throw new AppError({
-				code: "metadata_request_failed",
-				message: `VNDB batch fetch failed for batch: ${i + 1}`,
-				cause: error,
-			});
-		}
-	}
+  for (let i = 0; i < batches.length; i++) {
+    try {
+      allResults.push(...(await fetchBatch(batches[i])));
+    } catch (error) {
+      if (isApiRateLimitError(error)) throw error;
+      throw new AppError({
+        code: "metadata_request_failed",
+        message: `VNDB batch fetch failed for batch: ${i + 1}`,
+        cause: error,
+      });
+    }
+  }
 
-	return allResults;
+  return allResults;
 }
 
 /**
@@ -376,21 +358,21 @@ export async function fetchVNDBByIds(
  * VNDB 使用 `GET /authinfo` 返回当前 token 对应的用户资料与权限。
  */
 export async function fetchVndbCurrentUserProfile(
-	token: string,
-	context: NetworkRequestContext = {},
+  token: string,
+  context: NetworkRequestContext = {},
 ): Promise<VndbAuthInfo | null> {
-	if (!token) return null;
+  if (!token) return null;
 
-	try {
-		const response = await http.get<VndbAuthInfo>(
-			`${VNDB_API_BASE}/authinfo`,
-			buildVndbRateLimitedAuthOptions(token, context),
-		);
-		return response.data;
-	} catch (error) {
-		if (isApiRateLimitError(error)) throw error;
-		return null;
-	}
+  try {
+    const response = await http.get<VndbAuthInfo>(
+      `${VNDB_API_BASE}/authinfo`,
+      buildVndbRateLimitedAuthOptions(token, context),
+    );
+    return response.data;
+  } catch (error) {
+    if (isApiRateLimitError(error)) throw error;
+    return null;
+  }
 }
 
 /**
@@ -400,27 +382,22 @@ export async function fetchVndbCurrentUserProfile(
  * @param userId 可选，目标用户 ID，格式如 `u1`
  */
 export async function fetchVndbUserLabels(
-	token: string,
-	userId?: string,
-	context: NetworkRequestContext = {},
+  token: string,
+  userId?: string,
+  context: NetworkRequestContext = {},
 ): Promise<VndbUserLabel[]> {
-	if (!token) return [];
+  if (!token) return [];
 
-	try {
-		const response = await http.get<VndbUserLabelsResponse>(
-			`${VNDB_API_BASE}/ulist_labels`,
-			{
-				...buildVndbRateLimitedAuthOptions(token, context),
-				params: userId
-					? { user: userId, fields: "count" }
-					: { fields: "count" },
-			},
-		);
-		return Array.isArray(response.data?.labels) ? response.data.labels : [];
-	} catch (error) {
-		if (isApiRateLimitError(error)) throw error;
-		return [];
-	}
+  try {
+    const response = await http.get<VndbUserLabelsResponse>(`${VNDB_API_BASE}/ulist_labels`, {
+      ...buildVndbRateLimitedAuthOptions(token, context),
+      params: userId ? { user: userId, fields: "count" } : { fields: "count" },
+    });
+    return Array.isArray(response.data?.labels) ? response.data.labels : [];
+  } catch (error) {
+    if (isApiRateLimitError(error)) throw error;
+    return [];
+  }
 }
 
 /**
@@ -431,149 +408,145 @@ export async function fetchVndbUserLabels(
  * @param userId 可选，目标用户 ID；不传时会通过 token 自动解析当前用户
  */
 export async function fetchVndbUserCollection(
-	vndbId: string,
-	token: string,
-	userId?: string,
-	context: NetworkRequestContext = {},
+  vndbId: string,
+  token: string,
+  userId?: string,
+  context: NetworkRequestContext = {},
 ): Promise<VndbUserCollectionItem | null> {
-	if (!token || !vndbId) return null;
+  if (!token || !vndbId) return null;
 
-	try {
-		const resolvedUserId = await resolveVndbUserId(token, userId, context);
-		if (!resolvedUserId) return null;
+  try {
+    const resolvedUserId = await resolveVndbUserId(token, userId, context);
+    if (!resolvedUserId) return null;
 
-		const response = await http.post<VndbQueryResponse<VndbUserCollectionItem>>(
-			`${VNDB_API_BASE}/ulist`,
-			{
-				user: resolvedUserId,
-				filters: ["id", "=", vndbId],
-				fields: VNDB_USER_COLLECTION_FIELDS,
-				results: 1,
-			},
-			buildVndbRateLimitedAuthOptions(token, context),
-		);
+    const response = await http.post<VndbQueryResponse<VndbUserCollectionItem>>(
+      `${VNDB_API_BASE}/ulist`,
+      {
+        user: resolvedUserId,
+        filters: ["id", "=", vndbId],
+        fields: VNDB_USER_COLLECTION_FIELDS,
+        results: 1,
+      },
+      buildVndbRateLimitedAuthOptions(token, context),
+    );
 
-		const results = Array.isArray(response.data?.results)
-			? response.data.results
-			: [];
+    const results = Array.isArray(response.data?.results) ? response.data.results : [];
 
-		return results[0] ?? null;
-	} catch (error) {
-		if (isApiRateLimitError(error)) throw error;
-		return null;
-	}
+    return results[0] ?? null;
+  } catch (error) {
+    if (isApiRateLimitError(error)) throw error;
+    return null;
+  }
 }
 
 export async function fetchVndbUserCollections(
-	token: string,
-	userId?: string,
-	context: NetworkRequestContext = {},
+  token: string,
+  userId?: string,
+  context: NetworkRequestContext = {},
 ): Promise<VndbUserCollectionItem[]> {
-	if (!token) return [];
+  if (!token) return [];
 
-	try {
-		const resolvedUserId = await resolveVndbUserId(token, userId, context);
-		if (!resolvedUserId) return [];
+  try {
+    const resolvedUserId = await resolveVndbUserId(token, userId, context);
+    if (!resolvedUserId) return [];
 
-		const collections: VndbUserCollectionItem[] = [];
-		let page = 1;
+    const collections: VndbUserCollectionItem[] = [];
+    let page = 1;
 
-		while (true) {
-			const response = await fetchVndbUserCollectionsPage(
-				token,
-				{
-					userId: resolvedUserId,
-					page,
-				},
-				context,
-			);
-			collections.push(...response.results);
+    while (true) {
+      const response = await fetchVndbUserCollectionsPage(
+        token,
+        {
+          userId: resolvedUserId,
+          page,
+        },
+        context,
+      );
+      collections.push(...response.results);
 
-			if (!response.more || response.results.length === 0) {
-				break;
-			}
-			page += 1;
-		}
+      if (!response.more || response.results.length === 0) {
+        break;
+      }
+      page += 1;
+    }
 
-		return collections;
-	} catch (error) {
-		if (isApiRateLimitError(error)) throw error;
-		return [];
-	}
+    return collections;
+  } catch (error) {
+    if (isApiRateLimitError(error)) throw error;
+    return [];
+  }
 }
 
 export async function fetchVndbUserCollectionsPage(
-	token: string,
-	params: {
-		userId: string;
-		page: number;
-		count?: boolean;
-	},
-	context: NetworkRequestContext = {},
+  token: string,
+  params: {
+    userId: string;
+    page: number;
+    count?: boolean;
+  },
+  context: NetworkRequestContext = {},
 ): Promise<VndbUserCollectionsPage> {
-	const response = await http.post<VndbQueryResponse<VndbUserCollectionItem>>(
-		`${VNDB_API_BASE}/ulist`,
-		{
-			user: params.userId,
-			fields: VNDB_USER_COLLECTION_FIELDS,
-			results: 100,
-			page: params.page,
-			...(params.count ? { count: true } : {}),
-		},
-		buildVndbRateLimitedAuthOptions(token, context),
-	);
+  const response = await http.post<VndbQueryResponse<VndbUserCollectionItem>>(
+    `${VNDB_API_BASE}/ulist`,
+    {
+      user: params.userId,
+      fields: VNDB_USER_COLLECTION_FIELDS,
+      results: 100,
+      page: params.page,
+      ...(params.count ? { count: true } : {}),
+    },
+    buildVndbRateLimitedAuthOptions(token, context),
+  );
 
-	return {
-		results: Array.isArray(response.data?.results) ? response.data.results : [],
-		more: Boolean(response.data?.more),
-		count: response.data?.count,
-	};
+  return {
+    results: Array.isArray(response.data?.results) ? response.data.results : [],
+    more: Boolean(response.data?.more),
+    count: response.data?.count,
+  };
 }
 
 export async function fetchVndbUserImportCollections(
-	token: string,
-	userId: string,
-	context: MetadataRequestContext,
+  token: string,
+  userId: string,
+  context: MetadataRequestContext,
 ): Promise<VndbUserImportItem[]> {
-	const collections: VndbUserImportItem[] = [];
-	let page = 1;
+  const collections: VndbUserImportItem[] = [];
+  let page = 1;
 
-	while (true) {
-		const response = await http.post<VndbQueryResponse<VndbUserImportResponse>>(
-			`${VNDB_API_BASE}/ulist`,
-			{
-				user: userId,
-				fields: `id,vote,notes,labels{id,label},vn{${VNDB_FIELDS}}`,
-				results: 100,
-				page,
-			},
-			buildVndbRateLimitedAuthOptions(token, context),
-		);
-		const results = Array.isArray(response.data?.results)
-			? response.data.results
-			: [];
+  while (true) {
+    const response = await http.post<VndbQueryResponse<VndbUserImportResponse>>(
+      `${VNDB_API_BASE}/ulist`,
+      {
+        user: userId,
+        fields: `id,vote,notes,labels{id,label},vn{${VNDB_FIELDS}}`,
+        results: 100,
+        page,
+      },
+      buildVndbRateLimitedAuthOptions(token, context),
+    );
+    const results = Array.isArray(response.data?.results) ? response.data.results : [];
 
-		for (const item of results) {
-			if (!item.vn) continue;
-			const vn: VndbVisualNovelResponse = {
-				...item.vn,
-				// ulist 顶层 ID 已标识同一个 VN，API 可能省略嵌套的冗余 ID。
-				id: item.vn.id ?? item.id,
-			};
-			collections.push({
-				id: item.id,
-				labels: item.labels ?? [],
-				vote: item.vote,
-				notes: item.notes,
-				metadata: transformVndbData(vn, context.spoilerLevel),
-			});
-		}
+    for (const item of results) {
+      if (!item.vn) continue;
+      const vn: VndbVisualNovelResponse = {
+        ...item.vn,
+        // ulist 顶层 ID 已标识同一个 VN，API 可能省略嵌套的冗余 ID。
+        id: item.vn.id ?? item.id,
+      };
+      collections.push({
+        id: item.id,
+        labels: item.labels ?? [],
+        vote: item.vote,
+        notes: item.notes,
+        metadata: transformVndbData(vn, context.spoilerLevel),
+      });
+    }
 
-		if (!response.data.more || results.length === 0) break;
-		page += 1;
-	}
+    if (!response.data.more || results.length === 0) break;
+    page += 1;
+  }
 
-	return collections;
+  return collections;
 }
 
 /**
@@ -584,22 +557,22 @@ export async function fetchVndbUserImportCollections(
  * @param token VNDB API Token，需要具备 `listwrite` 权限
  */
 export async function updateVndbUserCollection(
-	vndbId: string,
-	payload: UpdateVndbUserCollectionPayload,
-	token: string,
-	context: NetworkRequestContext = {},
+  vndbId: string,
+  payload: UpdateVndbUserCollectionPayload,
+  token: string,
+  context: NetworkRequestContext = {},
 ): Promise<boolean> {
-	if (!token || !vndbId) return false;
+  if (!token || !vndbId) return false;
 
-	try {
-		await http.patch(
-			`${VNDB_API_BASE}/ulist/${vndbId}`,
-			payload,
-			buildVndbRateLimitedAuthOptions(token, context),
-		);
-		return true;
-	} catch (error) {
-		if (isApiRateLimitError(error)) throw error;
-		return false;
-	}
+  try {
+    await http.patch(
+      `${VNDB_API_BASE}/ulist/${vndbId}`,
+      payload,
+      buildVndbRateLimitedAuthOptions(token, context),
+    );
+    return true;
+  } catch (error) {
+    if (isApiRateLimitError(error)) throw error;
+    return false;
+  }
 }
