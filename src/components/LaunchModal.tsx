@@ -71,7 +71,7 @@ export const LaunchModal = () => {
 	const updateGameMutation = useUpdateGame();
 	const { selectedGame, isLoadingSelectedGame } =
 		useSelectedGame(selectedGameId);
-	const { launchGame, stopGame, isGameRunning, getGameRealTimeState } =
+	const { launchGame, stopGame, runningGameIds, gameRealTimeStates } =
 		useGamePlayStore();
 
 	// 用于 elapsed 模式下的前端计时器显示
@@ -84,15 +84,15 @@ export const LaunchModal = () => {
 	const [isSaving, setIsSaving] = useState(false);
 
 	// 检查这个特定游戏是否在运行
-	const isThisGameRunning = isGameRunning(
-		selectedGameId === null ? undefined : selectedGameId,
-	);
+	const isThisGameRunning = selectedGameId
+		? runningGameIds.has(selectedGameId)
+		: runningGameIds.size > 0;
 	const hasSelectedGame = selectedGameId !== null;
 	const hasLocalPath = Boolean(selectedGame?.localpath?.trim());
 
 	// 获取实时游戏状态
 	const realTimeState = selectedGameId
-		? getGameRealTimeState(selectedGameId)
+		? (gameRealTimeStates[selectedGameId] ?? null)
 		: null;
 
 	// elapsed 模式下使用 setInterval 每秒更新一次显示（不触发 React re-render）
