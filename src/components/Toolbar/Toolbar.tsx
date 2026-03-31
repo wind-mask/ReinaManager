@@ -225,7 +225,7 @@ const ThemeSwitcher = () => {
 };
 
 /**
- * 按钮组属性类型
+import { CollectionToolbar } from "./Collection";
  */
 interface ButtonGroupProps {
 	isLibraries: boolean;
