@@ -42,6 +42,7 @@ async fn launch_game_inner<R: Runtime>(
         )?;
 
         return Ok(LaunchResult::delegated(format!(
+            // refused_by: statement_fold · collision: `steam_launch.steam_launch_id,` +1 more
             "已交由 Steam 启动游戏 ({}))",
             steam_launch.steam_launch_id
         )));
@@ -305,4 +306,5 @@ async fn check_unit_or_reset_failed(systemd_unit_name: &str) -> Result<bool, Str
         Err(_) => Ok(false),
     }
 }
+// weave: run 'weave explain src-tauri/src/game/launch/linux.rs' for per-hunk detail, 'weave check' to verify your resolution
 // weave: run 'weave explain src-tauri/src/game/launch/linux.rs' for per-hunk detail, 'weave check' to verify your resolution
