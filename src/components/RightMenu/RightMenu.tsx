@@ -63,6 +63,7 @@ interface RightMenuProps {
  * @returns {JSX.Element | null} 右键菜单
  */
 const RightMenu: React.FC<RightMenuProps> = ({
+	// hint: Logic changed on both sides. Requires understanding intent of each change.
 	anchorPosition,
 	onClose,
 	id,
