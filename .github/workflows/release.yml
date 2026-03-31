@@ -24,60 +24,6 @@ jobs:
         with:
           fetch-depth: 0
 
-<<<<<<< HEAD
-      - name: Extract pure changelog from CHANGELOG.md
-        id: cliff_pure
-        uses: mindsers/changelog-reader-action@v2
-        with:
-          version: ${{ github.ref_name }}
-          path: ./CHANGELOG.md
-
-      - name: Generate download links
-        uses: orhun/git-cliff-action@v4
-        id: cliff_links
-        env:
-          INCLUDE_DOWNLOAD_LINKS: "only"
-        with:
-          config: cliff.toml
-          args: --latest
-          strip: header
-
-      - name: Combine full release body
-        id: combine
-        shell: bash
-        run: |
-          {
-            echo "content<<EOF"
-            cat << 'INNER_EOF'
-          ${{ steps.cliff_pure.outputs.changes }}
-
-          ${{ steps.cliff_links.outputs.content }}
-          INNER_EOF
-            echo "EOF"
-          } >> $GITHUB_OUTPUT
-||||||| parent of e3aafa6 (💚 ci(ci): 删除page部署的工作流；工作流调整)
-      - name: Extract changelog for current version
-        id: changelog
-        shell: bash
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "Looking for version: $VERSION"
-          CHANGELOG_FILE=$(mktemp)
-          awk "/^## \\[?v?${VERSION//./\\.}\]?/ {flag=1; next} /^## / && flag {flag=0} flag {print}" CHANGELOG.md > "$CHANGELOG_FILE"
-          
-          if [ -s "$CHANGELOG_FILE" ]; then
-            {
-              echo "CHANGELOG_CONTENT<<EOF"
-              cat "$CHANGELOG_FILE"
-              echo "EOF"
-            } >> $GITHUB_OUTPUT
-            echo "Found changelog content"
-          else
-            echo "CHANGELOG_CONTENT=See the assets to download and install this version." >> $GITHUB_OUTPUT
-            echo "No matching changelog found for version $VERSION"
-          fi
-          rm -f "$CHANGELOG_FILE"
-=======
       - name: Extract changelog for current version
         id: changelog
         uses: orhun/git-cliff-action@v4
@@ -87,7 +33,6 @@ jobs:
         env:
           OUTPUT: CHANGES.md
           GITHUB_REPO: ${{ github.repository }}
->>>>>>> e3aafa6 (💚 ci(ci): 删除page部署的工作流；工作流调整)
 
   build:
     name: Build

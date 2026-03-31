@@ -380,13 +380,11 @@ fn check_any_has_window_x11(candidate_pids: &[u32]) -> Option<u32> {
             long_length: 1,
         });
 
-        if let Ok(pid_reply) = conn.wait_for_reply(pid_cookie) {
-            if let Some(&pid) = pid_reply.value::<u32>().first() {
-                if candidate_pids.contains(&pid) {
+        if let Ok(pid_reply) = conn.wait_for_reply(pid_cookie)
+            && let Some(&pid) = pid_reply.value::<u32>().first()
+                && candidate_pids.contains(&pid) {
                     return Some(pid);
                 }
-            }
-        }
     }
 
     None
@@ -433,15 +431,14 @@ async fn run_game_monitor(
 
     // 等待后重新扫描，获取最新的进程状态
     let mut candidate_pids = get_all_candidate_pids(systemd_scope).await;
-    if let Some(new_best) = select_best_from_candidates(&candidate_pids) {
-        if new_best != best_pid {
+    if let Some(new_best) = select_best_from_candidates(&candidate_pids)
+        && new_best != best_pid {
             info!(
                 "等待期间发现更优进程，切换 PID: {} -> {}",
                 best_pid, new_best
             );
             best_pid = new_best;
         }
-    }
 
     // 创建精确的 1 秒间隔定时器
     let mut tick_interval = interval(Duration::from_secs(MONITOR_CHECK_INTERVAL_SECS));
