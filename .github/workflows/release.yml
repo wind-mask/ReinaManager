@@ -47,7 +47,7 @@ jobs:
         uses: orhun/git-cliff-action@v4
         with:
           config: cliff.toml
-          args: -vv --latest --strip header
+          args: -vv --latest --strip header --tag-pattern v\\d+\\.\\d+\\.\\d+-linux-\\d+
         env:
           OUTPUT: CHANGES.md
           GITHUB_REPO: ${{ github.repository }}
@@ -74,7 +74,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24
       - name: Install pnpm
         uses: pnpm/action-setup@v6
         with:
@@ -127,35 +127,75 @@ jobs:
           linker = "clang"
           rustflags = ["-C", "link-arg=-fuse-ld=mold"]
           EOF
-      - name: Build and Upload to Draft Release
+      - name: Get version
+        id: get_version
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version is $VERSION"
+      - name: Compute short target name
+        id: short
+        shell: bash
+        run: |
+          case "${{ matrix.rust_target }}" in
+            *x86_64*) SHORT=linux_amd64 ;;
+            *aarch64*) SHORT=linux_arm64 ;;
+            *) SHORT=unknown ;;
+          esac
+          echo "SHORT=$SHORT" >> $GITHUB_OUTPUT
+      - name: Build
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           # TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
-          BGM_APP_SECRET: ${{ secrets.BGM_APP_SECRET }}
+          # BGM_APP_SECRET: ${{ secrets.BGM_APP_SECRET }}
           # TAURI_UPDATER_ACTIVE: true
           CARGO_INCREMENTAL: 0
         with:
-          tagName: ${{ needs.prepare.outputs.release_tag }}
-          releaseName: ${{ needs.prepare.outputs.release_tag }}
-          releaseBody: ${{ needs.prepare.outputs.changelog }}
-          releaseDraft: true
-          prerelease: false
-          includeUpdaterJson: true
-          includeRelease: true
+          # tagName: ${{ needs.prepare.outputs.release_tag }}
+          # releaseName: ${{ needs.prepare.outputs.release_tag }}
+          # releaseBody: ${{ needs.prepare.outputs.changelog }}
+          # releaseDraft: false
+          # prerelease: false
+          # includeUpdaterJson: false
+          # includeRelease: true
           tauriScript: pnpm tauri
           args: --target ${{ matrix.rust_target }}
-
+      - name: Upload deb (Artifact)
+        uses: actions/upload-artifact@v7
+        with:
+          name: ReinaManager-${{ steps.get_version.outputs.VERSION }}-${{
+            steps.short.outputs.SHORT }}-deb
+          path: src-tauri/target/${{ matrix.rust_target }}/release/bundle/deb/*.deb
+          if-no-files-found: error
+      - name: Upload rpm (Artifact)
+        uses: actions/upload-artifact@v7
+        with:
+          name: ReinaManager-${{ steps.get_version.outputs.VERSION }}-${{
+            steps.short.outputs.SHORT }}-rpm
+          path: src-tauri/target/${{ matrix.rust_target }}/release/bundle/rpm/*.rpm
+          if-no-files-found: error
+      - name: Upload AppImage (Artifact)
+        uses: actions/upload-artifact@v7
+        with:
+          name: ReinaManager-${{ steps.get_version.outputs.VERSION }}-${{
+            steps.short.outputs.SHORT }}-appimage
+          path: src-tauri/target/${{ matrix.rust_target
+            }}/release/bundle/appimage/*.AppImage
+          if-no-files-found: error
   create-release:
     name: Create Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     needs:
       - prepare
       - build
     steps:
       - name: Download All Artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           path: release-artifacts
           pattern: ReinaManager-*

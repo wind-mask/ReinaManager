@@ -39,12 +39,34 @@ jobs:
         with:
           run_install: false
       - name: Get pnpm store directory
-        if: runner.os == 'Windows'
-        id: pnpm-store
+        if: runner.os == 'Linux'
+        id: pnpm-store-linux
         shell: bash
         run: |
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
 
+      - name: Get pnpm store directory
+        if: runner.os == 'Windows'
+        id: pnpm-store-windows
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
+      - name: Setup pnpm cache (Linux)
+        if: runner.os == 'Linux'
+        uses: actions/cache@v5
+        with:
+          path: ${{ steps.pnpm-store-linux.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+      - name: Setup pnpm cache (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/cache@v5
+        with:
+          path: ${{ steps.pnpm-store-windows.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:

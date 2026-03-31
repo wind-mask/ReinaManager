@@ -1,3 +1,19 @@
+import { useImagePreview } from "@/hooks/common/useImagePreview";
+import { snackbar } from "@/providers/snackBar";
+import type { GameData, UpdateGameParams } from "@/types";
+import {
+	deleteGameCustomCovers,
+	selectImageFile,
+	uploadSelectedImage,
+} from "@/utils/customCover";
+import { getUserErrorMessage } from "@/utils/errors";
+import { handleExeFile } from "@/utils/fs/fileDialog";
+import {
+	getGameCover,
+	getGameDisplayName,
+	getGameNsfwStatus,
+} from "@/utils/game";
+import { buildGameInfoUpdatePayload } from "@/utils/gameData/metadata";
 import DeleteIcon from "@mui/icons-material/Delete";
 import FolderOpenIcon from "@mui/icons-material/FolderOpen";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
@@ -16,25 +32,9 @@ import {
 	TextField,
 	Typography,
 } from "@mui/material";
-import { basename, dirname } from "pathe";
+import { basename } from "pathe";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useImagePreview } from "@/hooks/common/useImagePreview";
-import { snackbar } from "@/providers/snackBar";
-import type { GameData, UpdateGameParams } from "@/types";
-import {
-	deleteGameCustomCovers,
-	selectImageFile,
-	uploadSelectedImage,
-} from "@/utils/customCover";
-import { getUserErrorMessage } from "@/utils/errors";
-import { handleExeFile } from "@/utils/fs/fileDialog";
-import {
-	getGameCover,
-	getGameDisplayName,
-	getGameNsfwStatus,
-} from "@/utils/game";
-import { buildGameInfoUpdatePayload } from "@/utils/gameData/metadata";
 
 // 公共样式常量
 const CHIP_INPUT_BOX_SX = {
@@ -196,9 +196,7 @@ export const GameInfoEdit: React.FC<GameInfoEditProps> = ({
 	// 处理选择可执行文件路径
 	const handleSelectLocalPath = async () => {
 		try {
-			const selectedPath = await handleExeFile(
-				localPath ? dirname(localPath) : "",
-			);
+			const selectedPath = await handleExeFile(localPath);
 			if (selectedPath) {
 				setLocalPath(selectedPath);
 			}

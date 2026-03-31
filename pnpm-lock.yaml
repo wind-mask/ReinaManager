@@ -72,7 +72,7 @@ importers:
         specifier: ~2.10.1
         version: 2.10.1
       '@tauri-apps/plugin-window-state':
-        specifier: '=2.2.3'
+        specifier: ~2.2.3
         version: 2.2.3
       '@toolpad/core':
         specifier: ^0.16.0
