@@ -668,9 +668,9 @@ async fn fetch_piece(
         let rate_limited = status == StatusCode::TOO_MANY_REQUESTS;
         return Err(fail(error, rate_limited, retry_after));
     }
-    http::ensure_identity(response.headers()).map_err(&plain)?;
+    http::ensure_identity(response.headers()).map_err(plain)?;
     let range = http::content_range(response.headers())
-        .map_err(&plain)?
+        .map_err(plain)?
         .ok_or_else(|| plain(DownloadError::Protocol("206 without Content-Range".into())))?;
     if range.start != range_start || range.end != range_end {
         return Err(plain(DownloadError::Protocol(format!(
@@ -678,7 +678,7 @@ async fn fetch_piece(
             range.start, range.end
         ))));
     }
-    if let Some(length) = http::content_length(response.headers()).map_err(&plain)? {
+    if let Some(length) = http::content_length(response.headers()).map_err(plain)? {
         if length != len - already {
             return Err(plain(DownloadError::Protocol(format!(
                 "Content-Length mismatch for piece {index}: expected {}, got {length}",

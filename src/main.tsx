@@ -30,8 +30,8 @@ import { initializeStores, type StartupPage, useStore } from "./store/appStore";
 // prepend: true 会让 Emotion 的 <style> 标签插入到 <head> 的开头
 // 这确保了 MUI 的基础样式优先级高于后来动态加载的组件样式(如 @mui/x-charts)
 const emotionCache = createCache({
-	key: "mui",
-	prepend: true,
+  key: "mui",
+  prepend: true,
 });
 
 // 禁止拖拽、右键菜单和部分快捷键，提升桌面体验
@@ -41,58 +41,58 @@ document.addEventListener("contextmenu", (e) => e.preventDefault());
 const DISABLED_FUNCTION_KEYS = ["F3", "F5", "F7"];
 const DISABLED_CTRL_KEYS = ["r", "u", "p", "l", "j", "g", "f", "s"];
 const STARTUP_PAGE_PATHS: Record<StartupPage, string> = {
-	home: "/",
-	libraries: "/libraries",
-	collection: "/collection",
+  home: "/",
+  libraries: "/libraries",
+  collection: "/collection",
 };
 
 document.addEventListener("keydown", (e) => {
-	if (DISABLED_FUNCTION_KEYS.includes(e.key.toUpperCase())) {
-		e.preventDefault();
-	}
+  if (DISABLED_FUNCTION_KEYS.includes(e.key.toUpperCase())) {
+    e.preventDefault();
+  }
 
-	if (e.ctrlKey && DISABLED_CTRL_KEYS.includes(e.key.toLowerCase())) {
-		e.preventDefault();
-	}
+  if (e.ctrlKey && DISABLED_CTRL_KEYS.includes(e.key.toLowerCase())) {
+    e.preventDefault();
+  }
 });
 
 // 初始化全局状态后，挂载 React 应用
 initializeStores().then(async () => {
-	if (isTauri()) {
-		startAutoBackupScheduler();
-	}
+  if (isTauri()) {
+    startAutoBackupScheduler();
+  }
 
-	const currentLocation = routers.state.location;
-	if (currentLocation.pathname === "/") {
-		const startupPath = STARTUP_PAGE_PATHS[useStore.getState().startupPage];
-		if (startupPath !== currentLocation.pathname) {
-			await routers.navigate(startupPath, { replace: true });
-		}
-	}
+  const currentLocation = routers.state.location;
+  if (currentLocation.pathname === "/") {
+    const startupPath = STARTUP_PAGE_PATHS[useStore.getState().startupPage];
+    if (startupPath !== currentLocation.pathname) {
+      await routers.navigate(startupPath, { replace: true });
+    }
+  }
 
-	const trayReady = isTauri()
-		? initTray().catch((error) => {
-				console.error("托盘初始化失败:", error);
-			})
-		: Promise.resolve(null);
+  const trayReady = isTauri()
+    ? initTray().catch((error) => {
+        console.error("托盘初始化失败:", error);
+      })
+    : Promise.resolve(null);
 
-	// 封面路径依赖路径缓存，仍需在首屏挂载前完成
-	if (isTauri()) {
-		try {
-			await initPathCache();
-		} catch (error) {
-			console.error("路径缓存初始化失败:", error);
-		}
-	}
+  // 封面路径依赖路径缓存，仍需在首屏挂载前完成
+  if (isTauri()) {
+    try {
+      await initPathCache();
+    } catch (error) {
+      console.error("路径缓存初始化失败:", error);
+    }
+  }
 
-	createRoot(document.getElementById("root") as HTMLElement).render(
-		<CacheProvider value={emotionCache}>
-			<QueryClientProvider client={queryClient}>
-				<ReactQueryDevtools initialIsOpen={false} />
-				<RouterProvider router={routers} />
-			</QueryClientProvider>
-		</CacheProvider>,
-	);
+  createRoot(document.getElementById("root") as HTMLElement).render(
+    <CacheProvider value={emotionCache}>
+      <QueryClientProvider client={queryClient}>
+        <ReactQueryDevtools initialIsOpen={false} />
+        <RouterProvider router={routers} />
+      </QueryClientProvider>
+    </CacheProvider>,
+  );
 
-	void trayReady;
+  void trayReady;
 });

@@ -7,40 +7,36 @@ import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import ReplayRoundedIcon from "@mui/icons-material/ReplayRounded";
 import TelegramIcon from "@mui/icons-material/Telegram";
 import {
-	Alert,
-	Box,
-	Button,
-	ButtonBase,
-	Chip,
-	CircularProgress,
-	Dialog,
-	DialogActions,
-	DialogContent,
-	DialogTitle,
-	IconButton,
-	LinearProgress,
-	Paper,
-	Stack,
-	TextField,
-	Tooltip,
-	Typography,
+  Alert,
+  Box,
+  Button,
+  ButtonBase,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  LinearProgress,
+  Paper,
+  Stack,
+  TextField,
+  Tooltip,
+  Typography,
 } from "@mui/material";
 import { open as openUrl } from "@tauri-apps/plugin-shell";
 import { type FormEvent, type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import {
-	type TaskAction,
-	useTaskActions,
-	useTasks,
-} from "@/hooks/queries/useTasks";
+import { type TaskAction, useTaskActions, useTasks } from "@/hooks/queries/useTasks";
 import { snackbar } from "@/providers/snackBar";
 import {
-	fileService,
-	type GameInstallTask,
-	isGameInstallTask,
-	type Task,
-	type TaskStatus,
+  fileService,
+  type GameInstallTask,
+  isGameInstallTask,
+  type Task,
+  type TaskStatus,
 } from "@/services/invoke";
 import { formatDateLabel, getLocalDateString } from "@/utils/dateTime";
 import { getUserErrorMessage } from "@/utils/errors";
@@ -49,607 +45,492 @@ import { getSafeLocale } from "@/utils/locale";
 import { getTaskStateLabel } from "@/utils/task";
 
 interface TaskManagerDialogProps {
-	open: boolean;
-	onClose: () => void;
+  open: boolean;
+  onClose: () => void;
 }
 
 interface TaskGroup {
-	date: string;
-	tasks: Task[];
+  date: string;
+  tasks: Task[];
 }
 
 interface TaskIconButtonProps {
-	label: string;
-	disabled: boolean;
-	color?: "default" | "primary" | "error";
-	onClick: () => void;
-	children: ReactNode;
+  label: string;
+  disabled: boolean;
+  color?: "default" | "primary" | "error";
+  onClick: () => void;
+  children: ReactNode;
 }
 
-const deletableStatuses = new Set<TaskStatus>([
-	"failed",
-	"completed",
-	"cancelled",
-]);
+const deletableStatuses = new Set<TaskStatus>(["failed", "completed", "cancelled"]);
 const retryableStatuses = new Set<TaskStatus>(["failed", "cancelled"]);
-const passwordErrorCodes = new Set([
-	"archive_password_required",
-	"archive_password_invalid",
-]);
+const passwordErrorCodes = new Set(["archive_password_required", "archive_password_invalid"]);
 
 function canPauseTask(task: Task) {
-	return (
-		isGameInstallTask(task) &&
-		task.status === "running" &&
-		task.stage === "downloading"
-	);
+  return isGameInstallTask(task) && task.status === "running" && task.stage === "downloading";
 }
 
 function canResumeTask(task: Task) {
-	return (
-		isGameInstallTask(task) &&
-		task.status === "paused" &&
-		task.stage === "downloading"
-	);
+  return isGameInstallTask(task) && task.status === "paused" && task.stage === "downloading";
 }
 
 function canCancelTask(task: Task) {
-	if (!isGameInstallTask(task)) return false;
-	return (
-		task.status === "pending" ||
-		task.status === "paused" ||
-		(task.status === "running" && task.stage !== "importing_game")
-	);
+  if (!isGameInstallTask(task)) return false;
+  return (
+    task.status === "pending" ||
+    task.status === "paused" ||
+    (task.status === "running" && task.stage !== "importing_game")
+  );
 }
 
 function canRetryTask(task: Task) {
-	return isGameInstallTask(task) && retryableStatuses.has(task.status);
+  return isGameInstallTask(task) && retryableStatuses.has(task.status);
 }
 
 function canDeleteTask(task: Task) {
-	return deletableStatuses.has(task.status);
+  return deletableStatuses.has(task.status);
 }
 
 function requiresPasswordRetry(task: Task): task is GameInstallTask {
-	return (
-		isGameInstallTask(task) &&
-		task.status === "failed" &&
-		passwordErrorCodes.has(task.error_code ?? "")
-	);
+  return (
+    isGameInstallTask(task) &&
+    task.status === "failed" &&
+    passwordErrorCodes.has(task.error_code ?? "")
+  );
 }
 
 function groupTasksByDate(tasks: Task[]): TaskGroup[] {
-	const groups: TaskGroup[] = [];
-	for (const task of tasks) {
-		const date = getLocalDateString(task.created_at);
-		const latest = groups.at(-1);
-		if (latest?.date === date) {
-			latest.tasks.push(task);
-		} else {
-			groups.push({ date, tasks: [task] });
-		}
-	}
-	return groups;
+  const groups: TaskGroup[] = [];
+  for (const task of tasks) {
+    const date = getLocalDateString(task.created_at);
+    const latest = groups.at(-1);
+    if (latest?.date === date) {
+      latest.tasks.push(task);
+    } else {
+      groups.push({ date, tasks: [task] });
+    }
+  }
+  return groups;
 }
 
 function getStatusColor(status: TaskStatus) {
-	switch (status) {
-		case "completed":
-			return "success" as const;
-		case "failed":
-			return "error" as const;
-		case "paused":
-			return "warning" as const;
-		case "running":
-			return "primary" as const;
-		default:
-			return "default" as const;
-	}
+  switch (status) {
+    case "completed":
+      return "success" as const;
+    case "failed":
+      return "error" as const;
+    case "paused":
+      return "warning" as const;
+    case "running":
+      return "primary" as const;
+    default:
+      return "default" as const;
+  }
 }
 
 function TaskIconButton({
-	label,
-	disabled,
-	color = "default",
-	onClick,
-	children,
+  label,
+  disabled,
+  color = "default",
+  onClick,
+  children,
 }: TaskIconButtonProps) {
-	return (
-		<Tooltip title={label}>
-			<span>
-				<IconButton
-					size="small"
-					aria-label={label}
-					color={color}
-					disabled={disabled}
-					onClick={onClick}
-				>
-					{children}
-				</IconButton>
-			</span>
-		</Tooltip>
-	);
+  return (
+    <Tooltip title={label}>
+      <span>
+        <IconButton
+          size="small"
+          aria-label={label}
+          color={color}
+          disabled={disabled}
+          onClick={onClick}
+        >
+          {children}
+        </IconButton>
+      </span>
+    </Tooltip>
+  );
 }
 
 function TaskProgress({ task }: { task: Task }) {
-	const { t } = useTranslation();
-	const total = task.progress_total;
-	const displayedProgress = task.displayed_progress ?? task.progress_current;
-	const isRecovering =
-		task.status === "running" &&
-		task.stage === "downloading" &&
-		task.recovery_target != null;
-	const progress = total
-		? Math.min(100, Math.max(0, (displayedProgress / total) * 100))
-		: 0;
-	const speed =
-		task.status === "running" &&
-		task.stage === "downloading" &&
-		task.bytes_per_second
-			? ` · ${formatFileSize(task.bytes_per_second)}/s`
-			: "";
-	const transferState = isRecovering
-		? ` · ${t("components.TaskManager.restoringDownload", "正在恢复下载…")}`
-		: speed;
-	const color =
-		task.status === "failed"
-			? "error"
-			: task.status === "paused"
-				? "warning"
-				: "primary";
+  const { t } = useTranslation();
+  const total = task.progress_total;
+  const displayedProgress = task.displayed_progress ?? task.progress_current;
+  const isRecovering =
+    task.status === "running" && task.stage === "downloading" && task.recovery_target != null;
+  const progress = total ? Math.min(100, Math.max(0, (displayedProgress / total) * 100)) : 0;
+  const speed =
+    task.status === "running" && task.stage === "downloading" && task.bytes_per_second
+      ? ` · ${formatFileSize(task.bytes_per_second)}/s`
+      : "";
+  const transferState = isRecovering
+    ? ` · ${t("components.TaskManager.restoringDownload", "正在恢复下载…")}`
+    : speed;
+  const color =
+    task.status === "failed" ? "error" : task.status === "paused" ? "warning" : "primary";
 
-	return (
-		<Box>
-			<LinearProgress
-				variant={total ? "determinate" : "indeterminate"}
-				value={progress}
-				color={color}
-				sx={{
-					height: 6,
-					borderRadius: 999,
-					"& .MuiLinearProgress-bar": {
-						transition: "transform 500ms ease",
-					},
-				}}
-			/>
-			<Stack direction="row" justifyContent="space-between" className="mt-1">
-				<Typography variant="caption" color="text.secondary">
-					{task.progress_unit === "bytes" && total
-						? `${formatFileSize(displayedProgress)} / ${formatFileSize(total)}${transferState}`
-						: `${displayedProgress}${total ? ` / ${total}` : ""}${
-								task.progress_unit ? ` ${task.progress_unit}` : ""
-							}`}
-				</Typography>
-				{total ? (
-					<Typography variant="caption" color="text.secondary">
-						{progress.toFixed(1)}%
-					</Typography>
-				) : null}
-			</Stack>
-		</Box>
-	);
+  return (
+    <Box>
+      <LinearProgress
+        variant={total ? "determinate" : "indeterminate"}
+        value={progress}
+        color={color}
+        sx={{
+          height: 6,
+          borderRadius: 999,
+          "& .MuiLinearProgress-bar": {
+            transition: "transform 500ms ease",
+          },
+        }}
+      />
+      <Stack direction="row" justifyContent="space-between" className="mt-1">
+        <Typography variant="caption" color="text.secondary">
+          {task.progress_unit === "bytes" && total
+            ? `${formatFileSize(displayedProgress)} / ${formatFileSize(total)}${transferState}`
+            : `${displayedProgress}${total ? ` / ${total}` : ""}${
+                task.progress_unit ? ` ${task.progress_unit}` : ""
+              }`}
+        </Typography>
+        {total ? (
+          <Typography variant="caption" color="text.secondary">
+            {progress.toFixed(1)}%
+          </Typography>
+        ) : null}
+      </Stack>
+    </Box>
+  );
 }
 
 export function TaskManagerDialog({ open, onClose }: TaskManagerDialogProps) {
-	const { i18n, t } = useTranslation();
-	const navigate = useNavigate();
-	const [pendingTaskId, setPendingTaskId] = useState<number | null>(null);
-	const [passwordTask, setPasswordTask] = useState<GameInstallTask | null>(
-		null,
-	);
-	const [archivePassword, setArchivePassword] = useState("");
-	const tasksQuery = useTasks({ enabled: open, pollActive: true });
-	const taskActionMutation = useTaskActions();
+  const { i18n, t } = useTranslation();
+  const navigate = useNavigate();
+  const [pendingTaskId, setPendingTaskId] = useState<number | null>(null);
+  const [passwordTask, setPasswordTask] = useState<GameInstallTask | null>(null);
+  const [archivePassword, setArchivePassword] = useState("");
+  const tasksQuery = useTasks({ enabled: open, pollActive: true });
+  const taskActionMutation = useTaskActions();
 
-	const runTaskAction = async (
-		task: Task,
-		action: TaskAction,
-		password?: string,
-	) => {
-		setPendingTaskId(task.id);
-		try {
-			await taskActionMutation.mutateAsync({
-				taskId: task.id,
-				action,
-				archivePassword: password,
-			});
-		} finally {
-			setPendingTaskId(null);
-		}
-	};
+  const runTaskAction = async (task: Task, action: TaskAction, password?: string) => {
+    setPendingTaskId(task.id);
+    try {
+      await taskActionMutation.mutateAsync({
+        taskId: task.id,
+        action,
+        archivePassword: password,
+      });
+    } finally {
+      setPendingTaskId(null);
+    }
+  };
 
-	const handleTaskAction = (task: Task, action: TaskAction) => {
-		void runTaskAction(task, action).catch((error) => {
-			snackbar.error(getUserErrorMessage(error, t));
-		});
-	};
+  const handleTaskAction = (task: Task, action: TaskAction) => {
+    void runTaskAction(task, action).catch((error) => {
+      snackbar.error(getUserErrorMessage(error, t));
+    });
+  };
 
-	const openPasswordDialog = (task: GameInstallTask) => {
-		setPasswordTask(task);
-		setArchivePassword("");
-	};
+  const openPasswordDialog = (task: GameInstallTask) => {
+    setPasswordTask(task);
+    setArchivePassword("");
+  };
 
-	const closePasswordDialog = () => {
-		if (passwordTask && pendingTaskId === passwordTask.id) return;
-		setPasswordTask(null);
-		setArchivePassword("");
-	};
+  const closePasswordDialog = () => {
+    if (passwordTask && pendingTaskId === passwordTask.id) return;
+    setPasswordTask(null);
+    setArchivePassword("");
+  };
 
-	const handlePasswordRetry = (event: FormEvent<HTMLFormElement>) => {
-		event.preventDefault();
-		if (!passwordTask || archivePassword.length === 0) return;
-		void runTaskAction(passwordTask, "retry", archivePassword)
-			.then(() => {
-				setPasswordTask(null);
-				setArchivePassword("");
-			})
-			.catch((error) => {
-				snackbar.error(getUserErrorMessage(error, t));
-			});
-	};
+  const handlePasswordRetry = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!passwordTask || archivePassword.length === 0) return;
+    void runTaskAction(passwordTask, "retry", archivePassword)
+      .then(() => {
+        setPasswordTask(null);
+        setArchivePassword("");
+      })
+      .catch((error) => {
+        snackbar.error(getUserErrorMessage(error, t));
+      });
+  };
 
-	const handleClose = () => {
-		setPasswordTask(null);
-		setArchivePassword("");
-		onClose();
-	};
+  const handleClose = () => {
+    setPasswordTask(null);
+    setArchivePassword("");
+    onClose();
+  };
 
-	const handleOpenFolder = (path: string) => {
-		void fileService.openDirectory(path).catch((error) => {
-			snackbar.error(getUserErrorMessage(error, t));
-		});
-	};
+  const handleOpenFolder = (path: string) => {
+    void fileService.openDirectory(path).catch((error) => {
+      snackbar.error(getUserErrorMessage(error, t));
+    });
+  };
 
-	const handleOpenShionlib = () => {
-		void openUrl("https://shionlib.com/").catch((error) => {
-			snackbar.error(getUserErrorMessage(error, t));
-		});
-	};
+  const handleOpenShionlib = () => {
+    void openUrl("https://shionlib.com/").catch((error) => {
+      snackbar.error(getUserErrorMessage(error, t));
+    });
+  };
 
-	const tasks = tasksQuery.data ?? [];
-	const groups = groupTasksByDate(tasks);
-	const getDateLabel = (date: string) =>
-		formatDateLabel(date, {
-			language: getSafeLocale(i18n.resolvedLanguage),
-			todayLabel: t("common.today", "今天"),
-			yesterdayLabel: t("common.yesterday", "昨天"),
-		});
+  const tasks = tasksQuery.data ?? [];
+  const groups = groupTasksByDate(tasks);
+  const getDateLabel = (date: string) =>
+    formatDateLabel(date, {
+      language: getSafeLocale(i18n.resolvedLanguage),
+      todayLabel: t("common.today", "今天"),
+      yesterdayLabel: t("common.yesterday", "昨天"),
+    });
 
-	return (
-		<Dialog
-			open={open}
-			onClose={handleClose}
-			fullWidth
-			maxWidth="md"
-			PaperProps={{
-				sx: { maxHeight: "80vh" },
-			}}
-		>
-			<DialogTitle>{t("components.TaskManager.title", "下载任务")}</DialogTitle>
-			<DialogContent dividers sx={{ bgcolor: "background.default" }}>
-				{tasksQuery.isPending ? (
-					<Box className="flex justify-center py-8">
-						<CircularProgress />
-					</Box>
-				) : tasksQuery.isError ? (
-					<Alert severity="error">
-						{getUserErrorMessage(tasksQuery.error, t)}
-					</Alert>
-				) : groups.length === 0 ? (
-					<Box className="flex flex-col items-center justify-center gap-3 py-8">
-						<DownloadRoundedIcon className="!text-[52px]" color="disabled" />
-						<Typography variant="h6" fontWeight={700}>
-							{t("components.TaskManager.empty", "暂无下载任务")}
-						</Typography>
-						<Button
-							variant="contained"
-							startIcon={<TelegramIcon />}
-							onClick={handleOpenShionlib}
-						>
-							{t("components.TaskManager.goToShionlib", "从书音推送")}
-						</Button>
-					</Box>
-				) : (
-					<Stack spacing={2.5}>
-						{groups.map((group) => (
-							<Box key={group.date}>
-								<Typography
-									variant="body2"
-									fontWeight={700}
-									color="text.secondary"
-									className="mb-2"
-								>
-									{getDateLabel(group.date)}
-								</Typography>
-								<Stack spacing={1.25}>
-									{group.tasks.map((task) => {
-										const gameInstallTask = isGameInstallTask(task)
-											? task
-											: null;
-										const installResult = gameInstallTask?.result_json;
-										const gameId =
-											task.status === "completed"
-												? installResult?.game_id
-												: null;
-										const isExpired = task.error_code === "url_expired";
-										const isPending = pendingTaskId === task.id;
+  return (
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      fullWidth
+      maxWidth="md"
+      PaperProps={{
+        sx: { maxHeight: "80vh" },
+      }}
+    >
+      <DialogTitle>{t("components.TaskManager.title", "下载任务")}</DialogTitle>
+      <DialogContent dividers sx={{ bgcolor: "background.default" }}>
+        {tasksQuery.isPending ? (
+          <Box className="flex justify-center py-8">
+            <CircularProgress />
+          </Box>
+        ) : tasksQuery.isError ? (
+          <Alert severity="error">{getUserErrorMessage(tasksQuery.error, t)}</Alert>
+        ) : groups.length === 0 ? (
+          <Box className="flex flex-col items-center justify-center gap-3 py-8">
+            <DownloadRoundedIcon className="!text-[52px]" color="disabled" />
+            <Typography variant="h6" fontWeight={700}>
+              {t("components.TaskManager.empty", "暂无下载任务")}
+            </Typography>
+            <Button variant="contained" startIcon={<TelegramIcon />} onClick={handleOpenShionlib}>
+              {t("components.TaskManager.goToShionlib", "从书音推送")}
+            </Button>
+          </Box>
+        ) : (
+          <Stack spacing={2.5}>
+            {groups.map((group) => (
+              <Box key={group.date}>
+                <Typography
+                  variant="body2"
+                  fontWeight={700}
+                  color="text.secondary"
+                  className="mb-2"
+                >
+                  {getDateLabel(group.date)}
+                </Typography>
+                <Stack spacing={1.25}>
+                  {group.tasks.map((task) => {
+                    const gameInstallTask = isGameInstallTask(task) ? task : null;
+                    const installResult = gameInstallTask?.result_json;
+                    const gameId = task.status === "completed" ? installResult?.game_id : null;
+                    const isExpired = task.error_code === "url_expired";
+                    const isPending = pendingTaskId === task.id;
 
-										return (
-											<Paper
-												key={task.id}
-												variant="outlined"
-												className="rounded-xl p-4"
-											>
-												<Stack spacing={1.5}>
-													<Stack
-														direction="row"
-														alignItems="flex-start"
-														justifyContent="space-between"
-														spacing={2}
-													>
-														<Box className="min-w-0 flex-1">
-															{gameId ? (
-																<ButtonBase
-																	className="max-w-full justify-start rounded-md text-left"
-																	onClick={() => {
-																		navigate(`/libraries/${gameId}`);
-																		onClose();
-																	}}
-																>
-																	<Typography
-																		fontWeight={700}
-																		color="primary"
-																		noWrap
-																		title={task.title}
-																	>
-																		{task.title}
-																	</Typography>
-																</ButtonBase>
-															) : (
-																<Typography
-																	fontWeight={700}
-																	noWrap
-																	title={task.title}
-																>
-																	{task.title}
-																</Typography>
-															)}
-															<Typography
-																variant="caption"
-																color="text.secondary"
-																className="block truncate"
-															>
-																{gameInstallTask
-																	? t(
-																			"components.TaskManager.gameInstallSource",
-																			"游戏安装 · {{provider}} · {{size}}",
-																			{
-																				provider:
-																					gameInstallTask.payload_json.provider,
-																				size: formatFileSize(
-																					gameInstallTask.payload_json.size,
-																				),
-																			},
-																		)
-																	: task.task_type}
-															</Typography>
-															{task.status === "completed" &&
-															installResult?.install_path ? (
-																<Typography
-																	variant="caption"
-																	color="text.secondary"
-																	className="block truncate"
-																	title={installResult.install_path}
-																>
-																	{t(
-																		"components.TaskManager.installPath",
-																		"安装路径：{{path}}",
-																		{ path: installResult.install_path },
-																	)}
-																</Typography>
-															) : null}
-														</Box>
-														<Stack
-															direction="row"
-															alignItems="center"
-															spacing={1}
-														>
-															<Chip
-																size="small"
-																color={getStatusColor(task.status)}
-																label={getTaskStateLabel(
-																	task.status,
-																	task.stage,
-																	t,
-																)}
-															/>
-															<Stack
-																direction="row"
-																alignItems="center"
-																spacing={0.5}
-															>
-																{canPauseTask(task) ? (
-																	<TaskIconButton
-																		label={t(
-																			"components.TaskManager.pause",
-																			"暂停",
-																		)}
-																		disabled={isPending}
-																		onClick={() =>
-																			handleTaskAction(task, "pause")
-																		}
-																	>
-																		<PauseRoundedIcon fontSize="small" />
-																	</TaskIconButton>
-																) : null}
-																{canResumeTask(task) ? (
-																	<TaskIconButton
-																		label={t(
-																			"components.TaskManager.resume",
-																			"继续",
-																		)}
-																		color="primary"
-																		disabled={isPending}
-																		onClick={() =>
-																			handleTaskAction(task, "resume")
-																		}
-																	>
-																		<PlayArrowRoundedIcon fontSize="small" />
-																	</TaskIconButton>
-																) : null}
-																{requiresPasswordRetry(task) ? (
-																	<TaskIconButton
-																		label={t(
-																			"components.TaskManager.enterPasswordAndRetry",
-																			"输入密码并重试",
-																		)}
-																		color="primary"
-																		disabled={isPending}
-																		onClick={() => openPasswordDialog(task)}
-																	>
-																		<ReplayRoundedIcon fontSize="small" />
-																	</TaskIconButton>
-																) : canRetryTask(task) && !isExpired ? (
-																	<TaskIconButton
-																		label={t(
-																			"components.TaskManager.retry",
-																			"重试",
-																		)}
-																		color="primary"
-																		disabled={isPending}
-																		onClick={() =>
-																			handleTaskAction(task, "retry")
-																		}
-																	>
-																		<ReplayRoundedIcon fontSize="small" />
-																	</TaskIconButton>
-																) : null}
-																{installResult?.install_path ? (
-																	<TaskIconButton
-																		label={t(
-																			"components.TaskManager.openFolder",
-																			"打开文件夹",
-																		)}
-																		disabled={isPending}
-																		onClick={() =>
-																			handleOpenFolder(
-																				installResult.install_path,
-																			)
-																		}
-																	>
-																		<FolderOpenRoundedIcon fontSize="small" />
-																	</TaskIconButton>
-																) : null}
-																{canCancelTask(task) ? (
-																	<TaskIconButton
-																		label={t(
-																			"components.TaskManager.cancel",
-																			"取消任务",
-																		)}
-																		color="error"
-																		disabled={isPending}
-																		onClick={() =>
-																			handleTaskAction(task, "cancel")
-																		}
-																	>
-																		<CloseRoundedIcon fontSize="small" />
-																	</TaskIconButton>
-																) : null}
-																{canDeleteTask(task) ? (
-																	<TaskIconButton
-																		label={t(
-																			"components.TaskManager.delete",
-																			"删除任务",
-																		)}
-																		color="error"
-																		disabled={isPending}
-																		onClick={() =>
-																			handleTaskAction(task, "delete")
-																		}
-																	>
-																		<DeleteOutlineRoundedIcon fontSize="small" />
-																	</TaskIconButton>
-																) : null}
-															</Stack>
-														</Stack>
-													</Stack>
+                    return (
+                      <Paper key={task.id} variant="outlined" className="rounded-xl p-4">
+                        <Stack spacing={1.5}>
+                          <Stack
+                            direction="row"
+                            alignItems="flex-start"
+                            justifyContent="space-between"
+                            spacing={2}
+                          >
+                            <Box className="min-w-0 flex-1">
+                              {gameId ? (
+                                <ButtonBase
+                                  className="max-w-full justify-start rounded-md text-left"
+                                  onClick={() => {
+                                    navigate(`/libraries/${gameId}`);
+                                    onClose();
+                                  }}
+                                >
+                                  <Typography
+                                    fontWeight={700}
+                                    color="primary"
+                                    noWrap
+                                    title={task.title}
+                                  >
+                                    {task.title}
+                                  </Typography>
+                                </ButtonBase>
+                              ) : (
+                                <Typography fontWeight={700} noWrap title={task.title}>
+                                  {task.title}
+                                </Typography>
+                              )}
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                className="block truncate"
+                              >
+                                {gameInstallTask
+                                  ? t(
+                                      "components.TaskManager.gameInstallSource",
+                                      "游戏安装 · {{provider}} · {{size}}",
+                                      {
+                                        provider: gameInstallTask.payload_json.provider,
+                                        size: formatFileSize(gameInstallTask.payload_json.size),
+                                      },
+                                    )
+                                  : task.task_type}
+                              </Typography>
+                              {task.status === "completed" && installResult?.install_path ? (
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                  className="block truncate"
+                                  title={installResult.install_path}
+                                >
+                                  {t("components.TaskManager.installPath", "安装路径：{{path}}", {
+                                    path: installResult.install_path,
+                                  })}
+                                </Typography>
+                              ) : null}
+                            </Box>
+                            <Stack direction="row" alignItems="center" spacing={1}>
+                              <Chip
+                                size="small"
+                                color={getStatusColor(task.status)}
+                                label={getTaskStateLabel(task.status, task.stage, t)}
+                              />
+                              <Stack direction="row" alignItems="center" spacing={0.5}>
+                                {canPauseTask(task) ? (
+                                  <TaskIconButton
+                                    label={t("components.TaskManager.pause", "暂停")}
+                                    disabled={isPending}
+                                    onClick={() => handleTaskAction(task, "pause")}
+                                  >
+                                    <PauseRoundedIcon fontSize="small" />
+                                  </TaskIconButton>
+                                ) : null}
+                                {canResumeTask(task) ? (
+                                  <TaskIconButton
+                                    label={t("components.TaskManager.resume", "继续")}
+                                    color="primary"
+                                    disabled={isPending}
+                                    onClick={() => handleTaskAction(task, "resume")}
+                                  >
+                                    <PlayArrowRoundedIcon fontSize="small" />
+                                  </TaskIconButton>
+                                ) : null}
+                                {requiresPasswordRetry(task) ? (
+                                  <TaskIconButton
+                                    label={t(
+                                      "components.TaskManager.enterPasswordAndRetry",
+                                      "输入密码并重试",
+                                    )}
+                                    color="primary"
+                                    disabled={isPending}
+                                    onClick={() => openPasswordDialog(task)}
+                                  >
+                                    <ReplayRoundedIcon fontSize="small" />
+                                  </TaskIconButton>
+                                ) : canRetryTask(task) && !isExpired ? (
+                                  <TaskIconButton
+                                    label={t("components.TaskManager.retry", "重试")}
+                                    color="primary"
+                                    disabled={isPending}
+                                    onClick={() => handleTaskAction(task, "retry")}
+                                  >
+                                    <ReplayRoundedIcon fontSize="small" />
+                                  </TaskIconButton>
+                                ) : null}
+                                {installResult?.install_path ? (
+                                  <TaskIconButton
+                                    label={t("components.TaskManager.openFolder", "打开文件夹")}
+                                    disabled={isPending}
+                                    onClick={() => handleOpenFolder(installResult.install_path)}
+                                  >
+                                    <FolderOpenRoundedIcon fontSize="small" />
+                                  </TaskIconButton>
+                                ) : null}
+                                {canCancelTask(task) ? (
+                                  <TaskIconButton
+                                    label={t("components.TaskManager.cancel", "取消任务")}
+                                    color="error"
+                                    disabled={isPending}
+                                    onClick={() => handleTaskAction(task, "cancel")}
+                                  >
+                                    <CloseRoundedIcon fontSize="small" />
+                                  </TaskIconButton>
+                                ) : null}
+                                {canDeleteTask(task) ? (
+                                  <TaskIconButton
+                                    label={t("components.TaskManager.delete", "删除任务")}
+                                    color="error"
+                                    disabled={isPending}
+                                    onClick={() => handleTaskAction(task, "delete")}
+                                  >
+                                    <DeleteOutlineRoundedIcon fontSize="small" />
+                                  </TaskIconButton>
+                                ) : null}
+                              </Stack>
+                            </Stack>
+                          </Stack>
 
-													{task.status !== "completed" ? (
-														<TaskProgress task={task} />
-													) : null}
+                          {task.status !== "completed" ? <TaskProgress task={task} /> : null}
 
-													{task.error_message ? (
-														<Alert severity={isExpired ? "warning" : "error"}>
-															{task.error_message}
-														</Alert>
-													) : null}
-												</Stack>
-											</Paper>
-										);
-									})}
-								</Stack>
-							</Box>
-						))}
-					</Stack>
-				)}
-			</DialogContent>
-			<DialogActions>
-				<Button onClick={handleClose}>
-					{t("components.TaskManager.close", "关闭")}
-				</Button>
-			</DialogActions>
-			<Dialog
-				open={passwordTask !== null}
-				onClose={closePasswordDialog}
-				fullWidth
-				maxWidth="xs"
-			>
-				<Box component="form" onSubmit={handlePasswordRetry}>
-					<DialogTitle>
-						{t("components.TaskManager.passwordDialogTitle", "输入解压密码")}
-					</DialogTitle>
-					<DialogContent>
-						<Typography variant="body2" color="text.secondary" className="mb-4">
-							{t(
-								"components.TaskManager.passwordDialogDescription",
-								"请输入压缩包密码，任务将复用已下载的文件继续安装。",
-							)}
-						</Typography>
-						<TextField
-							autoFocus
-							fullWidth
-							type="password"
-							label={t("components.TaskManager.archivePassword", "解压密码")}
-							value={archivePassword}
-							onChange={(event) => setArchivePassword(event.target.value)}
-							disabled={passwordTask?.id === pendingTaskId}
-							inputProps={{ maxLength: 1024 }}
-						/>
-					</DialogContent>
-					<DialogActions>
-						<Button
-							onClick={closePasswordDialog}
-							disabled={passwordTask?.id === pendingTaskId}
-						>
-							{t("common.cancel", "取消")}
-						</Button>
-						<Button
-							type="submit"
-							variant="contained"
-							disabled={
-								archivePassword.length === 0 ||
-								passwordTask?.id === pendingTaskId
-							}
-						>
-							{passwordTask?.id === pendingTaskId ? (
-								<CircularProgress size={20} />
-							) : (
-								t("components.TaskManager.retryWithPassword", "使用密码重试")
-							)}
-						</Button>
-					</DialogActions>
-				</Box>
-			</Dialog>
-		</Dialog>
-	);
+                          {task.error_message ? (
+                            <Alert severity={isExpired ? "warning" : "error"}>
+                              {task.error_message}
+                            </Alert>
+                          ) : null}
+                        </Stack>
+                      </Paper>
+                    );
+                  })}
+                </Stack>
+              </Box>
+            ))}
+          </Stack>
+        )}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={handleClose}>{t("components.TaskManager.close", "关闭")}</Button>
+      </DialogActions>
+      <Dialog open={passwordTask !== null} onClose={closePasswordDialog} fullWidth maxWidth="xs">
+        <Box component="form" onSubmit={handlePasswordRetry}>
+          <DialogTitle>
+            {t("components.TaskManager.passwordDialogTitle", "输入解压密码")}
+          </DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" color="text.secondary" className="mb-4">
+              {t(
+                "components.TaskManager.passwordDialogDescription",
+                "请输入压缩包密码，任务将复用已下载的文件继续安装。",
+              )}
+            </Typography>
+            <TextField
+              autoFocus
+              fullWidth
+              type="password"
+              label={t("components.TaskManager.archivePassword", "解压密码")}
+              value={archivePassword}
+              onChange={(event) => setArchivePassword(event.target.value)}
+              disabled={passwordTask?.id === pendingTaskId}
+              inputProps={{ maxLength: 1024 }}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={closePasswordDialog} disabled={passwordTask?.id === pendingTaskId}>
+              {t("common.cancel", "取消")}
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={archivePassword.length === 0 || passwordTask?.id === pendingTaskId}
+            >
+              {passwordTask?.id === pendingTaskId ? (
+                <CircularProgress size={20} />
+              ) : (
+                t("components.TaskManager.retryWithPassword", "使用密码重试")
+              )}
+            </Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
+    </Dialog>
+  );
 }

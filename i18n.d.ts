@@ -3,12 +3,12 @@ import "i18next";
 import type zh_CN from "./src/locales/zh-CN.json";
 
 declare module "i18next" {
-	interface CustomTypeOptions {
-		// 默认命名空间
-		defaultNS: "translation";
-		// 定义资源结构
-		resources: {
-			translation: typeof zh_CN;
-		};
-	}
+  interface CustomTypeOptions {
+    // 默认命名空间
+    defaultNS: "translation";
+    // 定义资源结构
+    resources: {
+      translation: typeof zh_CN;
+    };
+  }
 }

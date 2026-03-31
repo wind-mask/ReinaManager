@@ -4,16 +4,13 @@ title: "🐛[Bug] "
 labels:
   - bug
 
-
 body:
-
   - type: markdown
     attributes:
       value: |
         ## 🐛 Bug Report
 
         Please provide real and reproducible information.
-
 
   - type: textarea
     id: description
@@ -23,7 +20,6 @@ body:
         Describe the problem in detail.
     validations:
       required: true
-
 
   - type: textarea
     id: reproduce
@@ -36,13 +32,11 @@ body:
     validations:
       required: true
 
-
   - type: textarea
     id: logs
     attributes:
       label: Logs
       render: shell
-
 
   - type: input
     id: version
@@ -50,7 +44,6 @@ body:
       label: Version
     validations:
       required: true
-
 
   - type: dropdown
     id: os
@@ -65,19 +58,16 @@ body:
     validations:
       required: true
 
-
   - type: textarea
     id: screenshot
     attributes:
       label: Screenshots
-
 
   - type: checkboxes
     id: confirmation
     attributes:
       label: Confirmation
       options:
-
         - label: |
             <sub>
             I confirm that I have read this template

@@ -5,55 +5,55 @@ import { useCallback, useEffect, useRef } from "react";
  * 使用 useRef 管理计时器，避免不必要的重渲染
  */
 export function useCardInteraction(options: {
-	onClick: () => void;
-	onDoubleClick: () => void;
-	useDelayedClick: boolean;
+  onClick: () => void;
+  onDoubleClick: () => void;
+  useDelayedClick: boolean;
 }) {
-	const { onClick, onDoubleClick, useDelayedClick } = options;
+  const { onClick, onDoubleClick, useDelayedClick } = options;
 
-	// 使用 ref 管理计时器，避免 state 更新导致重渲染
-	const clickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 使用 ref 管理计时器，避免 state 更新导致重渲染
+  const clickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-	// 清理计时器
-	const clearClickTimeout = useCallback(() => {
-		if (clickTimeoutRef.current) {
-			clearTimeout(clickTimeoutRef.current);
-			clickTimeoutRef.current = null;
-		}
-	}, []);
+  // 清理计时器
+  const clearClickTimeout = useCallback(() => {
+    if (clickTimeoutRef.current) {
+      clearTimeout(clickTimeoutRef.current);
+      clickTimeoutRef.current = null;
+    }
+  }, []);
 
-	// 点击处理
-	const handleClick = useCallback(() => {
-		if (useDelayedClick) {
-			clearClickTimeout();
-			clickTimeoutRef.current = setTimeout(() => {
-				onClick();
-				clickTimeoutRef.current = null;
-			}, 200);
-		} else {
-			onClick();
-		}
-	}, [onClick, useDelayedClick, clearClickTimeout]);
+  // 点击处理
+  const handleClick = useCallback(() => {
+    if (useDelayedClick) {
+      clearClickTimeout();
+      clickTimeoutRef.current = setTimeout(() => {
+        onClick();
+        clickTimeoutRef.current = null;
+      }, 200);
+    } else {
+      onClick();
+    }
+  }, [onClick, useDelayedClick, clearClickTimeout]);
 
-	// 双击处理
-	const handleDoubleClick = useCallback(() => {
-		if (useDelayedClick) {
-			clearClickTimeout();
-		}
-		onDoubleClick();
-	}, [onDoubleClick, useDelayedClick, clearClickTimeout]);
+  // 双击处理
+  const handleDoubleClick = useCallback(() => {
+    if (useDelayedClick) {
+      clearClickTimeout();
+    }
+    onDoubleClick();
+  }, [onDoubleClick, useDelayedClick, clearClickTimeout]);
 
-	// 组件卸载时清理计时器
-	useEffect(() => {
-		return () => {
-			clearClickTimeout();
-		};
-	}, [clearClickTimeout]);
+  // 组件卸载时清理计时器
+  useEffect(() => {
+    return () => {
+      clearClickTimeout();
+    };
+  }, [clearClickTimeout]);
 
-	return {
-		handlers: {
-			onClick: handleClick,
-			onDoubleClick: handleDoubleClick,
-		},
-	};
+  return {
+    handlers: {
+      onClick: handleClick,
+      onDoubleClick: handleDoubleClick,
+    },
+  };
 }

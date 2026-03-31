@@ -4,29 +4,21 @@ import type { NavigateFunction } from "react-router-dom";
 import { snackbar } from "./snackBar";
 
 interface ShowGameAddedSuccessParams {
-	gameId: number | null | undefined;
-	navigate: NavigateFunction;
-	t: TFunction;
+  gameId: number | null | undefined;
+  navigate: NavigateFunction;
+  t: TFunction;
 }
 
-export function showGameAddedSuccess({
-	gameId,
-	navigate,
-	t,
-}: ShowGameAddedSuccessParams) {
-	if (!gameId) {
-		return;
-	}
+export function showGameAddedSuccess({ gameId, navigate, t }: ShowGameAddedSuccessParams) {
+  if (!gameId) {
+    return;
+  }
 
-	snackbar.success(t("components.Snackbar.gameAddedSuccess", "游戏添加成功"), {
-		action: (
-			<Button
-				color="inherit"
-				size="small"
-				onClick={() => navigate(`/libraries/${gameId}`)}
-			>
-				{t("components.Snackbar.viewDetails", "查看详情")}
-			</Button>
-		),
-	});
+  snackbar.success(t("components.Snackbar.gameAddedSuccess", "游戏添加成功"), {
+    action: (
+      <Button color="inherit" size="small" onClick={() => navigate(`/libraries/${gameId}`)}>
+        {t("components.Snackbar.viewDetails", "查看详情")}
+      </Button>
+    ),
+  });
 }
