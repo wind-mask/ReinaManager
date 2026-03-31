@@ -42,6 +42,7 @@ async fn launch_game_inner<R: Runtime>(
         )?;
 
         return Ok(LaunchResult::delegated(format!(
+            // refused_by: statement_fold · collision: `steam_launch.steam_launch_id,` +1 more
             "已交由 Steam 启动游戏 ({}))",
             steam_launch.steam_launch_id
         )));
