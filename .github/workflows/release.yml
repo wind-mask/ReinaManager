@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - "v*"
+      - "v*-linux-*"
   workflow_dispatch:
     inputs:
       tag_name:
@@ -44,7 +44,7 @@ jobs:
         uses: orhun/git-cliff-action@v4
         with:
           config: cliff.toml
-          args: -vv --latest --strip header
+          args: -vv --latest --strip header --tag-pattern v\d+\.\d+\.\d+-linux-\d+
         env:
           OUTPUT: CHANGES.md
           GITHUB_REPO: ${{ github.repository }}
@@ -69,7 +69,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24
       - name: Install pnpm
         uses: pnpm/action-setup@v5
         with:
@@ -123,72 +123,6 @@ jobs:
           linker = "clang"
           rustflags = ["-C", "link-arg=-fuse-ld=mold"]
           EOF
-      - name: Build and Upload to Draft Release
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
-          # TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
-          BGM_APP_SECRET: ${{ secrets.BGM_APP_SECRET }}
-          # TAURI_UPDATER_ACTIVE: true
-          CARGO_INCREMENTAL: 0
-        with:
-          tagName: ${{ needs.prepare.outputs.release_tag }}
-          releaseName: ${{ needs.prepare.outputs.release_tag }}
-          releaseBody: ${{ needs.prepare.outputs.changelog }}
-          releaseDraft: true
-          prerelease: false
-          includeUpdaterJson: true
-          includeRelease: true
-          tauriScript: pnpm tauri
-          args: --target ${{ matrix.rust_target }}
-
-  build-windows:
-    name: Build Windows
-    runs-on: windows-latest
-    needs: prepare
-    strategy:
-      matrix:
-        rust_target: [x86_64-pc-windows-msvc, aarch64-pc-windows-msvc]
-    environment: TAURI_KEY
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ needs.prepare.outputs.release_tag }}
-      - name: Install Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-          run_install: false
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.rust_target }}
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: "./src-tauri -> target"
-          shared-key: ${{ matrix.rust_target }}
-          save-if: false
-      - name: Configure Rust linker (Windows lld)
-        shell: bash
-        run: |
-          mkdir -p .cargo
-          echo "Configuring lld for Windows..."
-          cat >> .cargo/config.toml <<EOF
-          [target.x86_64-pc-windows-msvc]
-          linker = "rust-lld.exe"
-
-          [target.aarch64-pc-windows-msvc]
-          linker = "rust-lld.exe"
-          EOF
-      - name: Install dependencies
-        run: pnpm install
       - name: Get version
         id: get_version
         shell: bash
@@ -206,46 +140,47 @@ jobs:
             *) SHORT=unknown ;;
           esac
           echo "SHORT=$SHORT" >> $GITHUB_OUTPUT
-      - name: Build and Upload to Draft Release
+      - name: Build
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          # TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+          # BGM_APP_SECRET: ${{ secrets.BGM_APP_SECRET }}
+          # TAURI_UPDATER_ACTIVE: true
+          CARGO_INCREMENTAL: 0
         with:
-          # tagName: ${{ github.ref_name }}
-          tagName: ""
-          # releaseName: ${{ github.ref_name }}
-          releaseName: ""
+          # tagName: ${{ needs.prepare.outputs.release_tag }}
+          # releaseName: ${{ needs.prepare.outputs.release_tag }}
           # releaseBody: ${{ needs.prepare.outputs.changelog }}
-          releaseBody: ""
-          releaseDraft: false
-          prerelease: false
-          includeUpdaterJson: false
-          includeDebug: false
-          includeRelease: true
+          # releaseDraft: false
+          # prerelease: false
+          # includeUpdaterJson: false
+          # includeRelease: true
           tauriScript: pnpm tauri
-          args: --target ${{ matrix.rust_target }} # Upload build artifacts for testings
+          args: --target ${{ matrix.rust_target }}
       - name: Upload deb (Artifact)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ReinaManager-${{ steps.get_version.outputs.VERSION }}-${{
             steps.short.outputs.SHORT }}-deb
           path: src-tauri/target/${{ matrix.rust_target }}/release/bundle/deb/*.deb
-          if-no-files-found: warn
+          if-no-files-found: error
       - name: Upload rpm (Artifact)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ReinaManager-${{ steps.get_version.outputs.VERSION }}-${{
             steps.short.outputs.SHORT }}-rpm
           path: src-tauri/target/${{ matrix.rust_target }}/release/bundle/rpm/*.rpm
-          if-no-files-found: warn
+          if-no-files-found: error
       - name: Upload AppImage (Artifact)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ReinaManager-${{ steps.get_version.outputs.VERSION }}-${{
             steps.short.outputs.SHORT }}-appimage
           path: src-tauri/target/${{ matrix.rust_target
             }}/release/bundle/appimage/*.AppImage
-          if-no-files-found: warn
+          if-no-files-found: error
   create-release:
     name: Create Release
     runs-on: ubuntu-latest
@@ -254,7 +189,7 @@ jobs:
       - build
     steps:
       - name: Download All Artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           path: release-artifacts
           pattern: ReinaManager-*
