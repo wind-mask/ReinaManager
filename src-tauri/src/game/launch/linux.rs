@@ -43,8 +43,7 @@ async fn launch_game_inner<R: Runtime>(
 
         return Ok(LaunchResult::delegated(format!(
             "已交由 Steam 启动游戏 ({})，工作目录: {})",
-            steam_launch.steam_launch_id,
-            steam_launch.game_dir
+            steam_launch.steam_launch_id, steam_launch.game_dir
         )));
     }
 
