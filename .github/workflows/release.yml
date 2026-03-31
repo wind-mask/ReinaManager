@@ -191,3 +191,109 @@ jobs:
           artifacts: "release-artifacts/ReinaManager*.deb,release-artifacts/ReinaManager*\
             .rpm,release-artifacts/ReinaManager*.AppImage"
           makeLatest: true
+  # finalize-release:
+  #   name: Finalize Release
+  #   runs-on: ubuntu-latest
+  #   needs: [prepare, build-and-upload] # 等待所有构建和上传完成
+  #   permissions:
+  #     contents: write # 需要权限来编辑 release
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
+
+  #     - name: Determine release type
+  #       id: release-type
+  #       shell: bash
+  #       run: |
+  #         if [[ "${{ github.ref_name }}" == *"alpha"* ]] || [[ "${{ github.ref_name }}" == *"beta"* ]] || [[ "${{ github.ref_name }}" == *"rc"* ]] || [[ "${{ github.ref_name }}" == *"pre"* ]] || [[ "${{ github.event.inputs.prerelease }}" == "true" ]]; then
+  #           echo "IS_PRERELEASE=true" >> $GITHUB_OUTPUT
+  #         else
+  #           echo "IS_PRERELEASE=false" >> $GITHUB_OUTPUT
+  #         fi
+
+  #     - name: Prepare Release Body
+  #       id: release_body
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       shell: bash
+  #       run: |
+  #         TAG_NAME="${{ github.ref_name }}"
+  #         # 从 GitHub API 获取草稿 release 的所有资源文件名
+  #         ASSETS_JSON=$(gh release view "$TAG_NAME" --json assets --jq '.assets | .[] | .name')
+
+  #         # 查找 MSI 和 EXE 文件
+  #         X64_MSI=$(echo "$ASSETS_JSON" | grep -E "_x64_.*\.msi$" || echo "")
+  #         ARM64_MSI=$(echo "$ASSETS_JSON" | grep -E "_arm64_.*\.msi$" || echo "")
+
+  #         CHANGELOG="${{ needs.prepare.outputs.changelog }}"
+
+  #         # 为所有文件创建 URL
+  #         X64_MSI_URL="https://github.com/${{ github.repository }}/releases/download/$TAG_NAME/$X64_MSI"
+  #         ARM64_MSI_URL="https://github.com/${{ github.repository }}/releases/download/$TAG_NAME/$ARM64_MSI"
+
+  #         DOWNLOAD_SECTION=$(cat <<EOF
+  #         ---
+  #         ### 📥 下载地址 (Download)
+  #         ![Downloads](https://img.shields.io/github/downloads/${{ github.repository }}/$TAG_NAME/total)
+
+  #         **Windows** (不支持 Win7)
+  #           - [**64位 (x64)**]($X64_MSI_URL)
+  #           - [**ARM64**]($ARM64_MSI_URL)
+  #         EOF
+  #         )
+
+  #         FINAL_BODY=$(cat <<EOF
+  #         $CHANGELOG
+
+  #         $DOWNLOAD_SECTION
+  #         EOF
+  #         )
+
+  #         {
+  #           echo "body<<EOF"
+  #           echo "$FINAL_BODY"
+  #           echo "EOF"
+  #         } >> $GITHUB_OUTPUT
+
+  #     - name: Publish Final Release
+  #       uses: softprops/action-gh-release@v2
+  #       with:
+  #         tag_name: ${{ github.ref_name }}
+  #         body: ${{ steps.release_body.outputs.body }}
+  #         draft: false
+  #         prerelease: ${{ steps.release-type.outputs.IS_PRERELEASE }}
+
+  # update_cdn_urls:
+  #   name: Update CDN URLs in latest.json
+  #   runs-on: ubuntu-latest
+  #   needs: finalize-release # 等待 release 正式发布
+  #   if: startsWith(github.ref, 'refs/tags/')
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
+
+  #     - name: Update latest.json with CDN URLs
+  #       shell: bash
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       run: |
+  #         TAG_NAME="${{ github.ref_name }}"
+  #         URL="https://github.com/${{ github.repository }}/releases/download/$TAG_NAME/latest.json"
+
+  #         n=0
+  #         until [ "$n" -ge 5 ]; do
+  #           curl -L -f -o latest.json "$URL" && break
+  #           n=$((n+1))
+  #           sleep 5
+  #         done
+
+  #         if [ ! -f "latest.json" ]; then
+  #           echo "Error: Could not download latest.json after several retries."
+  #           exit 1
+  #         fi
+
+  #         jq '.platforms |= with_entries(.value.url |= "https://gh.huoshen80.top/\(.)")' latest.json > latest_modified.json
+  #         mv -f latest_modified.json latest.json
+
+  #         gh release upload $TAG_NAME "latest.json" --clobber
+  #         echo "Successfully updated latest.json with CDN URLs"
