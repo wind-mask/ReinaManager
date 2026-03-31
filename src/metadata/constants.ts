@@ -7,14 +7,12 @@ export const REGISTERED_SOURCE_KEYS = SOURCE_TYPES;
 // 废弃源仍参与历史读取；在线能力与源注册分离，避免停用后丢失旧数据。
 export const DEPRECATED_SOURCE_KEYS: readonly SourceType[] = ["kun"];
 export const isDeprecatedSource = (source: string): boolean =>
-	DEPRECATED_SOURCE_KEYS.some((key) => key === source);
-export const SEARCHABLE_SOURCE_KEYS = SOURCE_TYPES.filter(
-	(source) => !isDeprecatedSource(source),
-);
+  DEPRECATED_SOURCE_KEYS.some((key) => key === source);
+export const SEARCHABLE_SOURCE_KEYS = SOURCE_TYPES.filter((source) => !isDeprecatedSource(source));
 export const MIXED_SOURCE_KEYS = SEARCHABLE_SOURCE_KEYS;
 export const DEFAULT_MIXED_SOURCE_KEYS = [
-	"vndb",
-	"hikarinagi",
+  "vndb",
+  "hikarinagi",
 ] as const satisfies readonly SourceType[];
 
 export const MIXED_SOURCE_MIN_COUNT = 2;

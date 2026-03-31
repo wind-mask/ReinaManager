@@ -15,52 +15,46 @@
  * - @/types
  * - @/store/gamePlayStore
  */
+import {
+  DEFAULT_MIXED_SOURCE_KEYS,
+  isDeprecatedSource,
+  MIXED_SOURCE_KEYS,
+  MIXED_SOURCE_MAX_COUNT,
+  MIXED_SOURCE_MIN_COUNT,
+} from "@/metadata/constants";
+import { type ProxyConfig, settingsService } from "@/services/invoke";
+import type { GameType, SortOption, SortOrder } from "@/services/invoke/types";
+import type { CloudCollectionSource, SourceType } from "@/types";
+import type { CollectionEntitySortField, PlayStatusFilter } from "@/types/collection";
+import { normalizeTagFilters } from "@/utils/game/tagFilter";
 import { isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { Update } from "@tauri-apps/plugin-updater";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import {
-	DEFAULT_MIXED_SOURCE_KEYS,
-	isDeprecatedSource,
-	MIXED_SOURCE_KEYS,
-	MIXED_SOURCE_MAX_COUNT,
-	MIXED_SOURCE_MIN_COUNT,
-} from "@/metadata/constants";
-import { type ProxyConfig, settingsService } from "@/services/invoke";
-import type { GameType, SortOption, SortOrder } from "@/services/invoke/types";
-import type { CloudCollectionSource, SourceType } from "@/types";
-import type {
-	CollectionEntitySortField,
-	PlayStatusFilter,
-} from "@/types/collection";
-import { normalizeTagFilters } from "@/utils/game/tagFilter";
-import {
-	APP_STORE_VERSION,
-	migrateAppStorePersistedState,
-} from "./appStoreMigrations";
+import { APP_STORE_VERSION, migrateAppStorePersistedState } from "./appStoreMigrations";
 import { initializeGamePlayTracking } from "./gamePlayStore";
 
 export type SelectedCategory =
-	| { type: "real"; id: number }
-	| { type: "developer"; key: string }
-	| null;
+  | { type: "real"; id: number }
+  | { type: "developer"; key: string }
+  | null;
 
 export type DataSourceUpdateMode = "search" | "manualId";
+
 export type StartupPage = "home" | "libraries" | "collection";
 
 export interface GameFilterSortConfig {
-	gameFilterType: GameType;
-	playStatusFilter: PlayStatusFilter;
-	tagFilters: string[];
-	sortOption: SortOption;
-	sortOrder: SortOrder;
-	showCardSortFieldOverlay: boolean;
+  gameFilterType: GameType;
+  playStatusFilter: PlayStatusFilter;
+  tagFilters: string[];
+  sortOption: SortOption;
+  sortOrder: SortOrder;
+  showCardSortFieldOverlay: boolean;
 }
 
-export interface CollectionGameFilterSortConfig
-	extends Omit<GameFilterSortConfig, "sortOption"> {
-	sortOption: SortOption | "manual";
+export interface CollectionGameFilterSortConfig extends Omit<GameFilterSortConfig, "sortOption"> {
+  sortOption: SortOption | "manual";
 }
 
 const DEFAULT_API_SOURCE: SourceType = "hikarinagi";
@@ -69,603 +63,571 @@ const DEFAULT_API_SOURCE: SourceType = "hikarinagi";
  * AppState 全局状态类型定义
  */
 export interface AppState {
-	// UI 状态
-	selectedGameId: number | null;
-	addModalOpen: boolean;
-	addModalPath: string;
-	cloudCollectionImportSource: CloudCollectionSource | null;
-	taskManagerOpen: boolean;
+  // UI 状态
+  selectedGameId: number | null;
+  addModalOpen: boolean;
+  addModalPath: string;
+  cloudCollectionImportSource: CloudCollectionSource | null;
+  taskManagerOpen: boolean;
 
-	// 排序选项
-	sortOption: SortOption;
-	sortOrder: SortOrder;
-	showCardSortFieldOverlay: boolean;
-	applyGameFilterSort: (config: GameFilterSortConfig) => void;
+  // 排序选项
+  sortOption: SortOption;
+  sortOrder: SortOrder;
+  showCardSortFieldOverlay: boolean;
+  applyGameFilterSort: (config: GameFilterSortConfig) => void;
 
-	// 关闭应用时的提醒设置，skip=不再提醒，行为为 'hide' 或 'close'
-	skipCloseRemind: boolean;
-	defaultCloseAction: "hide" | "close";
-	// 设置不再提醒及默认关闭行为
-	setSkipCloseRemind: (skip: boolean) => void;
-	setDefaultCloseAction: (action: "hide" | "close") => void;
+  // 关闭应用时的提醒设置，skip=不再提醒，行为为 'hide' 或 'close'
+  skipCloseRemind: boolean;
+  defaultCloseAction: "hide" | "close";
+  // 设置不再提醒及默认关闭行为
+  setSkipCloseRemind: (skip: boolean) => void;
+  setDefaultCloseAction: (action: "hide" | "close") => void;
 
-	// 数据库自动备份
-	scheduledBackupEnabled: boolean;
-	scheduledBackupIntervalHours: number;
-	autoBackupOnExit: boolean;
-	autoBackupIncludeCovers: boolean;
-	exitBackupMinIntervalHours: number;
-	autoBackupRetentionCount: number;
-	autoBackupLastSuccessAt: number | null;
-	autoBackupLastScheduledAttemptAt: number | null;
-	autoBackupLastError: string | null;
-	setScheduledBackupEnabled: (enabled: boolean) => void;
-	setScheduledBackupIntervalHours: (hours: number) => void;
-	setAutoBackupOnExit: (enabled: boolean) => void;
-	setAutoBackupIncludeCovers: (enabled: boolean) => void;
-	setExitBackupMinIntervalHours: (hours: number) => void;
-	setAutoBackupRetentionCount: (count: number) => void;
-	setAutoBackupLastScheduledAttemptAt: (attemptAt: number) => void;
-	setAutoBackupLastResult: (
-		successAt: number | null,
-		error: string | null,
-	) => void;
+  // 数据库自动备份
+  scheduledBackupEnabled: boolean;
+  scheduledBackupIntervalHours: number;
+  autoBackupOnExit: boolean;
+  autoBackupIncludeCovers: boolean;
+  exitBackupMinIntervalHours: number;
+  autoBackupRetentionCount: number;
+  autoBackupLastSuccessAt: number | null;
+  autoBackupLastScheduledAttemptAt: number | null;
+  autoBackupLastError: string | null;
+  setScheduledBackupEnabled: (enabled: boolean) => void;
+  setScheduledBackupIntervalHours: (hours: number) => void;
+  setAutoBackupOnExit: (enabled: boolean) => void;
+  setAutoBackupIncludeCovers: (enabled: boolean) => void;
+  setExitBackupMinIntervalHours: (hours: number) => void;
+  setAutoBackupRetentionCount: (count: number) => void;
+  setAutoBackupLastScheduledAttemptAt: (attemptAt: number) => void;
+  setAutoBackupLastResult: (successAt: number | null, error: string | null) => void;
 
-	// UI 操作方法
-	setSelectedGameId: (id: number | null) => void;
-	openAddModal: (path?: string) => void;
-	openCloudCollectionImport: (source: CloudCollectionSource) => void;
-	closeAddModal: () => void;
-	setAddModalPath: (path: string) => void;
-	openTaskManager: () => void;
-	closeTaskManager: () => void;
+  // UI 操作方法
+  setSelectedGameId: (id: number | null) => void;
+  openAddModal: (path?: string) => void;
+  openCloudCollectionImport: (source: CloudCollectionSource) => void;
+  closeAddModal: () => void;
+  setAddModalPath: (path: string) => void;
+  openTaskManager: () => void;
+  closeTaskManager: () => void;
 
-	// 初始化
-	initialize: () => Promise<void>;
+  // 初始化
+  initialize: () => Promise<void>;
 
-	// 搜索相关
-	/** 搜索输入框的原始输入值（即时更新，仅 SearchBox 订阅） */
-	searchInput: string;
-	setSearchInput: (input: string) => void;
-	/** 防抖后的搜索关键词（用于游戏列表过滤） */
-	searchKeyword: string;
-	setSearchKeyword: (keyword: string) => void;
+  // 搜索相关
+  /** 搜索输入框的原始输入值（即时更新，仅 SearchBox 订阅） */
+  searchInput: string;
+  setSearchInput: (input: string) => void;
+  /** 防抖后的搜索关键词（用于游戏列表过滤） */
+  searchKeyword: string;
+  setSearchKeyword: (keyword: string) => void;
 
-	// 筛选相关
-	gameFilterType: GameType;
-	playStatusFilter: PlayStatusFilter;
-	tagFilters: string[];
-	setTagFilters: (tags: string[]) => void;
+  // 筛选相关
+  gameFilterType: GameType;
+  playStatusFilter: PlayStatusFilter;
+  tagFilters: string[];
+  setTagFilters: (tags: string[]) => void;
 
-	// 数据来源选择
-	apiSource: SourceType;
-	setApiSource: (source: SourceType) => void;
-	mixedEnabledSources: SourceType[];
-	toggleMixedSource: (source: SourceType) => void;
-	dataSourceUpdateMode: DataSourceUpdateMode;
-	setDataSourceUpdateMode: (mode: DataSourceUpdateMode) => void;
+  // 数据来源选择
+  apiSource: SourceType;
+  setApiSource: (source: SourceType) => void;
+  mixedEnabledSources: SourceType[];
+  toggleMixedSource: (source: SourceType) => void;
+  dataSourceUpdateMode: DataSourceUpdateMode;
+  setDataSourceUpdateMode: (mode: DataSourceUpdateMode) => void;
 
-	// NSFW相关
-	nsfwFilter: boolean;
-	setNsfwFilter: (enabled: boolean) => void;
-	nsfwCoverReplace: boolean;
-	setNsfwCoverReplace: (enabled: boolean) => void;
+  // NSFW相关
+  nsfwFilter: boolean;
+  setNsfwFilter: (enabled: boolean) => void;
+  nsfwCoverReplace: boolean;
+  setNsfwCoverReplace: (enabled: boolean) => void;
 
-	// 卡片交互模式
-	cardClickMode: "navigate" | "select";
-	setCardClickMode: (mode: "navigate" | "select") => void;
+  // 卡片交互模式
+  cardClickMode: "navigate" | "select";
+  setCardClickMode: (mode: "navigate" | "select") => void;
 
-	// 启动默认页面
-	startupPage: StartupPage;
-	setStartupPage: (page: StartupPage) => void;
-	zoomPercent: number;
-	setZoomPercent: (percent: number) => void;
+  // 启动默认页面
+  startupPage: StartupPage;
+  setStartupPage: (page: StartupPage) => void;
+  zoomPercent: number;
+  setZoomPercent: (percent: number) => void;
 
-	// TAG翻译功能
-	tagTranslation: boolean;
-	setTagTranslation: (enabled: boolean) => void;
+  // TAG翻译功能
+  tagTranslation: boolean;
+  setTagTranslation: (enabled: boolean) => void;
 
-	// 收藏同步开关
-	syncBgmCollection: boolean;
-	setSyncBgmCollection: (enabled: boolean) => void;
-	syncVndbCollection: boolean;
-	setSyncVndbCollection: (enabled: boolean) => void;
-	syncHikarinagiCollection: boolean;
-	setSyncHikarinagiCollection: (enabled: boolean) => void;
+  // 收藏同步开关
+  syncBgmCollection: boolean;
+  setSyncBgmCollection: (enabled: boolean) => void;
+  syncVndbCollection: boolean;
+  setSyncVndbCollection: (enabled: boolean) => void;
+  syncHikarinagiCollection: boolean;
+  setSyncHikarinagiCollection: (enabled: boolean) => void;
 
-	// 剧透等级
-	spoilerLevel: number;
-	setSpoilerLevel: (level: number) => void;
+  // 剧透等级
+  spoilerLevel: number;
+  setSpoilerLevel: (level: number) => void;
 
-	// 计时模式：playtime = 真实游戏时间（仅活跃时），elapsed = 游戏启动时间（从启动到结束）
-	timeTrackingMode: "playtime" | "elapsed";
-	setTimeTrackingMode: (mode: "playtime" | "elapsed") => void;
+  // 计时模式：playtime = 真实游戏时间（仅活跃时），elapsed = 游戏启动时间（从启动到结束）
+  timeTrackingMode: "playtime" | "elapsed";
+  setTimeTrackingMode: (mode: "playtime" | "elapsed") => void;
 
-	// 更新窗口状态管理
-	showUpdateModal: boolean;
-	pendingUpdate: Update | null;
-	skippedUpdateVersion: string | null;
-	setShowUpdateModal: (show: boolean) => void;
-	setPendingUpdate: (update: Update | null) => void;
-	setSkippedUpdateVersion: (version: string | null) => void;
-	triggerUpdateModal: (update: Update) => void;
+  // 更新窗口状态管理
+  showUpdateModal: boolean;
+  pendingUpdate: Update | null;
+  skippedUpdateVersion: string | null;
+  setShowUpdateModal: (show: boolean) => void;
+  setPendingUpdate: (update: Update | null) => void;
+  setSkippedUpdateVersion: (version: string | null) => void;
+  triggerUpdateModal: (update: Update) => void;
 
-	// 分组分类选择状态
-	collectionGameFilterSort: CollectionGameFilterSortConfig;
-	applyCollectionGameFilterSort: (
-		config: CollectionGameFilterSortConfig,
-	) => void;
-	collectionGameSearch: string;
-	setCollectionGameSearch: (value: string) => void;
-	currentGroupId: string | null; // 当前选中的分组ID
-	selectedCategory: SelectedCategory; // 当前选中的分类
-	setCurrentGroup: (groupId: string | null) => void; // 设置当前分组
-	setSelectedCategory: (category: SelectedCategory) => void; // 设置当前选中的分类
-	collectionEntitySortField: CollectionEntitySortField;
-	collectionEntitySortOrder: SortOrder;
-	setCollectionEntitySort: (
-		field: CollectionEntitySortField,
-		order: SortOrder,
-	) => void;
-	developerCategorySortField: CollectionEntitySortField;
-	developerCategorySortOrder: SortOrder;
-	setDeveloperCategorySort: (
-		field: CollectionEntitySortField,
-		order: SortOrder,
-	) => void;
-	collectionGroupSearch: string;
-	setCollectionGroupSearch: (value: string) => void;
-	collectionCategorySearch: string;
-	setCollectionCategorySearch: (value: string) => void;
-	developerCategorySearch: string;
-	setDeveloperCategorySearch: (value: string) => void;
+  // 分组分类选择状态
+  collectionGameFilterSort: CollectionGameFilterSortConfig;
+  applyCollectionGameFilterSort: (config: CollectionGameFilterSortConfig) => void;
+  collectionGameSearch: string;
+  setCollectionGameSearch: (value: string) => void;
 
-	// 代理设置
-	proxyConfig: ProxyConfig;
-	setProxyConfig: (config: ProxyConfig) => void;
-	isSystemProxyActive: boolean;
-	setSystemProxyActive: (active: boolean) => void;
+  currentGroupId: string | null; // 当前选中的分组ID
+  selectedCategory: SelectedCategory; // 当前选中的分类
+  setCurrentGroup: (groupId: string | null) => void; // 设置当前分组
+  setSelectedCategory: (category: SelectedCategory) => void; // 设置当前选中的分类
+  collectionEntitySortField: CollectionEntitySortField;
+  collectionEntitySortOrder: SortOrder;
+  setCollectionEntitySort: (field: CollectionEntitySortField, order: SortOrder) => void;
+  developerCategorySortField: CollectionEntitySortField;
+  developerCategorySortOrder: SortOrder;
+  setDeveloperCategorySort: (field: CollectionEntitySortField, order: SortOrder) => void;
+  collectionGroupSearch: string;
+  setCollectionGroupSearch: (value: string) => void;
+  collectionCategorySearch: string;
+  setCollectionCategorySearch: (value: string) => void;
+  developerCategorySearch: string;
+  setDeveloperCategorySearch: (value: string) => void;
+
+  // 代理设置
+  proxyConfig: ProxyConfig;
+  setProxyConfig: (config: ProxyConfig) => void;
+  isSystemProxyActive: boolean;
+  setSystemProxyActive: (active: boolean) => void;
 }
 
 // 创建持久化的全局状态
 export const useStore = create<AppState>()(
-	persist(
-		(set, get) => ({
-			// UI 状态
-			selectedGameId: null,
-			addModalOpen: false,
-			addModalPath: "",
-			cloudCollectionImportSource: null,
-			taskManagerOpen: false,
+  persist(
+    (set, get) => ({
+      // UI 状态
+      selectedGameId: null,
+      addModalOpen: false,
+      addModalPath: "",
+      cloudCollectionImportSource: null,
+      taskManagerOpen: false,
 
-			searchInput: "",
-			searchKeyword: "",
+      searchInput: "",
+      searchKeyword: "",
 
-			gameFilterType: "all",
-			playStatusFilter: "all",
-			tagFilters: [],
+      gameFilterType: "all",
+      playStatusFilter: "all",
+      tagFilters: [],
 
-			// 排序选项默认值
-			sortOption: "addtime",
-			sortOrder: "asc",
-			showCardSortFieldOverlay: false,
+      // 排序选项默认值
+      sortOption: "addtime",
+      sortOrder: "asc",
+      showCardSortFieldOverlay: false,
 
-			// 关闭应用时的提醒设置，skip=不再提醒，行为为 'hide' 或 'close'
-			skipCloseRemind: false,
-			defaultCloseAction: "hide",
-			// Setter: 不再提醒和默认关闭行为
-			setSkipCloseRemind: (skip: boolean) => set({ skipCloseRemind: skip }),
-			setDefaultCloseAction: (action: "hide" | "close") =>
-				set({ defaultCloseAction: action }),
+      // 关闭应用时的提醒设置，skip=不再提醒，行为为 'hide' 或 'close'
+      skipCloseRemind: false,
+      defaultCloseAction: "hide",
+      // Setter: 不再提醒和默认关闭行为
+      setSkipCloseRemind: (skip: boolean) => set({ skipCloseRemind: skip }),
+      setDefaultCloseAction: (action: "hide" | "close") => set({ defaultCloseAction: action }),
 
-			// 数据库自动备份
-			scheduledBackupEnabled: false,
-			scheduledBackupIntervalHours: 12,
-			autoBackupOnExit: false,
-			autoBackupIncludeCovers: false,
-			exitBackupMinIntervalHours: 6,
-			autoBackupRetentionCount: 7,
-			autoBackupLastSuccessAt: null,
-			autoBackupLastScheduledAttemptAt: null,
-			autoBackupLastError: null,
-			setScheduledBackupEnabled: (enabled: boolean) =>
-				set({ scheduledBackupEnabled: enabled }),
-			setScheduledBackupIntervalHours: (hours: number) => {
-				const nextHours = Number.isFinite(hours) ? hours : 1;
-				set({
-					scheduledBackupIntervalHours: Math.max(1, Math.floor(nextHours)),
-				});
-			},
-			setAutoBackupOnExit: (enabled: boolean) =>
-				set({ autoBackupOnExit: enabled }),
-			setAutoBackupIncludeCovers: (enabled: boolean) =>
-				set({ autoBackupIncludeCovers: enabled }),
-			setExitBackupMinIntervalHours: (hours: number) => {
-				const nextHours = Number.isFinite(hours) ? hours : 0;
-				set({
-					exitBackupMinIntervalHours: Math.max(0, Math.floor(nextHours)),
-				});
-			},
-			setAutoBackupRetentionCount: (count: number) => {
-				const nextCount = Number.isFinite(count) ? count : 1;
-				set({
-					autoBackupRetentionCount: Math.max(1, Math.floor(nextCount)),
-				});
-			},
-			setAutoBackupLastScheduledAttemptAt: (attemptAt: number) =>
-				set({ autoBackupLastScheduledAttemptAt: attemptAt }),
-			setAutoBackupLastResult: (
-				successAt: number | null,
-				error: string | null,
-			) =>
-				set((state) => ({
-					autoBackupLastSuccessAt: successAt ?? state.autoBackupLastSuccessAt,
-					autoBackupLastError: error,
-				})),
+      // 数据库自动备份
+      scheduledBackupEnabled: false,
+      scheduledBackupIntervalHours: 12,
+      autoBackupOnExit: false,
+      autoBackupIncludeCovers: false,
+      exitBackupMinIntervalHours: 6,
+      autoBackupRetentionCount: 7,
+      autoBackupLastSuccessAt: null,
+      autoBackupLastScheduledAttemptAt: null,
+      autoBackupLastError: null,
+      setScheduledBackupEnabled: (enabled: boolean) => set({ scheduledBackupEnabled: enabled }),
+      setScheduledBackupIntervalHours: (hours: number) => {
+        const nextHours = Number.isFinite(hours) ? hours : 1;
+        set({
+          scheduledBackupIntervalHours: Math.max(1, Math.floor(nextHours)),
+        });
+      },
+      setAutoBackupOnExit: (enabled: boolean) => set({ autoBackupOnExit: enabled }),
+      setAutoBackupIncludeCovers: (enabled: boolean) => set({ autoBackupIncludeCovers: enabled }),
+      setExitBackupMinIntervalHours: (hours: number) => {
+        const nextHours = Number.isFinite(hours) ? hours : 0;
+        set({
+          exitBackupMinIntervalHours: Math.max(0, Math.floor(nextHours)),
+        });
+      },
+      setAutoBackupRetentionCount: (count: number) => {
+        const nextCount = Number.isFinite(count) ? count : 1;
+        set({
+          autoBackupRetentionCount: Math.max(1, Math.floor(nextCount)),
+        });
+      },
+      setAutoBackupLastScheduledAttemptAt: (attemptAt: number) =>
+        set({ autoBackupLastScheduledAttemptAt: attemptAt }),
+      setAutoBackupLastResult: (successAt: number | null, error: string | null) =>
+        set((state) => ({
+          autoBackupLastSuccessAt: successAt ?? state.autoBackupLastSuccessAt,
+          autoBackupLastError: error,
+        })),
 
-			// 数据来源选择
-			apiSource: DEFAULT_API_SOURCE,
-			setApiSource: (source: SourceType) => {
-				set({ apiSource: source });
-			},
-			mixedEnabledSources: [...DEFAULT_MIXED_SOURCE_KEYS],
-			toggleMixedSource: (source: SourceType) => {
-				if (!MIXED_SOURCE_KEYS.includes(source)) return;
-				set((state) => {
-					const current = state.mixedEnabledSources;
-					// 保留旧 Kungal 偏好供 v2 继承，但不占在线源的数量名额。
-					const deprecatedSources = current.filter(isDeprecatedSource);
-					const enabledAfterAdd = MIXED_SOURCE_KEYS.filter(
-						(item) => item === source || current.includes(item),
-					);
-					const nextSources = current.includes(source)
-						? MIXED_SOURCE_KEYS.filter(
-								(item) => item !== source && current.includes(item),
-							)
-						: enabledAfterAdd;
+      // 数据来源选择
+      apiSource: DEFAULT_API_SOURCE,
+      setApiSource: (source: SourceType) => {
+        set({ apiSource: source });
+      },
+      mixedEnabledSources: [...DEFAULT_MIXED_SOURCE_KEYS],
 
-					return nextSources.length >= MIXED_SOURCE_MIN_COUNT &&
-						nextSources.length <= MIXED_SOURCE_MAX_COUNT
-						? { mixedEnabledSources: [...nextSources, ...deprecatedSources] }
-						: {};
-				});
-			},
-			dataSourceUpdateMode: "search",
-			setDataSourceUpdateMode: (mode: DataSourceUpdateMode) => {
-				set({ dataSourceUpdateMode: mode });
-			},
+      toggleMixedSource: (source: SourceType) => {
+        if (!MIXED_SOURCE_KEYS.includes(source)) return;
+        set((state) => {
+          const current = state.mixedEnabledSources;
+          // 保留旧 Kungal 偏好供 v2 继承，但不占在线源的数量名额。
+          const deprecatedSources = current.filter(isDeprecatedSource);
+          const enabledAfterAdd = MIXED_SOURCE_KEYS.filter(
+            (item) => item === source || current.includes(item),
+          );
+          const nextSources = current.includes(source)
+            ? MIXED_SOURCE_KEYS.filter((item) => item !== source && current.includes(item))
+            : enabledAfterAdd;
 
-			openAddModal: (path?: string) => {
-				const nextPath = path ?? get().addModalPath;
-				const { addModalOpen, addModalPath } = get();
-				if (addModalOpen && addModalPath === nextPath) return;
-				set({
-					addModalOpen: true,
-					addModalPath: nextPath,
-					cloudCollectionImportSource: null,
-				});
-			},
-			openCloudCollectionImport: (source) => {
-				set({
-					addModalOpen: true,
-					addModalPath: "",
-					cloudCollectionImportSource: source,
-				});
-			},
-			closeAddModal: () => {
-				set({ addModalOpen: false, cloudCollectionImportSource: null });
-			},
-			setAddModalPath: (path: string) => {
-				set({ addModalPath: path });
-			},
-			openTaskManager: () => {
-				set({ taskManagerOpen: true });
-			},
-			closeTaskManager: () => {
-				set({ taskManagerOpen: false });
-			},
+          return nextSources.length >= MIXED_SOURCE_MIN_COUNT &&
+            nextSources.length <= MIXED_SOURCE_MAX_COUNT
+            ? { mixedEnabledSources: [...nextSources, ...deprecatedSources] }
+            : {};
+        });
+      },
+      dataSourceUpdateMode: "search",
+      setDataSourceUpdateMode: (mode: DataSourceUpdateMode) => {
+        set({ dataSourceUpdateMode: mode });
+      },
 
-			// NSFW相关
-			nsfwFilter: false,
-			setNsfwFilter: (enabled: boolean) => {
-				set({ nsfwFilter: enabled });
-			},
-			nsfwCoverReplace: false,
-			setNsfwCoverReplace: (enabled: boolean) => {
-				set({ nsfwCoverReplace: enabled });
-			},
+      openAddModal: (path?: string) => {
+        const nextPath = path ?? get().addModalPath;
+        const { addModalOpen, addModalPath } = get();
+        if (addModalOpen && addModalPath === nextPath) return;
+        set({
+          addModalOpen: true,
+          addModalPath: nextPath,
+          cloudCollectionImportSource: null,
+        });
+      },
+      openCloudCollectionImport: (source) => {
+        set({
+          addModalOpen: true,
+          addModalPath: "",
+          cloudCollectionImportSource: source,
+        });
+      },
+      closeAddModal: () => {
+        set({ addModalOpen: false, cloudCollectionImportSource: null });
+      },
+      setAddModalPath: (path: string) => {
+        set({ addModalPath: path });
+      },
+      openTaskManager: () => {
+        set({ taskManagerOpen: true });
+      },
+      closeTaskManager: () => {
+        set({ taskManagerOpen: false });
+      },
 
-			// 卡片交互模式
-			cardClickMode: "navigate",
-			setCardClickMode: (mode: "navigate" | "select") => {
-				set({ cardClickMode: mode });
-			},
+      // NSFW相关
+      nsfwFilter: false,
+      setNsfwFilter: (enabled: boolean) => {
+        set({ nsfwFilter: enabled });
+      },
+      nsfwCoverReplace: false,
+      setNsfwCoverReplace: (enabled: boolean) => {
+        set({ nsfwCoverReplace: enabled });
+      },
 
-			// 启动默认页面
-			startupPage: "home",
-			setStartupPage: (page: StartupPage) => set({ startupPage: page }),
-			zoomPercent: 100,
-			setZoomPercent: (percent: number) => set({ zoomPercent: percent }),
+      // 卡片交互模式
+      cardClickMode: "navigate",
+      setCardClickMode: (mode: "navigate" | "select") => {
+        set({ cardClickMode: mode });
+      },
 
-			// TAG翻译功能（默认关闭）
-			tagTranslation: false,
-			setTagTranslation: (enabled: boolean) => {
-				set({ tagTranslation: enabled });
-			},
+      // 启动默认页面
+      startupPage: "home",
+      setStartupPage: (page: StartupPage) => set({ startupPage: page }),
+      zoomPercent: 100,
+      setZoomPercent: (percent: number) => set({ zoomPercent: percent }),
 
-			// 收藏同步开关（默认关闭）
-			syncBgmCollection: false,
-			setSyncBgmCollection: (enabled: boolean) => {
-				set({ syncBgmCollection: enabled });
-			},
-			syncVndbCollection: false,
-			setSyncVndbCollection: (enabled: boolean) => {
-				set({ syncVndbCollection: enabled });
-			},
-			syncHikarinagiCollection: false,
-			setSyncHikarinagiCollection: (enabled: boolean) => {
-				set({ syncHikarinagiCollection: enabled });
-			},
+      // TAG翻译功能（默认关闭）
+      tagTranslation: false,
+      setTagTranslation: (enabled: boolean) => {
+        set({ tagTranslation: enabled });
+      },
 
-			// 剧透等级
-			spoilerLevel: 0,
-			setSpoilerLevel: (level: number) => {
-				set({ spoilerLevel: level });
-			},
+      // 收藏同步开关（默认关闭）
+      syncBgmCollection: false,
+      setSyncBgmCollection: (enabled: boolean) => {
+        set({ syncBgmCollection: enabled });
+      },
+      syncVndbCollection: false,
+      setSyncVndbCollection: (enabled: boolean) => {
+        set({ syncVndbCollection: enabled });
+      },
+      syncHikarinagiCollection: false,
+      setSyncHikarinagiCollection: (enabled: boolean) => {
+        set({ syncHikarinagiCollection: enabled });
+      },
 
-			// 计时模式：默认使用活跃时间（真实游戏时间）
-			timeTrackingMode: "playtime",
-			setTimeTrackingMode: (mode: "playtime" | "elapsed") => {
-				set({ timeTrackingMode: mode });
-			},
-			setSearchInput: (input: string) => {
-				set({ searchInput: input });
-			},
-			setSearchKeyword: (keyword: string) => {
-				set({ searchKeyword: keyword });
-			},
+      // 剧透等级
+      spoilerLevel: 0,
+      setSpoilerLevel: (level: number) => {
+        set({ spoilerLevel: level });
+      },
 
-			// 原子提交筛选与排序，避免草稿调整产生查询参数中间态
-			applyGameFilterSort: (config: GameFilterSortConfig) => {
-				const normalizedTags = normalizeTagFilters(config.tagFilters);
-				const current = get();
-				const currentStatus = current.playStatusFilter;
-				const nextStatus = config.playStatusFilter;
-				const sameStatus = Array.isArray(currentStatus)
-					? Array.isArray(nextStatus) &&
-						currentStatus.length === nextStatus.length &&
-						currentStatus.every((status, index) => status === nextStatus[index])
-					: currentStatus === nextStatus;
-				if (
-					current.gameFilterType === config.gameFilterType &&
-					sameStatus &&
-					current.sortOption === config.sortOption &&
-					current.sortOrder === config.sortOrder &&
-					current.showCardSortFieldOverlay ===
-						config.showCardSortFieldOverlay &&
-					current.tagFilters.length === normalizedTags.length &&
-					current.tagFilters.every(
-						(tag, index) => tag === normalizedTags[index],
-					)
-				) {
-					return;
-				}
+      // 计时模式：默认使用活跃时间（真实游戏时间）
+      timeTrackingMode: "playtime",
+      setTimeTrackingMode: (mode: "playtime" | "elapsed") => {
+        set({ timeTrackingMode: mode });
+      },
+      setSearchInput: (input: string) => {
+        set({ searchInput: input });
+      },
+      setSearchKeyword: (keyword: string) => {
+        set({ searchKeyword: keyword });
+      },
 
-				set({
-					gameFilterType: config.gameFilterType,
-					playStatusFilter: config.playStatusFilter,
-					tagFilters: normalizedTags,
-					sortOption: config.sortOption,
-					sortOrder: config.sortOrder,
-					showCardSortFieldOverlay: config.showCardSortFieldOverlay,
-				});
-			},
+      // 原子提交筛选与排序，避免草稿调整产生查询参数中间态
+      applyGameFilterSort: (config: GameFilterSortConfig) => {
+        const normalizedTags = normalizeTagFilters(config.tagFilters);
+        const current = get();
+        const currentStatus = current.playStatusFilter;
+        const nextStatus = config.playStatusFilter;
+        const sameStatus = Array.isArray(currentStatus)
+          ? Array.isArray(nextStatus) &&
+            currentStatus.length === nextStatus.length &&
+            currentStatus.every((status, index) => status === nextStatus[index])
+          : currentStatus === nextStatus;
+        if (
+          current.gameFilterType === config.gameFilterType &&
+          sameStatus &&
+          current.sortOption === config.sortOption &&
+          current.sortOrder === config.sortOrder &&
+          current.showCardSortFieldOverlay === config.showCardSortFieldOverlay &&
+          current.tagFilters.length === normalizedTags.length &&
+          current.tagFilters.every((tag, index) => tag === normalizedTags[index])
+        ) {
+          return;
+        }
 
-			// UI 操作方法
-			setSelectedGameId: (id: number | null) => {
-				set({ selectedGameId: id });
-			},
+        set({
+          gameFilterType: config.gameFilterType,
+          playStatusFilter: config.playStatusFilter,
+          tagFilters: normalizedTags,
+          sortOption: config.sortOption,
+          sortOrder: config.sortOrder,
+          showCardSortFieldOverlay: config.showCardSortFieldOverlay,
+        });
+      },
 
-			setTagFilters: (tags: string[]) => {
-				set({ tagFilters: normalizeTagFilters(tags) });
-			},
+      // UI 操作方法
+      setSelectedGameId: (id: number | null) => {
+        set({ selectedGameId: id });
+      },
 
-			// 更新窗口状态管理
-			showUpdateModal: false,
-			pendingUpdate: null,
-			skippedUpdateVersion: null,
-			setShowUpdateModal: (show: boolean) => {
-				set({ showUpdateModal: show });
-			},
-			setPendingUpdate: (update: Update | null) => {
-				set({ pendingUpdate: update });
-			},
-			setSkippedUpdateVersion: (version: string | null) => {
-				set({ skippedUpdateVersion: version });
-			},
-			triggerUpdateModal: (update: Update) => {
-				set({
-					pendingUpdate: update,
-					showUpdateModal: true,
-				});
-			},
+      setTagFilters: (tags: string[]) => {
+        set({ tagFilters: normalizeTagFilters(tags) });
+      },
 
-			// 分组分类选择状态初始值
-			collectionGameFilterSort: {
-				gameFilterType: "all",
-				playStatusFilter: "all",
-				tagFilters: [],
-				sortOption: "manual",
-				sortOrder: "asc",
-				showCardSortFieldOverlay: false,
-			},
-			applyCollectionGameFilterSort: (config) => {
-				set({
-					collectionGameFilterSort: {
-						...config,
-						tagFilters: normalizeTagFilters(config.tagFilters),
-					},
-				});
-			},
-			collectionGameSearch: "",
-			setCollectionGameSearch: (value) => set({ collectionGameSearch: value }),
-			currentGroupId: null,
-			selectedCategory: null,
-			collectionEntitySortField: "created_at",
-			collectionEntitySortOrder: "asc",
-			developerCategorySortField: "game_count",
-			developerCategorySortOrder: "desc",
-			collectionGroupSearch: "",
-			collectionCategorySearch: "",
-			developerCategorySearch: "",
+      // 更新窗口状态管理
+      showUpdateModal: false,
+      pendingUpdate: null,
+      skippedUpdateVersion: null,
+      setShowUpdateModal: (show: boolean) => {
+        set({ showUpdateModal: show });
+      },
+      setPendingUpdate: (update: Update | null) => {
+        set({ pendingUpdate: update });
+      },
+      setSkippedUpdateVersion: (version: string | null) => {
+        set({ skippedUpdateVersion: version });
+      },
+      triggerUpdateModal: (update: Update) => {
+        set({
+          pendingUpdate: update,
+          showUpdateModal: true,
+        });
+      },
 
-			// 设置当前分组
-			setCurrentGroup: (groupId: string | null) => {
-				set({
-					currentGroupId: groupId,
-					selectedCategory: null,
-				});
-			},
+      // 分组分类选择状态初始值
+      collectionGameFilterSort: {
+        gameFilterType: "all",
+        playStatusFilter: "all",
+        tagFilters: [],
+        sortOption: "manual",
+        sortOrder: "asc",
+        showCardSortFieldOverlay: false,
+      },
+      applyCollectionGameFilterSort: (config) => {
+        set({
+          collectionGameFilterSort: {
+            ...config,
+            tagFilters: normalizeTagFilters(config.tagFilters),
+          },
+        });
+      },
+      collectionGameSearch: "",
+      setCollectionGameSearch: (value) => set({ collectionGameSearch: value }),
 
-			// 设置当前选中的分类
-			setSelectedCategory: (category: SelectedCategory) => {
-				set({ selectedCategory: category });
-			},
-			setCollectionEntitySort: (
-				field: CollectionEntitySortField,
-				order: SortOrder,
-			) => {
-				set({
-					collectionEntitySortField: field,
-					collectionEntitySortOrder: order,
-				});
-			},
-			setDeveloperCategorySort: (
-				field: CollectionEntitySortField,
-				order: SortOrder,
-			) => {
-				set({
-					developerCategorySortField: field,
-					developerCategorySortOrder: order,
-				});
-			},
-			setCollectionGroupSearch: (value: string) => {
-				set({ collectionGroupSearch: value });
-			},
-			setCollectionCategorySearch: (value: string) => {
-				set({ collectionCategorySearch: value });
-			},
-			setDeveloperCategorySearch: (value: string) => {
-				set({ developerCategorySearch: value });
-			},
+      currentGroupId: null,
+      selectedCategory: null,
+      collectionEntitySortField: "created_at",
+      collectionEntitySortOrder: "asc",
+      developerCategorySortField: "game_count",
+      developerCategorySortOrder: "desc",
+      collectionGroupSearch: "",
+      collectionCategorySearch: "",
+      developerCategorySearch: "",
 
-			// 代理设置
-			proxyConfig: {
-				url: "",
-			},
-			setProxyConfig: (config: ProxyConfig) => {
-				set({ proxyConfig: config });
-				settingsService.updateProxyConfig(config).catch(console.error);
-			},
-			isSystemProxyActive: false,
-			setSystemProxyActive: (active: boolean) =>
-				set({ isSystemProxyActive: active }),
+      // 设置当前分组
+      setCurrentGroup: (groupId: string | null) => {
+        set({
+          currentGroupId: groupId,
+          selectedCategory: null,
+        });
+      },
 
-			// 初始化方法
-			initialize: async () => {
-				// 初始化游戏时间跟踪（数据获取由 React Query 自动触发）
-				await initializeGamePlayTracking().catch((error) => {
-					console.error("初始化游戏时间跟踪失败:", error);
-				});
+      // 设置当前选中的分类
+      setSelectedCategory: (category: SelectedCategory) => {
+        set({ selectedCategory: category });
+      },
+      setCollectionEntitySort: (field: CollectionEntitySortField, order: SortOrder) => {
+        set({
+          collectionEntitySortField: field,
+          collectionEntitySortOrder: order,
+        });
+      },
+      setDeveloperCategorySort: (field: CollectionEntitySortField, order: SortOrder) => {
+        set({
+          developerCategorySortField: field,
+          developerCategorySortOrder: order,
+        });
+      },
+      setCollectionGroupSearch: (value: string) => {
+        set({ collectionGroupSearch: value });
+      },
+      setCollectionCategorySearch: (value: string) => {
+        set({ collectionCategorySearch: value });
+      },
+      setDeveloperCategorySearch: (value: string) => {
+        set({ developerCategorySearch: value });
+      },
 
-				// 启动时同步代理设置到后端
-				const { proxyConfig } = get();
-				await settingsService
-					.updateProxyConfig(proxyConfig)
-					.catch(console.error);
+      // 代理设置
+      proxyConfig: {
+        url: "",
+      },
+      setProxyConfig: (config: ProxyConfig) => {
+        set({ proxyConfig: config });
+        settingsService.updateProxyConfig(config).catch(console.error);
+      },
+      isSystemProxyActive: false,
+      setSystemProxyActive: (active: boolean) => set({ isSystemProxyActive: active }),
 
-				// 注册 Windows 系统代理变动监听并获取初始状态（通过版本号防止异步竞态覆盖）
-				if (isTauri()) {
-					try {
-						let eventRevision = 0;
-						await listen<{ enabled: boolean }>(
-							"system-proxy-changed",
-							(event) => {
-								eventRevision += 1;
-								set({ isSystemProxyActive: event.payload.enabled });
-							},
-						);
-						const initialRevision = eventRevision;
-						const enabled = await settingsService.getSystemProxyStatus();
-						// 仅在查询期间未收到过更新的系统代理事件时才写入初始查询结果
-						if (eventRevision === initialRevision) {
-							set({ isSystemProxyActive: enabled });
-						}
-					} catch (error) {
-						console.error("初始化系统代理状态失败:", error);
-					}
-				}
-			},
-		}),
-		{
-			name: "reina-manager-store",
-			// 可选：定义哪些字段需要持久化存储
-			partialize: (state) => ({
-				// 排序偏好
-				collectionGameFilterSort: state.collectionGameFilterSort,
-				sortOption: state.sortOption,
-				sortOrder: state.sortOrder,
-				showCardSortFieldOverlay: state.showCardSortFieldOverlay,
-				// 筛选偏好
-				gameFilterType: state.gameFilterType,
-				playStatusFilter: state.playStatusFilter,
-				// 关闭应用相关
-				skipCloseRemind: state.skipCloseRemind,
-				defaultCloseAction: state.defaultCloseAction,
-				autoBackupOnExit: state.autoBackupOnExit,
-				scheduledBackupEnabled: state.scheduledBackupEnabled,
-				scheduledBackupIntervalHours: state.scheduledBackupIntervalHours,
-				autoBackupIncludeCovers: state.autoBackupIncludeCovers,
-				exitBackupMinIntervalHours: state.exitBackupMinIntervalHours,
-				autoBackupRetentionCount: state.autoBackupRetentionCount,
-				autoBackupLastSuccessAt: state.autoBackupLastSuccessAt,
-				autoBackupLastScheduledAttemptAt:
-					state.autoBackupLastScheduledAttemptAt,
-				autoBackupLastError: state.autoBackupLastError,
-				// 数据来源选择
-				apiSource: state.apiSource,
-				mixedEnabledSources: state.mixedEnabledSources,
-				dataSourceUpdateMode: state.dataSourceUpdateMode,
-				// nsfw相关
-				nsfwFilter: state.nsfwFilter,
-				nsfwCoverReplace: state.nsfwCoverReplace,
-				// 卡片点击模式
-				cardClickMode: state.cardClickMode,
-				// 启动默认页面
-				startupPage: state.startupPage,
-				zoomPercent: state.zoomPercent,
-				// VNDB标签翻译
-				tagTranslation: state.tagTranslation,
-				// 收藏同步开关
-				syncBgmCollection: state.syncBgmCollection,
-				syncVndbCollection: state.syncVndbCollection,
-				syncHikarinagiCollection: state.syncHikarinagiCollection,
-				// 剧透等级
-				spoilerLevel: state.spoilerLevel,
-				// 计时模式：playtime 或 elapsed
-				timeTrackingMode: state.timeTrackingMode,
-				// 跳过的更新版本
-				skippedUpdateVersion: state.skippedUpdateVersion,
-				// 分组分类选择状态
-				currentGroupId: state.currentGroupId,
-				selectedCategory: state.selectedCategory,
-				// 代理设置
-				proxyConfig: { url: state.proxyConfig.url },
-			}),
-			version: APP_STORE_VERSION,
-			migrate: migrateAppStorePersistedState,
-		},
-	),
+      // 初始化方法
+      initialize: async () => {
+        // 初始化游戏时间跟踪（数据获取由 React Query 自动触发）
+        await initializeGamePlayTracking().catch((error) => {
+          console.error("初始化游戏时间跟踪失败:", error);
+        });
+
+        // 启动时同步代理设置到后端
+        const { proxyConfig } = get();
+        await settingsService.updateProxyConfig(proxyConfig).catch(console.error);
+
+        // 注册 Windows 系统代理变动监听并获取初始状态（通过版本号防止异步竞态覆盖）
+        if (isTauri()) {
+          try {
+            let eventRevision = 0;
+            await listen<{ enabled: boolean }>("system-proxy-changed", (event) => {
+              eventRevision += 1;
+              set({ isSystemProxyActive: event.payload.enabled });
+            });
+            const initialRevision = eventRevision;
+            const enabled = await settingsService.getSystemProxyStatus();
+            // 仅在查询期间未收到过更新的系统代理事件时才写入初始查询结果
+            if (eventRevision === initialRevision) {
+              set({ isSystemProxyActive: enabled });
+            }
+          } catch (error) {
+            console.error("初始化系统代理状态失败:", error);
+          }
+        }
+      },
+    }),
+    {
+      name: "reina-manager-store",
+
+      // 可选：定义哪些字段需要持久化存储
+      partialize: (state) => ({
+        // 排序偏好
+        collectionGameFilterSort: state.collectionGameFilterSort,
+        sortOption: state.sortOption,
+        sortOrder: state.sortOrder,
+        showCardSortFieldOverlay: state.showCardSortFieldOverlay,
+        // 筛选偏好
+        gameFilterType: state.gameFilterType,
+        playStatusFilter: state.playStatusFilter,
+        // 关闭应用相关
+        skipCloseRemind: state.skipCloseRemind,
+        defaultCloseAction: state.defaultCloseAction,
+        autoBackupOnExit: state.autoBackupOnExit,
+        scheduledBackupEnabled: state.scheduledBackupEnabled,
+        scheduledBackupIntervalHours: state.scheduledBackupIntervalHours,
+        autoBackupIncludeCovers: state.autoBackupIncludeCovers,
+        exitBackupMinIntervalHours: state.exitBackupMinIntervalHours,
+        autoBackupRetentionCount: state.autoBackupRetentionCount,
+        autoBackupLastSuccessAt: state.autoBackupLastSuccessAt,
+        autoBackupLastScheduledAttemptAt: state.autoBackupLastScheduledAttemptAt,
+        autoBackupLastError: state.autoBackupLastError,
+        // 数据来源选择
+        apiSource: state.apiSource,
+        mixedEnabledSources: state.mixedEnabledSources,
+        dataSourceUpdateMode: state.dataSourceUpdateMode,
+        // nsfw相关
+        nsfwFilter: state.nsfwFilter,
+        nsfwCoverReplace: state.nsfwCoverReplace,
+        // 卡片点击模式
+        cardClickMode: state.cardClickMode,
+        // 启动默认页面
+        startupPage: state.startupPage,
+        zoomPercent: state.zoomPercent,
+        // VNDB标签翻译
+        tagTranslation: state.tagTranslation,
+        // 收藏同步开关
+        syncBgmCollection: state.syncBgmCollection,
+        syncVndbCollection: state.syncVndbCollection,
+        syncHikarinagiCollection: state.syncHikarinagiCollection,
+        // 剧透等级
+        spoilerLevel: state.spoilerLevel,
+        // 计时模式：playtime 或 elapsed
+        timeTrackingMode: state.timeTrackingMode,
+        // 跳过的更新版本
+        skippedUpdateVersion: state.skippedUpdateVersion,
+        // 分组分类选择状态
+        currentGroupId: state.currentGroupId,
+        selectedCategory: state.selectedCategory,
+        // 代理设置
+        proxyConfig: { url: state.proxyConfig.url },
+      }),
+      version: APP_STORE_VERSION,
+      migrate: migrateAppStorePersistedState,
+    },
+  ),
 );
 
 /**
@@ -673,5 +635,5 @@ export const useStore = create<AppState>()(
  * 初始化全局状态，加载游戏与分类数据，并初始化游戏时间跟踪
  */
 export const initializeStores = async (): Promise<void> => {
-	await useStore.getState().initialize();
+  await useStore.getState().initialize();
 };

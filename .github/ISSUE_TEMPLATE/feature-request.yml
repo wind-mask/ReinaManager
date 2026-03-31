@@ -4,10 +4,7 @@ title: "👑[Feature] "
 labels:
   - enhancement
 
-
 body:
-
-
   - type: markdown
     attributes:
       value: |
@@ -17,7 +14,6 @@ body:
         - 没有实际使用场景的建议
         - 无法说明原因的需求
         - 完全由 AI 自动生成的内容
-
 
   - type: textarea
     id: problem
@@ -32,7 +28,6 @@ body:
     validations:
       required: true
 
-
   - type: textarea
     id: solution
     attributes:
@@ -41,7 +36,6 @@ body:
         你希望如何解决这个问题？
     validations:
       required: true
-
 
   - type: textarea
     id: scenario
@@ -55,7 +49,6 @@ body:
     validations:
       required: true
 
-
   - type: textarea
     id: extra
     attributes:
@@ -63,13 +56,11 @@ body:
       description: |
         可以添加截图、参考项目等。
 
-
   - type: checkboxes
     id: confirmation
     attributes:
       label: 提交确认
       options:
-
         - label: |
             <sub>
             我确认该 Issue 不是完全由 AI 自动生成。

@@ -4,32 +4,32 @@ import type { SourceType } from "@/types";
 import { AppError } from "@/utils/errors";
 
 export interface MetadataAuthTokens {
-	bgmToken?: string;
-	hikarinagiToken?: string;
+  bgmToken?: string;
+  hikarinagiToken?: string;
 }
 
 export async function withMetadataAuth<T>(
-	sources: readonly SourceType[],
-	fn: (tokens: MetadataAuthTokens) => Promise<T>,
-	options: { requireHikarinagi?: boolean } = {},
+  sources: readonly SourceType[],
+  fn: (tokens: MetadataAuthTokens) => Promise<T>,
+  options: { requireHikarinagi?: boolean } = {},
 ) {
-	const sourceSet = new Set(sources);
-	const runHikarinagi = (bgmToken?: string) => {
-		if (!sourceSet.has("hikarinagi")) {
-			return fn({ bgmToken });
-		}
+  const sourceSet = new Set(sources);
+  const runHikarinagi = (bgmToken?: string) => {
+    if (!sourceSet.has("hikarinagi")) {
+      return fn({ bgmToken });
+    }
 
-		return withHikarinagiAuth(async (hikarinagiToken) => {
-			if (options.requireHikarinagi && !hikarinagiToken) {
-				throw new AppError({
-					code: "hikarinagi_auth_missing",
-					message: "未配置 Hikarinagi 登录",
-				});
-			}
+    return withHikarinagiAuth(async (hikarinagiToken) => {
+      if (options.requireHikarinagi && !hikarinagiToken) {
+        throw new AppError({
+          code: "hikarinagi_auth_missing",
+          message: "未配置 Hikarinagi 登录",
+        });
+      }
 
-			return fn({ bgmToken, hikarinagiToken });
-		});
-	};
+      return fn({ bgmToken, hikarinagiToken });
+    });
+  };
 
-	return sourceSet.has("bgm") ? withBgmAuth(runHikarinagi) : runHikarinagi();
+  return sourceSet.has("bgm") ? withBgmAuth(runHikarinagi) : runHikarinagi();
 }

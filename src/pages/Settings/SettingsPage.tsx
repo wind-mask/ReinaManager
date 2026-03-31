@@ -1,76 +1,70 @@
 import { Breadcrumbs, Link, Typography } from "@mui/material";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+
+import { PathSettingsModal } from "@/components/PathSettingsModal";
+import { ToolIntegrationModal } from "@/components/ToolIntegrationModal";
+import { useScrollRestore } from "@/hooks/common/useScrollRestore";
+import { isWindowsPlatform } from "@/utils/tauriProtocol";
 import { isTauri } from "@tauri-apps/api/core";
 import { PageContainer } from "@toolpad/core/PageContainer";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router-dom";
-import { PathSettingsModal } from "@/components/PathSettingsModal";
-import { ToolIntegrationModal } from "@/components/ToolIntegrationModal";
-import { useScrollRestore } from "@/hooks/common/useScrollRestore";
-import { isWindowsPlatform } from "@/utils/tauriProtocol";
 import { AboutSection } from "./AboutSettings";
 import { AccountSettings } from "./AccountSettings";
+import { DevSettings, MixedSearchSourceSettings, VndbDataSettings } from "./DataSourceSettings";
 import {
-	DevSettings,
-	MixedSearchSourceSettings,
-	VndbDataSettings,
-} from "./DataSourceSettings";
-import {
-	CardClickModeSettings,
-	InterfaceZoomSettings,
-	LanguageSelect,
-	NsfwSettings,
-	StartupPageSettings,
+  CardClickModeSettings,
+  InterfaceZoomSettings,
+  LanguageSelect,
+  NsfwSettings,
+  StartupPageSettings,
 } from "./GeneralSettings";
 import { DatabaseBackupSettings } from "./MaintenanceSettings";
 import { SettingsDivider, SettingsGroup } from "./SettingsLayout";
 import {
-	AutoStartSettings,
-	CloseBtnSettings,
-	LinuxLaunchCommandSettings,
-	LogLevelSettings,
-	ProxySettings,
-	TimeTrackingModeSettings,
+  AutoStartSettings,
+  CloseBtnSettings,
+  LinuxLaunchCommandSettings,
+  LogLevelSettings,
+  ProxySettings,
+  TimeTrackingModeSettings,
 } from "./SystemSettings";
 
 type SettingsSection = {
-	id: string;
-	label: string;
-	description: string;
-	content: React.ReactNode;
-	frame?: "card" | "plain";
+  id: string;
+  label: string;
+  description: string;
+  content: React.ReactNode;
+  frame?: "card" | "plain";
 };
 
 type SettingsPageHeaderProps = {
-	title?: string;
-	breadcrumbs?: { title: string; path: string }[];
+  title?: string;
+  breadcrumbs?: { title: string; path: string }[];
 };
 
-const SettingsPageHeader: React.FC<SettingsPageHeaderProps> = ({
-	title,
-	breadcrumbs = [],
-}) => (
-	<Box>
-		<Breadcrumbs aria-label="breadcrumb">
-			{breadcrumbs.map((item) => (
-				<Link
-					key={`${item.path}-${item.title}`}
-					component={RouterLink}
-					to={item.path}
-					underline="hover"
-					color="inherit"
-				>
-					{item.title}
-				</Link>
-			))}
-		</Breadcrumbs>
-		<Typography variant="h4" component="h1" className="mt-1">
-			{title}
-		</Typography>
-	</Box>
+const SettingsPageHeader: React.FC<SettingsPageHeaderProps> = ({ title, breadcrumbs = [] }) => (
+  <Box>
+    <Breadcrumbs aria-label="breadcrumb">
+      {breadcrumbs.map((item) => (
+        <Link
+          key={`${item.path}-${item.title}`}
+          component={RouterLink}
+          to={item.path}
+          underline="hover"
+          color="inherit"
+        >
+          {item.title}
+        </Link>
+      ))}
+    </Breadcrumbs>
+    <Typography variant="h4" component="h1" className="mt-1">
+      {title}
+    </Typography>
+  </Box>
 );
 
 /**
@@ -78,322 +72,295 @@ const SettingsPageHeader: React.FC<SettingsPageHeaderProps> = ({
  * 应用设置页面，组织各设置分区。
  */
 export const Settings: React.FC = () => {
-	const { t } = useTranslation();
-	useScrollRestore("/settings");
-	const [pathSettingsModalOpen, setPathSettingsModalOpen] = useState(false);
-	const [toolIntegrationModalOpen, setToolIntegrationModalOpen] =
-		useState(false);
-	const [activeSectionId, setActiveSectionId] = useState("account");
-	const pageTitle = t("app.NAVIGATION.settings", "设置");
-	const breadcrumbs = useMemo(
-		() => [
-			{ title: t("app.NAVIGATION.home", "主页"), path: "/" },
-			{ title: pageTitle, path: "/settings" },
-		],
-		[t, pageTitle],
-	);
+  const { t } = useTranslation();
+  useScrollRestore("/settings");
+  const [pathSettingsModalOpen, setPathSettingsModalOpen] = useState(false);
+  const [toolIntegrationModalOpen, setToolIntegrationModalOpen] = useState(false);
+  const [activeSectionId, setActiveSectionId] = useState("account");
+  const pageTitle = t("app.NAVIGATION.settings", "设置");
+  const breadcrumbs = useMemo(
+    () => [
+      { title: t("app.NAVIGATION.home", "主页"), path: "/" },
+      { title: pageTitle, path: "/settings" },
+    ],
+    [t, pageTitle],
+  );
 
-	const sections = useMemo<SettingsSection[]>(
-		() => [
-			{
-				id: "account",
-				label: t("pages.Settings.sections.account", "账号与同步"),
-				description: t(
-					"pages.Settings.sections.accountDescription",
-					"管理数据源账号令牌和收藏同步行为。",
-				),
-				frame: "plain",
-				content: <AccountSettings />,
-			},
-			{
-				id: "data-source",
-				label: t("pages.Settings.sections.dataSource", "数据源"),
-				description: t(
-					"pages.Settings.sections.dataSourceDescription",
-					"配置搜索源、VNDB 数据处理和批量数据维护。",
-				),
-				content: (
-					<>
-						<MixedSearchSourceSettings />
-						<SettingsDivider />
-						<VndbDataSettings />
-						<SettingsDivider />
-						<DevSettings />
-					</>
-				),
-			},
-			{
-				id: "display",
-				label: t("pages.Settings.sections.display", "显示与交互"),
-				description: t(
-					"pages.Settings.sections.displayDescription",
-					"调整语言、内容过滤和游戏卡片交互方式。",
-				),
-				content: (
-					<Box className="space-y-5">
-						<LanguageSelect />
-						{isTauri() && isWindowsPlatform && (
-							<>
-								<SettingsDivider />
-								<InterfaceZoomSettings />
-							</>
-						)}
-						<SettingsDivider />
-						<StartupPageSettings />
-						<SettingsDivider />
-						<NsfwSettings />
-						<SettingsDivider />
-						<CardClickModeSettings />
-					</Box>
-				),
-			},
-			{
-				id: "system",
-				label: t("pages.Settings.sections.system", "系统"),
-				description: t(
-					"pages.Settings.sections.systemDescription",
-					"管理启动、日志、关闭行为和计时模式。",
-				),
-				content: (
-					<Box className="space-y-5">
-						<AutoStartSettings />
-						<SettingsDivider />
-						<LogLevelSettings />
-						<SettingsDivider />
-						<ProxySettings />
-						<SettingsDivider />
-						<CloseBtnSettings />
-						<SettingsDivider />
-						<TimeTrackingModeSettings />
-						{import.meta.env.TAURI_ENV_PLATFORM === "linux" && (
-							<>
-								<SettingsDivider />
-								<LinuxLaunchCommandSettings />
-							</>
-						)}
-					</Box>
-				),
-			},
-			...(isWindowsPlatform
-				? [
-						{
-							id: "tool-integration",
-							label: t("pages.Settings.sections.toolIntegration", "工具联动"),
-							description: t(
-								"pages.Settings.sections.toolIntegrationDescription",
-								"配置 LE 转区和 Magpie 的路径及新游戏默认状态。",
-							),
-							content: (
-								<SettingsGroup
-									title={t(
-										"pages.Settings.toolIntegration.title",
-										"LE 转区与 Magpie",
-									)}
-								>
-									<Button
-										variant="outlined"
-										onClick={() => setToolIntegrationModalOpen(true)}
-										className="px-4 py-2"
-									>
-										{t(
-											"pages.Settings.toolIntegration.openModal",
-											"打开工具联动设置",
-										)}
-									</Button>
-								</SettingsGroup>
-							),
-						},
-					]
-				: []),
-			{
-				id: "storage",
-				label: t("pages.Settings.sections.storage", "路径与备份"),
-				description: t(
-					"pages.Settings.sections.storageDescription",
-					"配置本地路径，执行数据备份和恢复。",
-				),
-				content: (
-					<>
-						<SettingsGroup
-							title={t("pages.Settings.pathSettings.title", "路径设置")}
-							description={t(
-								"pages.Settings.pathSettings.note",
-								"配置游戏安装、存档备份和数据库备份路径。",
-							)}
-						>
-							<Button
-								variant="outlined"
-								onClick={() => setPathSettingsModalOpen(true)}
-								className="px-4 py-2"
-							>
-								{t("pages.Settings.pathSettings.openModal", "打开路径设置")}
-							</Button>
-						</SettingsGroup>
-						<SettingsDivider />
-						<DatabaseBackupSettings />
-					</>
-				),
-			},
-			{
-				id: "about",
-				label: t("pages.Settings.sections.about", "关于"),
-				description: t(
-					"pages.Settings.sections.aboutDescription",
-					"查看版本、更新状态、文档和反馈入口。",
-				),
-				content: <AboutSection />,
-			},
-		],
-		[t],
-	);
+  const sections = useMemo<SettingsSection[]>(
+    () => [
+      {
+        id: "account",
+        label: t("pages.Settings.sections.account", "账号与同步"),
+        description: t(
+          "pages.Settings.sections.accountDescription",
+          "管理数据源账号令牌和收藏同步行为。",
+        ),
+        frame: "plain",
+        content: <AccountSettings />,
+      },
+      {
+        id: "data-source",
+        label: t("pages.Settings.sections.dataSource", "数据源"),
+        description: t(
+          "pages.Settings.sections.dataSourceDescription",
+          "配置搜索源、VNDB 数据处理和批量数据维护。",
+        ),
+        content: (
+          <>
+            <MixedSearchSourceSettings />
+            <SettingsDivider />
+            <VndbDataSettings />
+            <SettingsDivider />
+            <DevSettings />
+          </>
+        ),
+      },
+      {
+        id: "display",
+        label: t("pages.Settings.sections.display", "显示与交互"),
+        description: t(
+          "pages.Settings.sections.displayDescription",
+          "调整语言、内容过滤和游戏卡片交互方式。",
+        ),
+        content: (
+          <Box className="space-y-5">
+            <LanguageSelect />
+            {isTauri() && isWindowsPlatform && (
+              <>
+                <SettingsDivider />
+                <InterfaceZoomSettings />
+              </>
+            )}
+            <SettingsDivider />
+            <StartupPageSettings />
+            <SettingsDivider />
+            <NsfwSettings />
+            <SettingsDivider />
+            <CardClickModeSettings />
+          </Box>
+        ),
+      },
+      {
+        id: "system",
+        label: t("pages.Settings.sections.system", "系统"),
+        description: t(
+          "pages.Settings.sections.systemDescription",
+          "管理启动、日志、关闭行为和计时模式。",
+        ),
+        content: (
+          <Box className="space-y-5">
+            <AutoStartSettings />
+            <SettingsDivider />
+            <LogLevelSettings />
+            <SettingsDivider />
+            <ProxySettings />
+            <SettingsDivider />
+            <CloseBtnSettings />
+            <SettingsDivider />
+            <TimeTrackingModeSettings />
+            {import.meta.env.TAURI_ENV_PLATFORM === "linux" && (
+              <>
+                <SettingsDivider />
+                <LinuxLaunchCommandSettings />
+              </>
+            )}
+          </Box>
+        ),
+      },
+      ...(isWindowsPlatform
+        ? [
+            {
+              id: "tool-integration",
+              label: t("pages.Settings.sections.toolIntegration", "工具联动"),
+              description: t(
+                "pages.Settings.sections.toolIntegrationDescription",
+                "配置 LE 转区和 Magpie 的路径及新游戏默认状态。",
+              ),
+              content: (
+                <SettingsGroup
+                  title={t("pages.Settings.toolIntegration.title", "LE 转区与 Magpie")}
+                >
+                  <Button
+                    variant="outlined"
+                    onClick={() => setToolIntegrationModalOpen(true)}
+                    className="px-4 py-2"
+                  >
+                    {t("pages.Settings.toolIntegration.openModal", "打开工具联动设置")}
+                  </Button>
+                </SettingsGroup>
+              ),
+            },
+          ]
+        : []),
+      {
+        id: "storage",
+        label: t("pages.Settings.sections.storage", "路径与备份"),
+        description: t(
+          "pages.Settings.sections.storageDescription",
+          "配置本地路径，执行数据备份和恢复。",
+        ),
+        content: (
+          <>
+            <SettingsGroup
+              title={t("pages.Settings.pathSettings.title", "路径设置")}
+              description={t(
+                "pages.Settings.pathSettings.note",
+                "配置游戏安装、存档备份和数据库备份路径。",
+              )}
+            >
+              <Button
+                variant="outlined"
+                onClick={() => setPathSettingsModalOpen(true)}
+                className="px-4 py-2"
+              >
+                {t("pages.Settings.pathSettings.openModal", "打开路径设置")}
+              </Button>
+            </SettingsGroup>
+            <SettingsDivider />
+            <DatabaseBackupSettings />
+          </>
+        ),
+      },
+      {
+        id: "about",
+        label: t("pages.Settings.sections.about", "关于"),
+        description: t(
+          "pages.Settings.sections.aboutDescription",
+          "查看版本、更新状态、文档和反馈入口。",
+        ),
+        content: <AboutSection />,
+      },
+    ],
+    [t],
+  );
 
-	useEffect(() => {
-		const scrollContainer = document.querySelector<HTMLElement>("main");
-		const lastSectionId = sections.at(-1)?.id;
-		const sectionElements = sections
-			.map((section) => document.getElementById(section.id))
-			.filter((element): element is HTMLElement => Boolean(element));
-		const isScrolledToBottom = () =>
-			scrollContainer !== null &&
-			scrollContainer.scrollHeight -
-				scrollContainer.scrollTop -
-				scrollContainer.clientHeight <=
-				1;
-		const activateLastSectionAtBottom = () => {
-			if (lastSectionId && isScrolledToBottom()) {
-				setActiveSectionId(lastSectionId);
-			}
-		};
+  useEffect(() => {
+    const scrollContainer = document.querySelector<HTMLElement>("main");
+    const lastSectionId = sections.at(-1)?.id;
+    const sectionElements = sections
+      .map((section) => document.getElementById(section.id))
+      .filter((element): element is HTMLElement => Boolean(element));
+    const isScrolledToBottom = () =>
+      scrollContainer !== null &&
+      scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight <= 1;
+    const activateLastSectionAtBottom = () => {
+      if (lastSectionId && isScrolledToBottom()) {
+        setActiveSectionId(lastSectionId);
+      }
+    };
 
-		const observer = new IntersectionObserver(
-			(entries) => {
-				if (isScrolledToBottom()) {
-					activateLastSectionAtBottom();
-					return;
-				}
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (isScrolledToBottom()) {
+          activateLastSectionAtBottom();
+          return;
+        }
 
-				const visibleEntry = entries
-					.filter((entry) => entry.isIntersecting)
-					.toSorted((a, b) => b.intersectionRatio - a.intersectionRatio)
-					.at(0);
+        const visibleEntry = entries
+          .filter((entry) => entry.isIntersecting)
+          .toSorted((a, b) => b.intersectionRatio - a.intersectionRatio)
+          .at(0);
 
-				if (visibleEntry) {
-					setActiveSectionId(visibleEntry.target.id);
-				}
-			},
-			{
-				root: scrollContainer,
-				rootMargin: "-16px 0px -70% 0px",
-				threshold: [0.1, 0.3, 0.6],
-			},
-		);
+        if (visibleEntry) {
+          setActiveSectionId(visibleEntry.target.id);
+        }
+      },
+      {
+        root: scrollContainer,
+        rootMargin: "-16px 0px -70% 0px",
+        threshold: [0.1, 0.3, 0.6],
+      },
+    );
 
-		for (const element of sectionElements) {
-			observer.observe(element);
-		}
-		scrollContainer?.addEventListener("scroll", activateLastSectionAtBottom, {
-			passive: true,
-		});
-		activateLastSectionAtBottom();
+    for (const element of sectionElements) {
+      observer.observe(element);
+    }
+    scrollContainer?.addEventListener("scroll", activateLastSectionAtBottom, {
+      passive: true,
+    });
+    activateLastSectionAtBottom();
 
-		return () => {
-			observer.disconnect();
-			scrollContainer?.removeEventListener(
-				"scroll",
-				activateLastSectionAtBottom,
-			);
-		};
-	}, [sections]);
+    return () => {
+      observer.disconnect();
+      scrollContainer?.removeEventListener("scroll", activateLastSectionAtBottom);
+    };
+  }, [sections]);
 
-	const handleSectionClick = (sectionId: string) => {
-		document
-			.getElementById(sectionId)
-			?.scrollIntoView({ behavior: "smooth", block: "start" });
-	};
+  const handleSectionClick = (sectionId: string) => {
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
-	return (
-		<PageContainer
-			className="w-full max-w-full"
-			title={pageTitle}
-			breadcrumbs={breadcrumbs}
-			slots={{ header: SettingsPageHeader }}
-			sx={{ maxWidth: "100% !important" }}
-		>
-			<Box className="w-full">
-				<Box className="grid w-full grid-cols-1 lg:grid-cols-[14rem_minmax(0,1fr)] xl:grid-cols-[15rem_minmax(0,1fr)]">
-					<nav
-						className="sticky top-4 z-10 h-fit overflow-x-auto border-0 border-b border-solid border-[var(--mui-palette-divider)] bg-[var(--mui-palette-background-default)] py-3 lg:border-b-0 lg:border-r lg:py-4 lg:pr-4"
-						aria-label={t("pages.Settings.navigation", "设置分类导航")}
-					>
-						<Box className="flex min-w-max gap-2 lg:min-w-0 lg:flex-col lg:gap-1">
-							{sections.map((section) => {
-								const isActive = section.id === activeSectionId;
+  return (
+    <PageContainer
+      className="w-full max-w-full"
+      title={pageTitle}
+      breadcrumbs={breadcrumbs}
+      slots={{ header: SettingsPageHeader }}
+      sx={{ maxWidth: "100% !important" }}
+    >
+      <Box className="w-full">
+        <Box className="grid w-full grid-cols-1 lg:grid-cols-[14rem_minmax(0,1fr)] xl:grid-cols-[15rem_minmax(0,1fr)]">
+          <nav
+            className="sticky top-4 z-10 h-fit overflow-x-auto border-0 border-b border-solid border-[var(--mui-palette-divider)] bg-[var(--mui-palette-background-default)] py-3 lg:border-b-0 lg:border-r lg:py-4 lg:pr-4"
+            aria-label={t("pages.Settings.navigation", "设置分类导航")}
+          >
+            <Box className="flex min-w-max gap-2 lg:min-w-0 lg:flex-col lg:gap-1">
+              {sections.map((section) => {
+                const isActive = section.id === activeSectionId;
 
-								return (
-									<button
-										key={section.id}
-										type="button"
-										onClick={() => handleSectionClick(section.id)}
-										className={`rounded-lg border-0 px-3 py-2 text-left text-sm transition-colors lg:w-full ${
-											isActive
-												? "bg-[var(--mui-palette-primary-main)] text-[var(--mui-palette-primary-contrastText)] font-semibold"
-												: "bg-transparent text-[var(--mui-palette-text-primary)] hover:bg-[var(--mui-palette-action-hover)]"
-										}`}
-									>
-										{section.label}
-									</button>
-								);
-							})}
-						</Box>
-					</nav>
+                return (
+                  <button
+                    key={section.id}
+                    type="button"
+                    onClick={() => handleSectionClick(section.id)}
+                    className={`rounded-lg border-0 px-3 py-2 text-left text-sm transition-colors lg:w-full ${
+                      isActive
+                        ? "bg-[var(--mui-palette-primary-main)] text-[var(--mui-palette-primary-contrastText)] font-semibold"
+                        : "bg-transparent text-[var(--mui-palette-text-primary)] hover:bg-[var(--mui-palette-action-hover)]"
+                    }`}
+                  >
+                    {section.label}
+                  </button>
+                );
+              })}
+            </Box>
+          </nav>
 
-					<Box className="min-w-0 w-full space-y-8 pt-5 lg:pl-6">
-						{sections.map((section) => (
-							<section
-								key={section.id}
-								id={section.id}
-								className="scroll-mt-24 lg:scroll-mt-8"
-							>
-								<Box className="mb-3">
-									<Typography
-										variant="h6"
-										component="h2"
-										className="font-semibold"
-									>
-										{section.label}
-									</Typography>
-									<Typography
-										variant="body2"
-										color="text.secondary"
-										className="mt-1"
-									>
-										{section.description}
-									</Typography>
-								</Box>
-								{section.frame === "plain" ? (
-									section.content
-								) : (
-									<Box className="w-full rounded-xl border border-solid border-[var(--mui-palette-divider)] bg-[var(--mui-palette-background-paper)] px-5 py-5">
-										{section.content}
-									</Box>
-								)}
-							</section>
-						))}
-					</Box>
-				</Box>
-			</Box>
+          <Box className="min-w-0 w-full space-y-8 pt-5 lg:pl-6">
+            {sections.map((section) => (
+              <section key={section.id} id={section.id} className="scroll-mt-24 lg:scroll-mt-8">
+                <Box className="mb-3">
+                  <Typography variant="h6" component="h2" className="font-semibold">
+                    {section.label}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" className="mt-1">
+                    {section.description}
+                  </Typography>
+                </Box>
+                {section.frame === "plain" ? (
+                  section.content
+                ) : (
+                  <Box className="w-full rounded-xl border border-solid border-[var(--mui-palette-divider)] bg-[var(--mui-palette-background-paper)] px-5 py-5">
+                    {section.content}
+                  </Box>
+                )}
+              </section>
+            ))}
+          </Box>
+        </Box>
+      </Box>
 
-			{/* 路径设置弹窗 */}
-			<PathSettingsModal
-				open={pathSettingsModalOpen}
-				onClose={() => setPathSettingsModalOpen(false)}
-			/>
-			{isWindowsPlatform && (
-				<ToolIntegrationModal
-					open={toolIntegrationModalOpen}
-					onClose={() => setToolIntegrationModalOpen(false)}
-				/>
-			)}
-		</PageContainer>
-	);
+      {/* 路径设置弹窗 */}
+      <PathSettingsModal
+        open={pathSettingsModalOpen}
+        onClose={() => setPathSettingsModalOpen(false)}
+      />
+      {isWindowsPlatform && (
+        <ToolIntegrationModal
+          open={toolIntegrationModalOpen}
+          onClose={() => setToolIntegrationModalOpen(false)}
+        />
+      )}
+    </PageContainer>
+  );
 };

@@ -28,58 +28,45 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useDebouncedValue } from "@/hooks/common/useDebouncedValue";
 import { useGameIndex } from "@/hooks/features/games/useGameListFacade";
-import {
-	useCategoryGameIds,
-	useUpdateCategoryGames,
-} from "@/hooks/queries/useCollections";
+import { useCategoryGameIds, useUpdateCategoryGames } from "@/hooks/queries/useCollections";
 import { snackbar } from "@/providers/snackBar";
 import type { GameData } from "@/types";
 import { getGameDisplayName } from "@/utils/game";
-import {
-	createSearchIndex,
-	searchWithIndex,
-} from "@/utils/game/enhancedSearch";
+import { createSearchIndex, searchWithIndex } from "@/utils/game/enhancedSearch";
 
 interface ManageGamesDialogProps {
-	open: boolean;
-	onClose: () => void;
-	categoryId: number;
-	categoryName?: string;
+  open: boolean;
+  onClose: () => void;
+  categoryId: number;
+  categoryName?: string;
 }
 
 const GAMES_PER_PAGE = 10;
 
 interface GameListItemProps {
-	game: GameData;
-	checked: boolean;
-	onClick: (gameId: number) => void;
+  game: GameData;
+  checked: boolean;
+  onClick: (gameId: number) => void;
 }
 
 /**
  * 游戏列表项组件
  */
-const GameListItem = React.memo<GameListItemProps>(
-	({ game, checked, onClick }) => {
-		const gameId = game.id;
+const GameListItem = React.memo<GameListItemProps>(({ game, checked, onClick }) => {
+  const gameId = game.id;
 
-		return (
-			<ListItem disablePadding>
-				<ListItemButton onClick={() => onClick(gameId)} dense>
-					<Checkbox
-						checked={checked}
-						tabIndex={-1}
-						disableRipple
-						size="small"
-					/>
-					<ListItemText
-						primary={getGameDisplayName(game)}
-						primaryTypographyProps={{ variant: "body2" }}
-					/>
-				</ListItemButton>
-			</ListItem>
-		);
-	},
-);
+  return (
+    <ListItem disablePadding>
+      <ListItemButton onClick={() => onClick(gameId)} dense>
+        <Checkbox checked={checked} tabIndex={-1} disableRipple size="small" />
+        <ListItemText
+          primary={getGameDisplayName(game)}
+          primaryTypographyProps={{ variant: "body2" }}
+        />
+      </ListItemButton>
+    </ListItem>
+  );
+});
 
 GameListItem.displayName = "GameListItem";
 
@@ -87,432 +74,364 @@ GameListItem.displayName = "GameListItem";
  * 管理游戏弹窗组件
  */
 export const ManageGamesDialog: React.FC<ManageGamesDialogProps> = ({
-	open,
-	onClose,
-	categoryId,
-	categoryName,
+  open,
+  onClose,
+  categoryId,
+  categoryName,
 }) => {
-	const { t } = useTranslation();
-	const { index } = useGameIndex();
-	const displayAllGames = index.displayList;
-	const categoryGameIdsQuery = useCategoryGameIds(categoryId);
-	const updateCategoryGamesMutation = useUpdateCategoryGames();
+  const { t } = useTranslation();
+  const { index } = useGameIndex();
+  const displayAllGames = index.displayList;
+  const categoryGameIdsQuery = useCategoryGameIds(categoryId);
+  const updateCategoryGamesMutation = useUpdateCategoryGames();
 
-	// 从缓存获取分类游戏 ID（未经 NSFW 筛选的完整列表）
-	const categoryGameIds = useMemo(() => {
-		return categoryGameIdsQuery.data || [];
-	}, [categoryGameIdsQuery.data]);
+  // 从缓存获取分类游戏 ID（未经 NSFW 筛选的完整列表）
+  const categoryGameIds = useMemo(() => {
+    return categoryGameIdsQuery.data || [];
+  }, [categoryGameIdsQuery.data]);
 
-	// 对话框状态
-	const [leftSearchInput, setLeftSearchInput] = useState(""); // 左栏搜索输入
-	const [rightSearchInput, setRightSearchInput] = useState(""); // 右栏搜索输入
+  // 对话框状态
+  const [leftSearchInput, setLeftSearchInput] = useState(""); // 左栏搜索输入
+  const [rightSearchInput, setRightSearchInput] = useState(""); // 右栏搜索输入
 
-	// 防抖后的搜索值（300ms 延迟）
-	const leftSearchText = useDebouncedValue(leftSearchInput, 300);
-	const rightSearchText = useDebouncedValue(rightSearchInput, 300);
-	const [leftPage, setLeftPage] = useState(1); // 左栏页码
-	const [rightPage, setRightPage] = useState(1); // 右栏页码
-	const [gamesInCategory, setGamesInCategory] = useState<Set<number>>(
-		new Set(),
-	); // 当前分类中的游戏ID
-	const [isProcessing, setIsProcessing] = useState(false);
+  // 防抖后的搜索值（300ms 延迟）
+  const leftSearchText = useDebouncedValue(leftSearchInput, 300);
+  const rightSearchText = useDebouncedValue(rightSearchInput, 300);
+  const [leftPage, setLeftPage] = useState(1); // 左栏页码
+  const [rightPage, setRightPage] = useState(1); // 右栏页码
+  const [gamesInCategory, setGamesInCategory] = useState<Set<number>>(new Set()); // 当前分类中的游戏ID
+  const [isProcessing, setIsProcessing] = useState(false);
 
-	// 初始化：加载分类游戏
-	useEffect(() => {
-		if (open && categoryId > 0) {
-			setLeftSearchInput("");
-			setRightSearchInput("");
-			setLeftPage(1);
-			setRightPage(1);
-		}
-	}, [open, categoryId]);
+  // 初始化：加载分类游戏
+  useEffect(() => {
+    if (open && categoryId > 0) {
+      setLeftSearchInput("");
+      setRightSearchInput("");
+      setLeftPage(1);
+      setRightPage(1);
+    }
+  }, [open, categoryId]);
 
-	// 同步分类游戏到本地状态（使用未筛选的 ID 列表）
-	useEffect(() => {
-		if (open) {
-			setGamesInCategory(new Set(categoryGameIds));
-		}
-	}, [open, categoryGameIds]);
+  // 同步分类游戏到本地状态（使用未筛选的 ID 列表）
+  useEffect(() => {
+    if (open) {
+      setGamesInCategory(new Set(categoryGameIds));
+    }
+  }, [open, categoryGameIds]);
 
-	const searchIndex = useMemo(
-		() => createSearchIndex(displayAllGames),
-		[displayAllGames],
-	);
+  const searchIndex = useMemo(() => createSearchIndex(displayAllGames), [displayAllGames]);
 
-	const { availableGames, categoryGamesList } = useMemo(() => {
-		const nextAvailableGames: GameData[] = [];
-		const nextCategoryGamesList: GameData[] = [];
+  const { availableGames, categoryGamesList } = useMemo(() => {
+    const nextAvailableGames: GameData[] = [];
+    const nextCategoryGamesList: GameData[] = [];
 
-		for (const game of displayAllGames) {
-			if (gamesInCategory.has(game.id)) {
-				nextCategoryGamesList.push(game);
-			} else {
-				nextAvailableGames.push(game);
-			}
-		}
+    for (const game of displayAllGames) {
+      if (gamesInCategory.has(game.id)) {
+        nextCategoryGamesList.push(game);
+      } else {
+        nextAvailableGames.push(game);
+      }
+    }
 
-		return {
-			availableGames: nextAvailableGames,
-			categoryGamesList: nextCategoryGamesList,
-		};
-	}, [displayAllGames, gamesInCategory]);
+    return {
+      availableGames: nextAvailableGames,
+      categoryGamesList: nextCategoryGamesList,
+    };
+  }, [displayAllGames, gamesInCategory]);
 
-	// 左栏搜索过滤
-	const filteredAvailableGames = useMemo(() => {
-		if (!leftSearchText) return availableGames;
+  // 左栏搜索过滤
+  const filteredAvailableGames = useMemo(() => {
+    if (!leftSearchText) return availableGames;
 
-		const searchResults = searchWithIndex(searchIndex, leftSearchText, {
-			limit: displayAllGames.length,
-		});
+    const searchResults = searchWithIndex(searchIndex, leftSearchText, {
+      limit: displayAllGames.length,
+    });
 
-		return searchResults
-			.map((result) => result.item)
-			.filter((game) => !gamesInCategory.has(game.id));
-	}, [
-		availableGames,
-		displayAllGames.length,
-		gamesInCategory,
-		leftSearchText,
-		searchIndex,
-	]);
+    return searchResults
+      .map((result) => result.item)
+      .filter((game) => !gamesInCategory.has(game.id));
+  }, [availableGames, displayAllGames.length, gamesInCategory, leftSearchText, searchIndex]);
 
-	// 右栏搜索过滤
-	const filteredCategoryGames = useMemo(() => {
-		if (!rightSearchText) return categoryGamesList;
+  // 右栏搜索过滤
+  const filteredCategoryGames = useMemo(() => {
+    if (!rightSearchText) return categoryGamesList;
 
-		const searchResults = searchWithIndex(searchIndex, rightSearchText, {
-			limit: displayAllGames.length,
-		});
+    const searchResults = searchWithIndex(searchIndex, rightSearchText, {
+      limit: displayAllGames.length,
+    });
 
-		return searchResults
-			.map((result) => result.item)
-			.filter((game) => gamesInCategory.has(game.id));
-	}, [
-		categoryGamesList,
-		displayAllGames.length,
-		gamesInCategory,
-		rightSearchText,
-		searchIndex,
-	]);
+    return searchResults
+      .map((result) => result.item)
+      .filter((game) => gamesInCategory.has(game.id));
+  }, [categoryGamesList, displayAllGames.length, gamesInCategory, rightSearchText, searchIndex]);
 
-	// 左栏分页数据
-	const paginatedAvailableGames = useMemo(() => {
-		const startIndex = (leftPage - 1) * GAMES_PER_PAGE;
-		const endIndex = startIndex + GAMES_PER_PAGE;
-		return filteredAvailableGames.slice(startIndex, endIndex);
-	}, [filteredAvailableGames, leftPage]);
+  // 左栏分页数据
+  const paginatedAvailableGames = useMemo(() => {
+    const startIndex = (leftPage - 1) * GAMES_PER_PAGE;
+    const endIndex = startIndex + GAMES_PER_PAGE;
+    return filteredAvailableGames.slice(startIndex, endIndex);
+  }, [filteredAvailableGames, leftPage]);
 
-	// 右栏分页数据
-	const paginatedCategoryGames = useMemo(() => {
-		const startIndex = (rightPage - 1) * GAMES_PER_PAGE;
-		const endIndex = startIndex + GAMES_PER_PAGE;
-		return filteredCategoryGames.slice(startIndex, endIndex);
-	}, [filteredCategoryGames, rightPage]);
+  // 右栏分页数据
+  const paginatedCategoryGames = useMemo(() => {
+    const startIndex = (rightPage - 1) * GAMES_PER_PAGE;
+    const endIndex = startIndex + GAMES_PER_PAGE;
+    return filteredCategoryGames.slice(startIndex, endIndex);
+  }, [filteredCategoryGames, rightPage]);
 
-	// 计算总页数
-	const leftTotalPages = Math.ceil(
-		filteredAvailableGames.length / GAMES_PER_PAGE,
-	);
-	const rightTotalPages = Math.ceil(
-		filteredCategoryGames.length / GAMES_PER_PAGE,
-	);
+  // 计算总页数
+  const leftTotalPages = Math.ceil(filteredAvailableGames.length / GAMES_PER_PAGE);
+  const rightTotalPages = Math.ceil(filteredCategoryGames.length / GAMES_PER_PAGE);
 
-	/**
-	 * 添加游戏到分类（左栏点击 → 移到右栏）
-	 */
-	const handleAddGameToCategory = useCallback((gameId: number) => {
-		setGamesInCategory((prev) => {
-			const newSet = new Set(prev);
-			newSet.add(gameId);
-			return newSet;
-		});
-	}, []);
+  /**
+   * 添加游戏到分类（左栏点击 → 移到右栏）
+   */
+  const handleAddGameToCategory = useCallback((gameId: number) => {
+    setGamesInCategory((prev) => {
+      const newSet = new Set(prev);
+      newSet.add(gameId);
+      return newSet;
+    });
+  }, []);
 
-	/**
-	 * 从分类移除游戏（右栏点击 → 移到左栏）
-	 */
-	const handleRemoveGameFromCategory = useCallback((gameId: number) => {
-		setGamesInCategory((prev) => {
-			const newSet = new Set(prev);
-			newSet.delete(gameId);
-			return newSet;
-		});
-	}, []);
+  /**
+   * 从分类移除游戏（右栏点击 → 移到左栏）
+   */
+  const handleRemoveGameFromCategory = useCallback((gameId: number) => {
+    setGamesInCategory((prev) => {
+      const newSet = new Set(prev);
+      newSet.delete(gameId);
+      return newSet;
+    });
+  }, []);
 
-	/**
-	 * 保存游戏变更
-	 */
-	const handleSaveGamesChanges = async () => {
-		if (categoryId < 0) {
-			console.warn("无法修改虚拟分类");
-			snackbar.warning(
-				t(
-					"components.Collection.errors.cannotModifyVirtualCategory",
-					"无法修改虚拟分类",
-				),
-			);
-			return;
-		}
+  /**
+   * 保存游戏变更
+   */
+  const handleSaveGamesChanges = async () => {
+    if (categoryId < 0) {
+      console.warn("无法修改虚拟分类");
+      snackbar.warning(
+        t("components.Collection.errors.cannotModifyVirtualCategory", "无法修改虚拟分类"),
+      );
+      return;
+    }
 
-		setIsProcessing(true);
-		// 保存原始状态以便回滚
-		const originalGamesInCategory = new Set(gamesInCategory);
+    setIsProcessing(true);
+    // 保存原始状态以便回滚
+    const originalGamesInCategory = new Set(gamesInCategory);
 
-		try {
-			// 将当前分类中的游戏列表完全替换为 gamesInCategory
-			const gameIdsArray = Array.from(gamesInCategory);
-			await updateCategoryGamesMutation.mutateAsync({
-				categoryId,
-				gameIds: gameIdsArray,
-			});
+    try {
+      // 将当前分类中的游戏列表完全替换为 gamesInCategory
+      const gameIdsArray = Array.from(gamesInCategory);
+      await updateCategoryGamesMutation.mutateAsync({
+        categoryId,
+        gameIds: gameIdsArray,
+      });
 
-			// 成功提示
-			snackbar.success(
-				t(
-					"components.Collection.success.categoryGamesUpdated",
-					"已更新分类游戏：{{count}} 个",
-					{ count: gameIdsArray.length },
-				),
-			);
+      // 成功提示
+      snackbar.success(
+        t("components.Collection.success.categoryGamesUpdated", "已更新分类游戏：{{count}} 个", {
+          count: gameIdsArray.length,
+        }),
+      );
 
-			// 关闭对话框
-			onClose();
-		} catch (error) {
-			console.error("修改分类游戏失败:", error);
+      // 关闭对话框
+      onClose();
+    } catch (error) {
+      console.error("修改分类游戏失败:", error);
 
-			// 回滚到原始状态
-			setGamesInCategory(originalGamesInCategory);
+      // 回滚到原始状态
+      setGamesInCategory(originalGamesInCategory);
 
-			// 错误提示
-			snackbar.error(
-				t("components.Collection.errors.updateCategoryGamesFailed", {
-					defaultValue: "更新分类游戏失败，请重试",
-				}),
-			);
-		} finally {
-			setIsProcessing(false);
-		}
-	};
+      // 错误提示
+      snackbar.error(
+        t("components.Collection.errors.updateCategoryGamesFailed", {
+          defaultValue: "更新分类游戏失败，请重试",
+        }),
+      );
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
-	return (
-		<Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
-			<DialogTitle>
-				<Box display="flex" alignItems="center" justifyContent="space-between">
-					<Typography variant="h6">
-						{categoryName
-							? `${t("components.Toolbar.Category.manageGamesTitle", "管理分类游戏")} - ${categoryName}`
-							: t(
-									"components.Toolbar.Category.manageGamesTitle",
-									"管理分类游戏",
-								)}
-					</Typography>
-					<IconButton onClick={onClose} size="small">
-						<CloseIcon />
-					</IconButton>
-				</Box>
-			</DialogTitle>
-			<DialogContent>
-				{/* 双栏穿梭框布局 */}
-				<Box display="flex" gap={3} alignItems="stretch" minHeight={500}>
-					{/* 左栏：可用游戏 */}
-					<Paper
-						elevation={2}
-						sx={{ flex: 1, display: "flex", flexDirection: "column", p: 2 }}
-					>
-						<Typography variant="subtitle1" gutterBottom fontWeight="bold">
-							{t("components.Toolbar.Category.availableGames", "可用游戏")} (
-							{availableGames.length})
-						</Typography>
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
+      <DialogTitle>
+        <Box display="flex" alignItems="center" justifyContent="space-between">
+          <Typography variant="h6">
+            {categoryName
+              ? `${t("components.Toolbar.Category.manageGamesTitle", "管理分类游戏")} - ${categoryName}`
+              : t("components.Toolbar.Category.manageGamesTitle", "管理分类游戏")}
+          </Typography>
+          <IconButton onClick={onClose} size="small">
+            <CloseIcon />
+          </IconButton>
+        </Box>
+      </DialogTitle>
+      <DialogContent>
+        {/* 双栏穿梭框布局 */}
+        <Box display="flex" gap={3} alignItems="stretch" minHeight={500}>
+          {/* 左栏：可用游戏 */}
+          <Paper elevation={2} sx={{ flex: 1, display: "flex", flexDirection: "column", p: 2 }}>
+            <Typography variant="subtitle1" gutterBottom fontWeight="bold">
+              {t("components.Toolbar.Category.availableGames", "可用游戏")} ({availableGames.length}
+              )
+            </Typography>
 
-						{/* 左栏搜索框 */}
-						<TextField
-							autoFocus
-							fullWidth
-							size="small"
-							placeholder={t(
-								"components.Toolbar.Category.searchPlaceholder",
-								"搜索游戏...",
-							)}
-							value={leftSearchInput}
-							onChange={(e) => {
-								setLeftSearchInput(e.target.value);
-								setLeftPage(1); // 搜索时重置到第一页
-							}}
-							InputProps={{
-								startAdornment: (
-									<SearchIcon sx={{ mr: 1, color: "action.active" }} />
-								),
-							}}
-							sx={{ mb: 2 }}
-						/>
+            {/* 左栏搜索框 */}
+            <TextField
+              autoFocus
+              fullWidth
+              size="small"
+              placeholder={t("components.Toolbar.Category.searchPlaceholder", "搜索游戏...")}
+              value={leftSearchInput}
+              onChange={(e) => {
+                setLeftSearchInput(e.target.value);
+                setLeftPage(1); // 搜索时重置到第一页
+              }}
+              InputProps={{
+                startAdornment: <SearchIcon sx={{ mr: 1, color: "action.active" }} />,
+              }}
+              sx={{ mb: 2 }}
+            />
 
-						{/* 左栏游戏列表 */}
-						<Box
-							sx={{
-								flex: 1,
-								overflow: "auto",
-								border: "1px solid",
-								borderColor: "divider",
-								borderRadius: 1,
-								minHeight: 0, // 防止 flex 子元素撑开父容器
-							}}
-						>
-							{filteredAvailableGames.length === 0 ? (
-								<Typography
-									variant="body2"
-									color="text.secondary"
-									textAlign="center"
-									py={3}
-								>
-									{leftSearchText
-										? t(
-												"components.Toolbar.Category.noSearchResults",
-												"未找到匹配的游戏",
-											)
-										: t("components.Toolbar.Category.noGames", "暂无游戏")}
-								</Typography>
-							) : (
-								<List dense>
-									{paginatedAvailableGames.map((game) => (
-										<GameListItem
-											key={game.id}
-											game={game}
-											checked={false}
-											onClick={handleAddGameToCategory}
-										/>
-									))}
-								</List>
-							)}
-						</Box>
+            {/* 左栏游戏列表 */}
+            <Box
+              sx={{
+                flex: 1,
+                overflow: "auto",
+                border: "1px solid",
+                borderColor: "divider",
+                borderRadius: 1,
+                minHeight: 0, // 防止 flex 子元素撑开父容器
+              }}
+            >
+              {filteredAvailableGames.length === 0 ? (
+                <Typography variant="body2" color="text.secondary" textAlign="center" py={3}>
+                  {leftSearchText
+                    ? t("components.Toolbar.Category.noSearchResults", "未找到匹配的游戏")
+                    : t("components.Toolbar.Category.noGames", "暂无游戏")}
+                </Typography>
+              ) : (
+                <List dense>
+                  {paginatedAvailableGames.map((game) => (
+                    <GameListItem
+                      key={game.id}
+                      game={game}
+                      checked={false}
+                      onClick={handleAddGameToCategory}
+                    />
+                  ))}
+                </List>
+              )}
+            </Box>
 
-						{/* 左栏分页 */}
-						{leftTotalPages > 1 && (
-							<Box display="flex" justifyContent="center" mt={2}>
-								<Pagination
-									count={leftTotalPages}
-									page={leftPage}
-									onChange={(_, page) => setLeftPage(page)}
-									size="small"
-									color="primary"
-								/>
-							</Box>
-						)}
+            {/* 左栏分页 */}
+            {leftTotalPages > 1 && (
+              <Box display="flex" justifyContent="center" mt={2}>
+                <Pagination
+                  count={leftTotalPages}
+                  page={leftPage}
+                  onChange={(_, page) => setLeftPage(page)}
+                  size="small"
+                  color="primary"
+                />
+              </Box>
+            )}
 
-						{/* 左栏统计 */}
-						<Typography variant="caption" color="text.secondary" mt={1}>
-							共 {filteredAvailableGames.length} 个游戏
-						</Typography>
-					</Paper>
+            {/* 左栏统计 */}
+            <Typography variant="caption" color="text.secondary" mt={1}>
+              共 {filteredAvailableGames.length} 个游戏
+            </Typography>
+          </Paper>
 
-					{/* 右栏：分类中的游戏 */}
-					<Paper
-						elevation={2}
-						sx={{ flex: 1, display: "flex", flexDirection: "column", p: 2 }}
-					>
-						<Typography variant="subtitle1" gutterBottom fontWeight="bold">
-							{t("components.Toolbar.Category.gamesInCategory", "分类中的游戏")}{" "}
-							({categoryGamesList.length})
-						</Typography>
+          {/* 右栏：分类中的游戏 */}
+          <Paper elevation={2} sx={{ flex: 1, display: "flex", flexDirection: "column", p: 2 }}>
+            <Typography variant="subtitle1" gutterBottom fontWeight="bold">
+              {t("components.Toolbar.Category.gamesInCategory", "分类中的游戏")} (
+              {categoryGamesList.length})
+            </Typography>
 
-						{/* 右栏搜索框 */}
-						<TextField
-							fullWidth
-							size="small"
-							placeholder={t(
-								"components.Toolbar.Category.searchPlaceholder",
-								"搜索游戏...",
-							)}
-							value={rightSearchInput}
-							onChange={(e) => {
-								setRightSearchInput(e.target.value);
-								setRightPage(1); // 搜索时重置到第一页
-							}}
-							InputProps={{
-								startAdornment: (
-									<SearchIcon sx={{ mr: 1, color: "action.active" }} />
-								),
-							}}
-							sx={{ mb: 2 }}
-						/>
+            {/* 右栏搜索框 */}
+            <TextField
+              fullWidth
+              size="small"
+              placeholder={t("components.Toolbar.Category.searchPlaceholder", "搜索游戏...")}
+              value={rightSearchInput}
+              onChange={(e) => {
+                setRightSearchInput(e.target.value);
+                setRightPage(1); // 搜索时重置到第一页
+              }}
+              InputProps={{
+                startAdornment: <SearchIcon sx={{ mr: 1, color: "action.active" }} />,
+              }}
+              sx={{ mb: 2 }}
+            />
 
-						{/* 右栏游戏列表 */}
-						<Box
-							sx={{
-								flex: 1,
-								overflow: "auto",
-								border: "1px solid",
-								borderColor: "divider",
-								borderRadius: 1,
-								minHeight: 0, // 防止 flex 子元素撑开父容器
-							}}
-						>
-							{filteredCategoryGames.length === 0 ? (
-								<Typography
-									variant="body2"
-									color="text.secondary"
-									textAlign="center"
-									py={3}
-								>
-									{rightSearchText
-										? t(
-												"components.Toolbar.Category.noSearchResults",
-												"未找到匹配的游戏",
-											)
-										: t(
-												"components.Toolbar.Category.noGamesInCategory",
-												"该分类暂无游戏",
-											)}
-								</Typography>
-							) : (
-								<List dense>
-									{paginatedCategoryGames.map((game) => (
-										<GameListItem
-											key={game.id}
-											game={game}
-											checked={true}
-											onClick={handleRemoveGameFromCategory}
-										/>
-									))}
-								</List>
-							)}
-						</Box>
+            {/* 右栏游戏列表 */}
+            <Box
+              sx={{
+                flex: 1,
+                overflow: "auto",
+                border: "1px solid",
+                borderColor: "divider",
+                borderRadius: 1,
+                minHeight: 0, // 防止 flex 子元素撑开父容器
+              }}
+            >
+              {filteredCategoryGames.length === 0 ? (
+                <Typography variant="body2" color="text.secondary" textAlign="center" py={3}>
+                  {rightSearchText
+                    ? t("components.Toolbar.Category.noSearchResults", "未找到匹配的游戏")
+                    : t("components.Toolbar.Category.noGamesInCategory", "该分类暂无游戏")}
+                </Typography>
+              ) : (
+                <List dense>
+                  {paginatedCategoryGames.map((game) => (
+                    <GameListItem
+                      key={game.id}
+                      game={game}
+                      checked={true}
+                      onClick={handleRemoveGameFromCategory}
+                    />
+                  ))}
+                </List>
+              )}
+            </Box>
 
-						{/* 右栏分页 */}
-						{rightTotalPages > 1 && (
-							<Box display="flex" justifyContent="center" mt={2}>
-								<Pagination
-									count={rightTotalPages}
-									page={rightPage}
-									onChange={(_, page) => setRightPage(page)}
-									size="small"
-									color="primary"
-								/>
-							</Box>
-						)}
+            {/* 右栏分页 */}
+            {rightTotalPages > 1 && (
+              <Box display="flex" justifyContent="center" mt={2}>
+                <Pagination
+                  count={rightTotalPages}
+                  page={rightPage}
+                  onChange={(_, page) => setRightPage(page)}
+                  size="small"
+                  color="primary"
+                />
+              </Box>
+            )}
 
-						{/* 右栏统计 */}
-						<Typography variant="caption" color="text.secondary" mt={1}>
-							共 {filteredCategoryGames.length} 个游戏
-						</Typography>
-					</Paper>
-				</Box>
-			</DialogContent>
+            {/* 右栏统计 */}
+            <Typography variant="caption" color="text.secondary" mt={1}>
+              共 {filteredCategoryGames.length} 个游戏
+            </Typography>
+          </Paper>
+        </Box>
+      </DialogContent>
 
-			{/* 底部按钮 */}
-			<DialogActions sx={{ px: 3, pb: 2 }}>
-				<Button onClick={onClose} disabled={isProcessing}>
-					{t("common.cancel", "取消")}
-				</Button>
-				<Button
-					variant="contained"
-					onClick={handleSaveGamesChanges}
-					disabled={isProcessing}
-				>
-					{isProcessing
-						? t("common.saving", "保存中...")
-						: t("components.Toolbar.Category.save", "保存更改")}
-				</Button>
-			</DialogActions>
-		</Dialog>
-	);
+      {/* 底部按钮 */}
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Button onClick={onClose} disabled={isProcessing}>
+          {t("common.cancel", "取消")}
+        </Button>
+        <Button variant="contained" onClick={handleSaveGamesChanges} disabled={isProcessing}>
+          {isProcessing
+            ? t("common.saving", "保存中...")
+            : t("components.Toolbar.Category.save", "保存更改")}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
 };

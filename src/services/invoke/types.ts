@@ -12,24 +12,15 @@ export type GameType = "all" | "local" | "online" | "iscustom";
  * 排序选项（小写，匹配后端 Rust 枚举）
  */
 export type SortOption =
-	| "addtime"
-	| "datetime"
-	| "lastplayed"
-	| "bgmrank"
-	| "vndbrank"
-	| "userratingrank"
-	| "namesort";
+  | "addtime"
+  | "datetime"
+  | "lastplayed"
+  | "bgmrank"
+  | "vndbrank"
+  | "userratingrank"
+  | "namesort";
 
 /**
  * 排序方向（小写，匹配后端 Rust 枚举）
  */
 export type SortOrder = "asc" | "desc";
-
-/**
- * 统一的服务响应类型
- */
-export interface ServiceResponse<T> {
-	success: boolean;
-	data?: T;
-	error?: string;
-}

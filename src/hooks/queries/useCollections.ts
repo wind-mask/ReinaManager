@@ -1,132 +1,106 @@
-import {
-	keepPreviousData,
-	useMutation,
-	useQuery,
-	useQueryClient,
-} from "@tanstack/react-query";
-import { useMemo } from "react";
 import type { SortOrder } from "@/services/invoke";
 import { collectionService } from "@/services/invoke";
 import type { SelectedCategory } from "@/store/appStore";
 import type { CollectionBackendSortField } from "@/types/collection";
-import {
-	type GameIndex,
-	getDeveloperCategoryGameIds,
-} from "@/utils/game/gameIndex";
+import { type GameIndex, getDeveloperCategoryGameIds } from "@/utils/game/gameIndex";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
 
-export const collectionKeys = {
-	all: ["collections"] as const,
-	groups: () => [...collectionKeys.all, "groups"] as const,
-	groupList: (sortField?: CollectionBackendSortField, sortOrder?: SortOrder) =>
-		[
-			...collectionKeys.groups(),
-			"with-count",
-			...(sortField && sortOrder ? [{ sortField, sortOrder }] : []),
-		] as const,
-	categories: (groupId: string) =>
-		[...collectionKeys.all, "categories", groupId] as const,
-	categoryList: (
-		groupId: string,
-		sortField?: CollectionBackendSortField,
-		sortOrder?: SortOrder,
-	) =>
-		[
-			...collectionKeys.categories(groupId),
-			...(sortField && sortOrder ? [{ sortField, sortOrder }] : []),
-		] as const,
-	games: (categoryId: number) =>
-		[...collectionKeys.all, "games", categoryId] as const,
-	gameCategories: (gameId: number) =>
-		[...collectionKeys.all, "gameCategories", gameId] as const,
+const collectionKeys = {
+  all: ["collections"] as const,
+  groups: () => [...collectionKeys.all, "groups"] as const,
+  groupList: (sortField?: CollectionBackendSortField, sortOrder?: SortOrder) =>
+    [
+      ...collectionKeys.groups(),
+      "with-count",
+      ...(sortField && sortOrder ? [{ sortField, sortOrder }] : []),
+    ] as const,
+  categories: (groupId: string) => [...collectionKeys.all, "categories", groupId] as const,
+  categoryList: (groupId: string, sortField?: CollectionBackendSortField, sortOrder?: SortOrder) =>
+    [
+      ...collectionKeys.categories(groupId),
+      ...(sortField && sortOrder ? [{ sortField, sortOrder }] : []),
+    ] as const,
+  games: (categoryId: number) => [...collectionKeys.all, "games", categoryId] as const,
+  gameCategories: (gameId: number) => [...collectionKeys.all, "gameCategories", gameId] as const,
 };
 
-function isCategoryQueryForGroup(
-	queryKey: readonly unknown[],
-	groupId: string,
-): boolean {
-	const categoryPrefix = collectionKeys.categories(groupId);
-	return categoryPrefix.every((segment, index) => queryKey[index] === segment);
+function isCategoryQueryForGroup(queryKey: readonly unknown[], groupId: string): boolean {
+  const categoryPrefix = collectionKeys.categories(groupId);
+  return categoryPrefix.every((segment, index) => queryKey[index] === segment);
 }
 
 function useGroups() {
-	return useQuery({
-		queryKey: collectionKeys.groups(),
-		queryFn: () => collectionService.getGroups(),
-	});
+  return useQuery({
+    queryKey: collectionKeys.groups(),
+    queryFn: () => collectionService.getGroups(),
+  });
 }
 
-function useGroupsWithCount(
-	sortField?: CollectionBackendSortField,
-	sortOrder?: SortOrder,
-) {
-	return useQuery({
-		queryKey: collectionKeys.groupList(sortField, sortOrder),
-		queryFn: () => collectionService.getGroupsWithCount(sortField, sortOrder),
-		placeholderData: keepPreviousData,
-	});
+function useGroupsWithCount(sortField?: CollectionBackendSortField, sortOrder?: SortOrder) {
+  return useQuery({
+    queryKey: collectionKeys.groupList(sortField, sortOrder),
+    queryFn: () => collectionService.getGroupsWithCount(sortField, sortOrder),
+    placeholderData: keepPreviousData,
+  });
 }
 
 function useCategories(
-	groupId: string | null,
-	sortField?: CollectionBackendSortField,
-	sortOrder?: SortOrder,
+  groupId: string | null,
+  sortField?: CollectionBackendSortField,
+  sortOrder?: SortOrder,
 ) {
-	const isEnabled = Boolean(groupId) && !groupId?.startsWith("default_");
-	const queryGroupId = groupId ?? "none";
+  const isEnabled = Boolean(groupId) && !groupId?.startsWith("default_");
+  const queryGroupId = groupId ?? "none";
 
-	return useQuery({
-		queryKey: collectionKeys.categoryList(queryGroupId, sortField, sortOrder),
-		queryFn: async () => {
-			if (!groupId || groupId.startsWith("default_")) {
-				return [];
-			}
+  return useQuery({
+    queryKey: collectionKeys.categoryList(queryGroupId, sortField, sortOrder),
+    queryFn: async () => {
+      if (!groupId || groupId.startsWith("default_")) {
+        return [];
+      }
 
-			const groupIdNum = Number.parseInt(groupId, 10);
-			if (Number.isNaN(groupIdNum)) {
-				return [];
-			}
+      const groupIdNum = Number.parseInt(groupId, 10);
+      if (Number.isNaN(groupIdNum)) {
+        return [];
+      }
 
-			return collectionService.getCategoriesWithCount(
-				groupIdNum,
-				sortField,
-				sortOrder,
-			);
-		},
-		enabled: isEnabled,
-		placeholderData: (previousData, previousQuery) =>
-			previousQuery &&
-			isCategoryQueryForGroup(previousQuery.queryKey, queryGroupId)
-				? previousData
-				: undefined,
-	});
+      return collectionService.getCategoriesWithCount(groupIdNum, sortField, sortOrder);
+    },
+    enabled: isEnabled,
+    placeholderData: (previousData, previousQuery) =>
+      previousQuery && isCategoryQueryForGroup(previousQuery.queryKey, queryGroupId)
+        ? previousData
+        : undefined,
+  });
 }
 
 function useCategoryGameIds(categoryId: number | null) {
-	return useQuery({
-		queryKey: collectionKeys.games(categoryId ?? 0),
-		queryFn: async () => {
-			if (!categoryId || categoryId < 0) {
-				return [];
-			}
+  return useQuery({
+    queryKey: collectionKeys.games(categoryId ?? 0),
+    queryFn: async () => {
+      if (!categoryId || categoryId < 0) {
+        return [];
+      }
 
-			return collectionService.getGamesInCollection(categoryId);
-		},
-		enabled: categoryId !== null && categoryId > 0,
-	});
+      return collectionService.getGamesInCollection(categoryId);
+    },
+    enabled: categoryId !== null && categoryId > 0,
+  });
 }
 
 function useGameCategoryIds(gameId: number | null) {
-	return useQuery({
-		queryKey: collectionKeys.gameCategories(gameId ?? 0),
-		queryFn: async () => {
-			if (!gameId) {
-				return [];
-			}
+  return useQuery({
+    queryKey: collectionKeys.gameCategories(gameId ?? 0),
+    queryFn: async () => {
+      if (!gameId) {
+        return [];
+      }
 
-			return collectionService.getGameCollectionIds(gameId);
-		},
-		enabled: gameId !== null && gameId > 0,
-	});
+      return collectionService.getGameCollectionIds(gameId);
+    },
+    enabled: gameId !== null && gameId > 0,
+  });
 }
 
 /**
@@ -136,292 +110,255 @@ function useGameCategoryIds(gameId: number | null) {
  * 返回原始 ID 列表，不做 NSFW 过滤（收藏夹显示全部内容）。
  */
 function useCategoryGames(
-	selectedCategory: SelectedCategory,
-	gameIndex: Pick<GameIndex, "developerGameIdsByName">,
+  selectedCategory: SelectedCategory,
+  gameIndex: Pick<GameIndex, "developerGameIdsByName">,
 ) {
-	const realCategoryId =
-		selectedCategory?.type === "real" ? selectedCategory.id : null;
-	const categoryGameIdsQuery = useCategoryGameIds(realCategoryId);
+  const realCategoryId = selectedCategory?.type === "real" ? selectedCategory.id : null;
+  const categoryGameIdsQuery = useCategoryGameIds(realCategoryId);
 
-	const data = useMemo((): number[] => {
-		if (!selectedCategory) {
-			return [];
-		}
+  const data = useMemo((): number[] => {
+    if (!selectedCategory) {
+      return [];
+    }
 
-		if (selectedCategory.type === "developer") {
-			// 虚拟分类：直接从 GameIndex 中读取预构建 ID 列表
-			return getDeveloperCategoryGameIds(selectedCategory.key, gameIndex);
-		}
+    if (selectedCategory.type === "developer") {
+      // 虚拟分类：直接从 GameIndex 中读取预构建 ID 列表
+      return getDeveloperCategoryGameIds(selectedCategory.key, gameIndex);
+    }
 
-		// 真实分类：直接返回 ID 列表
-		return categoryGameIdsQuery.data ?? [];
-	}, [categoryGameIdsQuery.data, gameIndex, selectedCategory]);
+    // 真实分类：直接返回 ID 列表
+    return categoryGameIdsQuery.data ?? [];
+  }, [categoryGameIdsQuery.data, gameIndex, selectedCategory]);
 
-	return {
-		data,
-		isLoading: realCategoryId !== null && categoryGameIdsQuery.isLoading,
-		isError: realCategoryId !== null && categoryGameIdsQuery.isError,
-		error: categoryGameIdsQuery.error,
-	};
+  return {
+    data,
+    isLoading: realCategoryId !== null && categoryGameIdsQuery.isLoading,
+    isError: realCategoryId !== null && categoryGameIdsQuery.isError,
+    error: categoryGameIdsQuery.error,
+  };
 }
 
 function useCreateGroup() {
-	const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
 
-	return useMutation({
-		mutationFn: ({ name }: { name: string }) =>
-			collectionService.createCollection(name, null, 0),
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: collectionKeys.groups() });
-		},
-	});
+  return useMutation({
+    mutationFn: ({ name }: { name: string }) => collectionService.createCollection(name, null, 0),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: collectionKeys.groups() });
+    },
+  });
 }
 
 function useDeleteGroup() {
-	const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
 
-	return useMutation({
-		mutationFn: (groupId: number) =>
-			collectionService.deleteCollection(groupId),
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: collectionKeys.groups() });
-			queryClient.invalidateQueries({ queryKey: collectionKeys.all });
-		},
-	});
+  return useMutation({
+    mutationFn: (groupId: number) => collectionService.deleteCollection(groupId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: collectionKeys.groups() });
+      queryClient.invalidateQueries({ queryKey: collectionKeys.all });
+    },
+  });
 }
 
 function useRenameGroup() {
-	const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
 
-	return useMutation({
-		mutationFn: ({ groupId, newName }: { groupId: number; newName: string }) =>
-			collectionService.updateCollection(groupId, newName),
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: collectionKeys.groups() });
-		},
-	});
+  return useMutation({
+    mutationFn: ({ groupId, newName }: { groupId: number; newName: string }) =>
+      collectionService.updateCollection(groupId, newName),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: collectionKeys.groups() });
+    },
+  });
 }
 
 function useCreateCategory() {
-	const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
 
-	return useMutation({
-		mutationFn: ({ name, groupId }: { name: string; groupId: number }) =>
-			collectionService.createCollection(name, groupId, 0),
-		onSuccess: (_, { groupId }) => {
-			queryClient.invalidateQueries({
-				queryKey: collectionKeys.categories(groupId.toString()),
-			});
-		},
-	});
+  return useMutation({
+    mutationFn: ({ name, groupId }: { name: string; groupId: number }) =>
+      collectionService.createCollection(name, groupId, 0),
+    onSuccess: (_, { groupId }) => {
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.categories(groupId.toString()),
+      });
+    },
+  });
 }
 
 function useDeleteCategory() {
-	const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
 
-	return useMutation({
-		mutationFn: ({
-			categoryId,
-			groupId: _groupId,
-		}: {
-			categoryId: number;
-			groupId?: string | null;
-		}) => collectionService.deleteCollection(categoryId),
-		onSuccess: (_, { categoryId, groupId }) => {
-			queryClient.invalidateQueries({
-				queryKey: collectionKeys.games(categoryId),
-				exact: true,
-			});
-			if (groupId) {
-				queryClient.invalidateQueries({
-					queryKey: collectionKeys.categories(groupId),
-				});
-				queryClient.invalidateQueries({
-					queryKey: collectionKeys.groups(),
-				});
-			} else {
-				queryClient.invalidateQueries({ queryKey: collectionKeys.all });
-			}
-		},
-	});
+  return useMutation({
+    mutationFn: ({
+      categoryId,
+      groupId: _groupId,
+    }: {
+      categoryId: number;
+      groupId?: string | null;
+    }) => collectionService.deleteCollection(categoryId),
+    onSuccess: (_, { categoryId, groupId }) => {
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.games(categoryId),
+        exact: true,
+      });
+      if (groupId) {
+        queryClient.invalidateQueries({
+          queryKey: collectionKeys.categories(groupId),
+        });
+        queryClient.invalidateQueries({
+          queryKey: collectionKeys.groups(),
+        });
+      } else {
+        queryClient.invalidateQueries({ queryKey: collectionKeys.all });
+      }
+    },
+  });
 }
 
 function useRenameCategory() {
-	const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
 
-	return useMutation({
-		mutationFn: ({
-			categoryId,
-			newName,
-		}: {
-			categoryId: number;
-			newName: string;
-		}) => collectionService.updateCollection(categoryId, newName),
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: collectionKeys.all });
-		},
-	});
+  return useMutation({
+    mutationFn: ({ categoryId, newName }: { categoryId: number; newName: string }) =>
+      collectionService.updateCollection(categoryId, newName),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: collectionKeys.all });
+    },
+  });
 }
 
 function useAddGamesToCategories() {
-	const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
 
-	return useMutation({
-		mutationFn: ({
-			gameIds,
-			categoryIds,
-		}: {
-			gameIds: number[];
-			categoryIds: number[];
-		}) => collectionService.addGamesToCollections(gameIds, categoryIds),
-		onSuccess: (_, { gameIds, categoryIds }) => {
-			for (const categoryId of categoryIds) {
-				queryClient.invalidateQueries({
-					queryKey: collectionKeys.games(categoryId),
-					exact: true,
-				});
-			}
-			for (const gameId of gameIds) {
-				queryClient.invalidateQueries({
-					queryKey: collectionKeys.gameCategories(gameId),
-					exact: true,
-				});
-			}
-			queryClient.invalidateQueries({ queryKey: collectionKeys.all });
-		},
-	});
+  return useMutation({
+    mutationFn: ({ gameIds, categoryIds }: { gameIds: number[]; categoryIds: number[] }) =>
+      collectionService.addGamesToCollections(gameIds, categoryIds),
+    onSuccess: (_, { gameIds, categoryIds }) => {
+      for (const categoryId of categoryIds) {
+        queryClient.invalidateQueries({
+          queryKey: collectionKeys.games(categoryId),
+          exact: true,
+        });
+      }
+      for (const gameId of gameIds) {
+        queryClient.invalidateQueries({
+          queryKey: collectionKeys.gameCategories(gameId),
+          exact: true,
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: collectionKeys.all });
+    },
+  });
 }
 
 function useSetGameCategories() {
-	const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
 
-	return useMutation({
-		mutationFn: ({
-			gameId,
-			categoryIds,
-		}: {
-			gameId: number;
-			categoryIds: number[];
-		}) => collectionService.setGameCollections(gameId, categoryIds),
-		onSuccess: (_, { gameId }) => {
-			queryClient.invalidateQueries({
-				queryKey: collectionKeys.gameCategories(gameId),
-				exact: true,
-			});
-			queryClient.invalidateQueries({ queryKey: collectionKeys.all });
-		},
-	});
+  return useMutation({
+    mutationFn: ({ gameId, categoryIds }: { gameId: number; categoryIds: number[] }) =>
+      collectionService.setGameCollections(gameId, categoryIds),
+    onSuccess: (_, { gameId }) => {
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.gameCategories(gameId),
+        exact: true,
+      });
+      queryClient.invalidateQueries({ queryKey: collectionKeys.all });
+    },
+  });
 }
 
 function useRemoveGamesFromCategory() {
-	const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
 
-	return useMutation({
-		mutationFn: ({
-			categoryId,
-			gameIds,
-		}: {
-			categoryId: number;
-			gameIds: number[];
-		}) => collectionService.removeGamesFromCollection(gameIds, categoryId),
-		onSuccess: (_, { categoryId, gameIds }) => {
-			queryClient.invalidateQueries({
-				queryKey: collectionKeys.games(categoryId),
-				exact: true,
-			});
-			for (const gameId of gameIds) {
-				queryClient.invalidateQueries({
-					queryKey: collectionKeys.gameCategories(gameId),
-					exact: true,
-				});
-			}
-			queryClient.invalidateQueries({ queryKey: collectionKeys.all });
-		},
-	});
+  return useMutation({
+    mutationFn: ({ categoryId, gameIds }: { categoryId: number; gameIds: number[] }) =>
+      collectionService.removeGamesFromCollection(gameIds, categoryId),
+    onSuccess: (_, { categoryId, gameIds }) => {
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.games(categoryId),
+        exact: true,
+      });
+      for (const gameId of gameIds) {
+        queryClient.invalidateQueries({
+          queryKey: collectionKeys.gameCategories(gameId),
+          exact: true,
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: collectionKeys.all });
+    },
+  });
 }
 
 function useCategoryGamesMutation(operation: "replace" | "reorder") {
-	const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
 
-	return useMutation({
-		mutationFn: ({
-			categoryId,
-			gameIds,
-		}: {
-			categoryId: number;
-			gameIds: number[];
-		}) =>
-			operation === "reorder"
-				? collectionService.reorderCategoryGames(gameIds, categoryId)
-				: collectionService.updateCategoryGames(gameIds, categoryId),
-		onMutate: async ({ categoryId, gameIds }) => {
-			await queryClient.cancelQueries({
-				queryKey: collectionKeys.games(categoryId),
-				exact: true,
-			});
-			const previousGameIds = queryClient.getQueryData<number[]>(
-				collectionKeys.games(categoryId),
-			);
-			queryClient.setQueryData(collectionKeys.games(categoryId), gameIds);
-			return {
-				previousGameIds,
-				optimisticGameIds: queryClient.getQueryData<number[]>(
-					collectionKeys.games(categoryId),
-				),
-			};
-		},
-		onError: (_error, { categoryId }, context) => {
-			// 其他成员操作已经更新缓存时，不用旧快照覆盖较新的结果。
-			if (
-				context?.previousGameIds &&
-				queryClient.getQueryData(collectionKeys.games(categoryId)) ===
-					context.optimisticGameIds
-			) {
-				queryClient.setQueryData(
-					collectionKeys.games(categoryId),
-					context.previousGameIds,
-				);
-			}
-			if (operation === "reorder") {
-				return queryClient.invalidateQueries({
-					queryKey: collectionKeys.games(categoryId),
-					exact: true,
-				});
-			}
-		},
-		onSuccess: () => {
-			// 排序成功后乐观缓存即为最终顺序，成员数和所属分类均未改变。
-			if (operation === "replace") {
-				return queryClient.invalidateQueries({ queryKey: collectionKeys.all });
-			}
-		},
-	});
+  return useMutation({
+    mutationFn: ({ categoryId, gameIds }: { categoryId: number; gameIds: number[] }) =>
+      operation === "reorder"
+        ? collectionService.reorderCategoryGames(gameIds, categoryId)
+        : collectionService.updateCategoryGames(gameIds, categoryId),
+    onMutate: async ({ categoryId, gameIds }) => {
+      await queryClient.cancelQueries({
+        queryKey: collectionKeys.games(categoryId),
+        exact: true,
+      });
+      const previousGameIds = queryClient.getQueryData<number[]>(collectionKeys.games(categoryId));
+      queryClient.setQueryData(collectionKeys.games(categoryId), gameIds);
+      return {
+        previousGameIds,
+        optimisticGameIds: queryClient.getQueryData<number[]>(collectionKeys.games(categoryId)),
+      };
+    },
+    onError: (_error, { categoryId }, context) => {
+      // 其他成员操作已经更新缓存时，不用旧快照覆盖较新的结果。
+      if (
+        context?.previousGameIds &&
+        queryClient.getQueryData(collectionKeys.games(categoryId)) === context.optimisticGameIds
+      ) {
+        queryClient.setQueryData(collectionKeys.games(categoryId), context.previousGameIds);
+      }
+      if (operation === "reorder") {
+        return queryClient.invalidateQueries({
+          queryKey: collectionKeys.games(categoryId),
+          exact: true,
+        });
+      }
+    },
+    onSuccess: () => {
+      // 排序成功后乐观缓存即为最终顺序，成员数和所属分类均未改变。
+      if (operation === "replace") {
+        return queryClient.invalidateQueries({ queryKey: collectionKeys.all });
+      }
+    },
+  });
 }
 
 function useUpdateCategoryGames() {
-	return useCategoryGamesMutation("replace");
+  return useCategoryGamesMutation("replace");
 }
 
 function useReorderCategoryGames() {
-	return useCategoryGamesMutation("reorder");
+  return useCategoryGamesMutation("reorder");
 }
 
 export {
-	useAddGamesToCategories,
-	useCategories,
-	useCategoryGameIds,
-	useCategoryGames,
-	useCreateCategory,
-	useCreateGroup,
-	useDeleteCategory,
-	useDeleteGroup,
-	useGameCategoryIds,
-	useGroups,
-	useGroupsWithCount,
-	useRemoveGamesFromCategory,
-	useRenameCategory,
-	useRenameGroup,
-	useReorderCategoryGames,
-	useSetGameCategories,
-	useUpdateCategoryGames,
+  useAddGamesToCategories,
+  useCategories,
+  useCategoryGameIds,
+  useCategoryGames,
+  useCreateCategory,
+  useCreateGroup,
+  useDeleteCategory,
+  useDeleteGroup,
+  useGameCategoryIds,
+  useGroups,
+  useGroupsWithCount,
+  useRemoveGamesFromCategory,
+  useRenameCategory,
+  useRenameGroup,
+  useReorderCategoryGames,
+  useSetGameCategories,
+  useUpdateCategoryGames,
 };

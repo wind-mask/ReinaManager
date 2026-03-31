@@ -1,6 +1,3 @@
-[workspace]
-members = ["reina-path", "migration", "reina-download"]
-
 [package]
 name = "ReinaManager"
 version = "0.31.1"
@@ -13,122 +10,130 @@ rust-version = "1.98.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[lib]
-name = "reina_manager_lib"
-crate-type = ["staticlib", "cdylib", "rlib"]
+[workspace]
+members = ["migration", "reina-download", "reina-path"]
 
-[build-dependencies]
-tauri-build = { version = "~2.7.1", features = [] }
-dotenvy = "0.15.7"
-sevenz-rust2 = { version = "0.23.0", default-features = false, features = ["util"] }
-sha2 = "0.11.0"
-tar = "0.4.46"
-ureq = { version = "3.4.2", default-features = false, features = ["rustls"] }
-xz2 = "0.1.7"
-zip = { version = "8.6.0", default-features = false, features = ["deflate"] }
+[lib]
+crate-type = ["cdylib", "rlib", "staticlib"]
+name = "reina_manager_lib"
 
 [dependencies]
+log = "0.4.34"
 # Serialization & logging
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 steamlocate = "2.1.1"
-log = "0.4.34"
 
 # Tauri core and plugins
 tauri = { version = "~2.12.1", features = ["protocol-asset", "tray-icon"] }
 tauri-plugin-autostart = "~2.7.0"
-tauri-plugin-dialog = { version = "~2.8.1", features = [
-    "xdg-portal",
-], default-features = false }
 tauri-plugin-deep-link = "~2.6.1"
+tauri-plugin-dialog = { version = "~2.8.1", default-features = false, features = ["xdg-portal"] }
 tauri-plugin-http = { version = "~2.8.0", default-features = false, features = [
-    "rustls-tls",
-    "http2",
-    "charset",
-    "system-proxy",
-    "unsafe-headers",
+  "charset",
+  "http2",
+  "rustls-tls",
+  "system-proxy",
+  "unsafe-headers",
 ] }
 tauri-plugin-log = "~2.10.0"
 tauri-plugin-opener = "~2.7.0"
 tauri-plugin-shell = "~2.4.0"
 tauri-plugin-single-instance = { version = "~2.5.2", features = ["deep-link"] }
+tauri-plugin-store = "~2.5.0"
 tauri-plugin-updater = "~2.13.1"
 tauri-plugin-window-state = "~2.5.0"
-tauri-plugin-store = "~2.5.0"
 
+arboard = { version = "3.6.1", default-features = false, features = [
+  "image-data",
+  "wayland-data-control",
+] }
 # System / utilities
 base64 = "0.23.1"
-arboard = { version = "3.6.1", default-features = false, features = [
-    "image-data",
-    "wayland-data-control",
-] }
-sevenz-rust2 = { version = "0.23.0", default-features = false, features = [
-    "compress",
-    "util",
-    "zstd",
-] }
+blake3 = "1.8.7"
 chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
 parking_lot = "0.12.5"
-sha2 = "0.11.0"
-blake3 = "1.8.7"
 reina-download = { path = "reina-download" }
+sevenz-rust2 = { version = "0.23.0", default-features = false, features = [
+  "compress",
+  "util",
+  "zstd",
+] }
+sha2 = "0.11.0"
 
-# Async runtime / DB
-tokio = { version = "1.53.1", features = ["rt-multi-thread", "time", "sync", "fs", "io-util", "net", "process"] }
 sea-orm = { version = "2.0.4", default-features = false, features = [
-    "sqlx-sqlite",
-    "runtime-tokio",
-    "macros",
-    "with-json",
+  "macros",
+  "runtime-tokio",
+  "sqlx-sqlite",
+  "with-json",
+] }
+# Async runtime / DB
+tokio = { version = "1.53.1", features = [
+  "fs",
+  "io-util",
+  "net",
+  "process",
+  "rt-multi-thread",
+  "sync",
+  "time",
 ] }
 
 # Misc
 getrandom = "0.4.3"
-url = "2.5.8"
-pinyin = "0.11.0"
-walkdir = "2.5.0"
-migration = { path = "migration" }
-reina-path = { path = "reina-path" }
 image = { version = "0.25.10", default-features = false, features = ["png"] }
+migration = { path = "migration" }
+pinyin = "0.11.0"
+reina-path = { path = "reina-path" }
+url = "2.5.8"
+walkdir = "2.5.0"
+
+[build-dependencies]
+dotenvy = "0.15.7"
+sevenz-rust2 = { version = "0.23.0", default-features = false, features = ["util"] }
+sha2 = "0.11.0"
+tar = "0.4.46"
+tauri-build = { version = "~2.7.1", features = [] }
+ureq = { version = "3.4.2", default-features = false, features = ["rustls"] }
+xz2 = "0.1.7"
+zip = { version = "8.6.0", default-features = false, features = ["deflate"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+kdotool = { version = "0.3.0", default-features = false }
+niri-ipc = { "version" = "26.4.0", default-features = false }
+nix = { version = "0.31", features = ["signal"] }
+xcb = "1.7.1"
+zbus = "5.19.0"
+zbus_systemd = { version = "0.26200.0", features = ["systemd1"] }
 
 # Windows system APIs
 [target.'cfg(target_os = "windows")'.dependencies]
 webview2-com = "0.39.1"
 windows = { version = "0.62.2", features = [
-    "Win32_Foundation",
-    "Win32_Security",
-    "Win32_System_Threading",
-    "Win32_UI_WindowsAndMessaging",
-    "Win32_UI_Input_KeyboardAndMouse",
-    "Win32_UI_Shell",
-    "Win32_System_Registry",
-    "Win32_System_Diagnostics_ToolHelp",
-    "Win32_Storage_FileSystem",
+  "Win32_Foundation",
+  "Win32_Security",
+  "Win32_Storage_FileSystem",
+  "Win32_System_Diagnostics_ToolHelp",
+  "Win32_System_Registry",
+  "Win32_System_Threading",
+  "Win32_UI_Input_KeyboardAndMouse",
+  "Win32_UI_Shell",
+  "Win32_UI_WindowsAndMessaging",
 ] }
 
-[target.'cfg(target_os = "linux")'.dependencies]
-nix = { version = "0.31", features = ["signal"] }
-xcb = "1.7.1"
-zbus = "5.19.0"
-zbus_systemd = { version = "0.26200.0", features = ["systemd1"] }
-niri-ipc = {"version" = "26.4.0",default-features = false}
-kdotool = {version = "0.3.0",default-features = false}
-
-
 [profile.dev]
-incremental = true           # 以较小的步骤编译您的二进制文件。
-split-debuginfo = "unpacked"
 debug = "line-tables-only"
+split-debuginfo = "unpacked"
+incremental = true # 以较小的步骤编译您的二进制文件。
 
 [profile.dev.package."*"]
 debug = false
 
 [profile.release]
-codegen-units = 1   # 允许 LLVM 执行更好的优化。
-lto = true          # 启用链接时优化。
-opt-level = "z"     # 优先考虑小的二进制文件大小。如果您更喜欢速度，请使用 `3`。
-panic = "abort"     # 通过禁用 panic 处理程序来提高性能。
+opt-level = "z" # 优先考虑小的二进制文件大小。如果您更喜欢速度，请使用 `3`。
 strip = "debuginfo" # 移除调试信息，但保留符号名以便排查错误。
+lto = true # 启用链接时优化。
+panic = "abort" # 通过禁用 panic 处理程序来提高性能。
+codegen-units = 1 # 允许 LLVM 执行更好的优化。
 
 [profile.debugging]
 inherits = "dev"
