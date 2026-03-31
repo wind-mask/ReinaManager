@@ -28,9 +28,7 @@
 			"csp": null,
 			"assetProtocol": {
 				"enable": true,
-				"scope": [
-					"**"
-				]
+				"scope": ["**"]
 			}
 		}
 	},
@@ -40,7 +38,7 @@
 		"resources": {
 			"target/7zip/": "tools/7zip"
 		},
-		"createUpdaterArtifacts": true,
+		"createUpdaterArtifacts": false,
 		"icon": [
 			"icons/32x32.png",
 			"icons/128x128.png",
@@ -53,12 +51,7 @@
 		"windows": {
 			"nsis": {
 				"installerIcon": "icons/icon.ico",
-				"languages": [
-					"English",
-					"SimpChinese",
-					"TradChinese",
-					"Japanese"
-				],
+				"languages": ["English", "SimpChinese", "TradChinese", "Japanese"],
 				"displayLanguageSelector": true
 			}
 		}
@@ -66,17 +59,15 @@
 	"plugins": {
 		"deep-link": {
 			"desktop": {
-				"schemes": [
-					"reinamanager"
-				]
+				"schemes": ["reinamanager"]
 			}
 		},
 		"updater": {
-		"endpoints": [
+			"endpoints": [
 				"https://gh.huoshen80.top/github.com/huoshen80/ReinaManager/releases/latest/download/latest.json",
 				"https://gh.huoshen80.me/github.com/huoshen80/ReinaManager/releases/latest/download/latest.json",
 				"https://github.com/huoshen80/ReinaManager/releases/latest/download/latest.json"
-      ],
+			],
 			"dialog": true,
 			"pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDI0MzZDRDk1QzdDMTU3OTgKUldTWVY4SEhsYzAySktqTVVKdVRjWFBJbnRubGx6cWROeHloc3dpZ252MGVtSUI0REVIaEUzYnQK"
 		}
