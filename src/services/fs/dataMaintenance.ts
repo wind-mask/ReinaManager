@@ -1,11 +1,11 @@
 import { ask, open } from "@tauri-apps/plugin-dialog";
 import i18n from "i18next";
 import {
-	type AutoBackupResult,
-	type AutoBackupTrigger,
-	type BackupResult,
-	fileService,
-	type ImportResult,
+  type AutoBackupResult,
+  type AutoBackupTrigger,
+  type BackupResult,
+  fileService,
+  type ImportResult,
 } from "@/services/invoke";
 
 /**
@@ -21,14 +21,14 @@ import {
  * @returns 备份结果，包含备份文件的路径
  */
 export async function backupDatabase(): Promise<BackupResult> {
-	try {
-		const result = await fileService.backupDatabase();
-		console.log(`数据库已备份到: ${result.path}`);
-		return result;
-	} catch (error) {
-		console.error("备份数据库失败:", error);
-		throw error;
-	}
+  try {
+    const result = await fileService.backupDatabase();
+    console.log(`数据库已备份到: ${result.path}`);
+    return result;
+  } catch (error) {
+    console.error("备份数据库失败:", error);
+    throw error;
+  }
 }
 
 /**
@@ -41,16 +41,16 @@ export async function backupDatabase(): Promise<BackupResult> {
  * @returns 备份结果，包含备份文件的路径
  */
 export async function backupCustomCovers(): Promise<BackupResult> {
-	try {
-		const result = await fileService.backupCustomCovers();
-		if (result.path) {
-			console.log(`自定义封面已备份到: ${result.path}`);
-		}
-		return result;
-	} catch (error) {
-		console.error("备份自定义封面失败:", error);
-		throw error;
-	}
+  try {
+    const result = await fileService.backupCustomCovers();
+    if (result.path) {
+      console.log(`自定义封面已备份到: ${result.path}`);
+    }
+    return result;
+  } catch (error) {
+    console.error("备份自定义封面失败:", error);
+    throw error;
+  }
 }
 
 /**
@@ -59,33 +59,33 @@ export async function backupCustomCovers(): Promise<BackupResult> {
  * 后端会使用自动备份专用文件名，并只清理旧的自动备份文件。
  */
 export async function createAutoBackup(
-	trigger: AutoBackupTrigger,
-	includeCovers: boolean,
-	maxBackups: number,
+  trigger: AutoBackupTrigger,
+  includeCovers: boolean,
+  maxBackups: number,
 ): Promise<AutoBackupResult> {
-	try {
-		const result = await fileService.createAutoBackup({
-			trigger,
-			includeCovers,
-			maxAutoBackups: maxBackups,
-		});
-		console.log(`自动备份完成: ${result.database.path}`);
-		return result;
-	} catch (error) {
-		console.error("自动备份失败:", error);
-		throw error;
-	}
+  try {
+    const result = await fileService.createAutoBackup({
+      trigger,
+      includeCovers,
+      maxAutoBackups: maxBackups,
+    });
+    console.log(`自动备份完成: ${result.database.path}`);
+    return result;
+  } catch (error) {
+    console.error("自动备份失败:", error);
+    throw error;
+  }
 }
 
 /**
  * 选择要导入的数据库文件。
  */
 export async function selectDatabaseImportFile(): Promise<string | null> {
-	return open({
-		filters: [{ name: "SQLite Database", extensions: ["db"] }],
-		multiple: false,
-		directory: false,
-	});
+  return open({
+    filters: [{ name: "SQLite Database", extensions: ["db"] }],
+    multiple: false,
+    directory: false,
+  });
 }
 
 /**
@@ -94,30 +94,24 @@ export async function selectDatabaseImportFile(): Promise<string | null> {
  * 调用方须预先取得重启许可，并按结果处理关闭连接后的恢复重启。
  */
 export async function importDatabase(filePath: string): Promise<ImportResult> {
-	const result = await fileService.importDatabase(filePath);
-	if (!result.requires_backup_confirmation) {
-		return result;
-	}
+  const result = await fileService.importDatabase(filePath);
+  if (!result.requires_backup_confirmation) {
+    return result;
+  }
 
-	const confirmed = await ask(
-		i18n.t(
-			"pages.Settings.databaseBackup.continueWithoutBackupMessage",
-			"导入前备份失败：{{error}}\n\n是否跳过失败的备份并继续导入？",
-			{ error: result.message },
-		),
-		{
-			title: i18n.t(
-				"pages.Settings.databaseBackup.continueWithoutBackupTitle",
-				"导入前备份失败",
-			),
-			kind: "warning",
-			okLabel: i18n.t(
-				"pages.Settings.databaseBackup.continueWithoutBackup",
-				"跳过备份并继续",
-			),
-			cancelLabel: i18n.t("common.cancel", "取消"),
-		},
-	);
+  const confirmed = await ask(
+    i18n.t(
+      "pages.Settings.databaseBackup.continueWithoutBackupMessage",
+      "导入前备份失败：{{error}}\n\n是否跳过失败的备份并继续导入？",
+      { error: result.message },
+    ),
+    {
+      title: i18n.t("pages.Settings.databaseBackup.continueWithoutBackupTitle", "导入前备份失败"),
+      kind: "warning",
+      okLabel: i18n.t("pages.Settings.databaseBackup.continueWithoutBackup", "跳过备份并继续"),
+      cancelLabel: i18n.t("common.cancel", "取消"),
+    },
+  );
 
-	return confirmed ? fileService.importDatabase(filePath, true) : result;
+  return confirmed ? fileService.importDatabase(filePath, true) : result;
 }

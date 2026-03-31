@@ -423,6 +423,7 @@ fn check_any_foreground_wayland(candidate_pids: &[u32]) -> Option<u32> {
 /// TODO: 未来可考虑集成其他 wayland 合成器特定功能实现。
 /// 现在支持 Niri
 fn check_any_has_window_wayland(_candidate_pids: &[u32]) -> Option<u32> {
+    #[allow(clippy::single_match)]
     match XDG_SESSION_DESKTOP.to_uppercase().as_str() {
         "NIRI" => {
             if let Some(p) = check_any_has_window_niri(_candidate_pids) {
@@ -468,7 +469,7 @@ fn check_any_foreground_niri(_candidate_pids: &[u32]) -> Option<u32> {
     None
 }
 static X11_CONNECTION: LazyLock<Option<(xcb::Connection, i32)>> = LazyLock::new(|| {
-    if let Some((conn, sn)) = xcb::Connection::connect(None).ok() {
+    if let Ok((conn, sn)) = xcb::Connection::connect(None) {
         Some((conn, sn))
     } else {
         None

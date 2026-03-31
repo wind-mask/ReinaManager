@@ -23,44 +23,41 @@ import { getRuntimeSourceAdapter } from "@/metadata";
 import type { SourceType } from "@/types";
 
 interface GameSelectDialogProps {
-	open: boolean;
-	onClose: () => void;
-	sourceCandidates: SourceCandidate[];
-	onSelectCandidate: (
-		candidate: SourceCandidate,
-		index: number,
-	) => void | Promise<void>;
-	loading?: boolean;
-	title?: string;
-	apiSource: SourceType;
+  open: boolean;
+  onClose: () => void;
+  sourceCandidates: SourceCandidate[];
+  onSelectCandidate: (candidate: SourceCandidate, index: number) => void | Promise<void>;
+  loading?: boolean;
+  title?: string;
+  apiSource: SourceType;
 }
 
 export interface CandidateDisplayInfo {
-	id: string;
-	name: string;
-	name_cn: string | null;
-	image: string | null;
-	developer: string | null;
-	date: string | null;
-	sourceLabel: string;
+  id: string;
+  name: string;
+  name_cn: string | null;
+  image: string | null;
+  developer: string | null;
+  date: string | null;
+  sourceLabel: string;
 }
 
 function buildCandidateDisplayInfo(
-	source: SourceType,
-	id: string,
-	display: SourceDisplayFields,
+  source: SourceType,
+  id: string,
+  display: SourceDisplayFields,
 ): CandidateDisplayInfo {
-	const adapter = getRuntimeSourceAdapter(source);
+  const adapter = getRuntimeSourceAdapter(source);
 
-	return {
-		id,
-		name: display.name || "",
-		name_cn: display.name_cn || null,
-		image: display.image || null,
-		developer: display.developer || null,
-		date: display.date || null,
-		sourceLabel: `${adapter.label}: ${id}`,
-	};
+  return {
+    id,
+    name: display.name || "",
+    name_cn: display.name_cn || null,
+    image: display.image || null,
+    developer: display.developer || null,
+    date: display.date || null,
+    sourceLabel: `${adapter.label}: ${id}`,
+  };
 }
 
 /**
@@ -68,144 +65,124 @@ function buildCandidateDisplayInfo(
  * 由于条件渲染，传入的 results 往往只包含单一数据源的数据
  */
 export function extractSourceCandidateDisplayInfo(
-	candidate: SourceCandidate,
-	apiSource: SourceType,
+  candidate: SourceCandidate,
+  apiSource: SourceType,
 ): CandidateDisplayInfo {
-	return buildCandidateDisplayInfo(
-		apiSource,
-		candidate.externalId || "",
-		candidate.display,
-	);
+  return buildCandidateDisplayInfo(apiSource, candidate.externalId || "", candidate.display);
 }
 
 /**
  * 游戏选择列表弹窗组件
  */
 const GameSelectDialog: React.FC<GameSelectDialogProps> = ({
-	open,
-	onClose,
-	sourceCandidates,
-	onSelectCandidate,
-	loading = false,
-	title,
-	apiSource,
+  open,
+  onClose,
+  sourceCandidates,
+  onSelectCandidate,
+  loading = false,
+  title,
+  apiSource,
 }) => {
-	const { t } = useTranslation();
-	const listItems = sourceCandidates.map((candidate, index) => ({
-		key: `${candidate.source}:${candidate.externalId || index}`,
-		displayInfo: extractSourceCandidateDisplayInfo(candidate, apiSource),
-		handleSelect: () => onSelectCandidate(candidate, index),
-	}));
+  const { t } = useTranslation();
+  const listItems = sourceCandidates.map((candidate, index) => ({
+    key: `${candidate.source}:${candidate.externalId || index}`,
+    displayInfo: extractSourceCandidateDisplayInfo(candidate, apiSource),
+    handleSelect: () => onSelectCandidate(candidate, index),
+  }));
 
-	return (
-		<Dialog
-			open={open}
-			onClose={onClose}
-			maxWidth="md"
-			fullWidth
-			aria-labelledby="game-select-dialog-title"
-		>
-			<DialogTitle id="game-select-dialog-title">
-				{title || t("components.AddModal.selectGame", "选择游戏")}
-			</DialogTitle>
-			<DialogContent dividers>
-				{loading ? (
-					<Box className="flex justify-center items-center py-8">
-						<CircularProgress />
-					</Box>
-				) : listItems.length === 0 ? (
-					<Typography className="text-center py-4" color="text.secondary">
-						{t("components.AddModal.noResults", "没有找到结果")}
-					</Typography>
-				) : (
-					<List className="max-h-[400px] overflow-auto">
-						{listItems.map(({ key, displayInfo, handleSelect }) => {
-							return (
-								<ListItemButton
-									key={key}
-									onClick={() => {
-										handleSelect();
-										onClose();
-									}}
-									className="rounded mb-1"
-								>
-									<ListItemAvatar>
-										{displayInfo.image ? (
-											<SmartImage
-												src={displayInfo.image}
-												alt={displayInfo.name}
-												className="w-[60px] h-[80px] object-cover rounded mr-2"
-											/>
-										) : (
-											<Box className="w-[60px] h-[80px] bg-gray-300 rounded mr-2 flex items-center justify-center">
-												<Typography variant="caption" color="text.secondary">
-													N/A
-												</Typography>
-											</Box>
-										)}
-									</ListItemAvatar>
-									<ListItemText
-										primary={
-											<Box>
-												<Typography variant="subtitle1" component="span">
-													{displayInfo.name_cn || displayInfo.name}
-												</Typography>
-												{displayInfo.name_cn && displayInfo.name && (
-													<Typography
-														variant="body2"
-														color="text.secondary"
-														component="span"
-														className="ml-1"
-													>
-														({displayInfo.name})
-													</Typography>
-												)}
-											</Box>
-										}
-										secondary={
-											<Box component="span" className="flex flex-col gap-1">
-												{displayInfo.developer && (
-													<Typography
-														variant="body2"
-														color="text.secondary"
-														component="span"
-													>
-														{t("components.AddModal.developer", "开发商")}:{" "}
-														{displayInfo.developer}
-													</Typography>
-												)}
-												<Box
-													component="span"
-													className="flex items-center gap-2"
-												>
-													{displayInfo.date && (
-														<Typography
-															variant="caption"
-															color="text.secondary"
-															component="span"
-														>
-															{displayInfo.date}
-														</Typography>
-													)}
-													<Typography
-														variant="caption"
-														color="primary"
-														component="span"
-													>
-														{displayInfo.sourceLabel}
-													</Typography>
-												</Box>
-											</Box>
-										}
-									/>
-								</ListItemButton>
-							);
-						})}
-					</List>
-				)}
-			</DialogContent>
-		</Dialog>
-	);
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      aria-labelledby="game-select-dialog-title"
+    >
+      <DialogTitle id="game-select-dialog-title">
+        {title || t("components.AddModal.selectGame", "选择游戏")}
+      </DialogTitle>
+      <DialogContent dividers>
+        {loading ? (
+          <Box className="flex justify-center items-center py-8">
+            <CircularProgress />
+          </Box>
+        ) : listItems.length === 0 ? (
+          <Typography className="text-center py-4" color="text.secondary">
+            {t("components.AddModal.noResults", "没有找到结果")}
+          </Typography>
+        ) : (
+          <List className="max-h-[400px] overflow-auto">
+            {listItems.map(({ key, displayInfo, handleSelect }) => {
+              return (
+                <ListItemButton
+                  key={key}
+                  onClick={() => {
+                    handleSelect();
+                    onClose();
+                  }}
+                  className="rounded mb-1"
+                >
+                  <ListItemAvatar>
+                    {displayInfo.image ? (
+                      <SmartImage
+                        src={displayInfo.image}
+                        alt={displayInfo.name}
+                        className="w-[60px] h-[80px] object-cover rounded mr-2"
+                      />
+                    ) : (
+                      <Box className="w-[60px] h-[80px] bg-gray-300 rounded mr-2 flex items-center justify-center">
+                        <Typography variant="caption" color="text.secondary">
+                          N/A
+                        </Typography>
+                      </Box>
+                    )}
+                  </ListItemAvatar>
+                  <ListItemText
+                    primary={
+                      <Box>
+                        <Typography variant="subtitle1" component="span">
+                          {displayInfo.name_cn || displayInfo.name}
+                        </Typography>
+                        {displayInfo.name_cn && displayInfo.name && (
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            component="span"
+                            className="ml-1"
+                          >
+                            ({displayInfo.name})
+                          </Typography>
+                        )}
+                      </Box>
+                    }
+                    secondary={
+                      <Box component="span" className="flex flex-col gap-1">
+                        {displayInfo.developer && (
+                          <Typography variant="body2" color="text.secondary" component="span">
+                            {t("components.AddModal.developer", "开发商")}: {displayInfo.developer}
+                          </Typography>
+                        )}
+                        <Box component="span" className="flex items-center gap-2">
+                          {displayInfo.date && (
+                            <Typography variant="caption" color="text.secondary" component="span">
+                              {displayInfo.date}
+                            </Typography>
+                          )}
+                          <Typography variant="caption" color="primary" component="span">
+                            {displayInfo.sourceLabel}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    }
+                  />
+                </ListItemButton>
+              );
+            })}
+          </List>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
 };
 
 export default GameSelectDialog;

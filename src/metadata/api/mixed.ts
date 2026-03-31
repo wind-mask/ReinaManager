@@ -17,142 +17,133 @@
  */
 
 import type { GameMetadataDraft, SourceType } from "@/types";
+
 import { isAbortError } from "@/utils/async";
-import {
-	AppError,
-	isApiRateLimitError,
-	isHttpStatus,
-	toError,
-} from "@/utils/errors";
+import { AppError, isApiRateLimitError, isHttpStatus, toError } from "@/utils/errors";
 import { isDeprecatedSource } from "../constants";
 import {
-	getCandidateSourceData,
-	getSourceCandidateFromGame,
-	type SourceCandidate,
+    getCandidateSourceData,
+    getSourceCandidateFromGame,
+    type SourceCandidate,
 } from "../sourceCandidate";
 import type { RuntimeBoundSourceAdapter } from "../sourceRegistry";
 
 interface SafeFetchResult {
-	source: SourceType;
-	data: SourceCandidate[];
-	failed: boolean;
-	error?: unknown;
+  source: SourceType;
+  data: SourceCandidate[];
+  failed: boolean;
+  error?: unknown;
 }
 
-export type MixedSourceCandidateResult = Partial<
-	Record<SourceType, SourceCandidate[]>
->;
+type MixedSourceCandidateResult = Partial<Record<SourceType, SourceCandidate[]>>;
 
 export interface MixedSourceFetchResult {
-	candidates: MixedSourceCandidateResult;
-	failedSources: SourceType[];
+  candidates: MixedSourceCandidateResult;
+  failedSources: SourceType[];
 }
 
 interface FetchMixedDataOptions {
-	sourceIds?: Partial<Record<SourceType, string>>;
-	name?: string;
-	adapters: RuntimeBoundSourceAdapter[];
+  sourceIds?: Partial<Record<SourceType, string>>;
+  name?: string;
+  adapters: RuntimeBoundSourceAdapter[];
 }
 
 async function fetchAdapterSafely(
-	adapter: RuntimeBoundSourceAdapter,
-	task: () => Promise<SourceCandidate[]>,
+  adapter: RuntimeBoundSourceAdapter,
+  task: () => Promise<SourceCandidate[]>,
 ): Promise<SafeFetchResult> {
-	try {
-		return {
-			source: adapter.key,
-			data: await task(),
-			failed: false,
-		};
-	} catch (error) {
-		if (isAbortError(error)) throw error;
-		if (isApiRateLimitError(error)) throw error;
-		if (adapter.key === "bgm" && isHttpStatus(error, 401)) throw error;
-		return {
-			source: adapter.key,
-			data: [],
-			failed: true,
-			error,
-		};
-	}
+  try {
+    return {
+      source: adapter.key,
+      data: await task(),
+      failed: false,
+    };
+  } catch (error) {
+    if (isAbortError(error)) throw error;
+    if (isApiRateLimitError(error)) throw error;
+    if (adapter.key === "bgm" && isHttpStatus(error, 401)) throw error;
+    return {
+      source: adapter.key,
+      data: [],
+      failed: true,
+      error,
+    };
+  }
 }
 
+
 function isMetadataNotFound(error: unknown) {
-	return (
-		isHttpStatus(error, 404) ||
-		(error instanceof AppError && error.code === "metadata_not_found")
-	);
+  return (
+    isHttpStatus(error, 404) || (error instanceof AppError && error.code === "metadata_not_found")
+  );
 }
 
 function assertNotAllAttemptedSourcesFailed(
-	results: SafeFetchResult[],
-	message: string,
-	cause?: Error,
+  results: SafeFetchResult[],
+  message: string,
+  cause?: Error,
 ) {
-	if (results.length > 0 && results.every((result) => result.failed)) {
-		if (results.every((result) => isMetadataNotFound(result.error))) {
-			throw new AppError({
-				code: "metadata_not_found",
-				message: "No metadata found from attempted mixed sources",
-				cause,
-			});
-		}
-		throw new AppError({
-			code: "mixed_sources_failed",
-			message,
-			cause,
-		});
-	}
+  
+  
+  if (results.length > 0 && results.every((result) => result.failed)) {
+    if (results.every((result) => isMetadataNotFound(result.error))) {
+      throw new AppError({
+        code: "metadata_not_found",
+        message: "No metadata found from attempted mixed sources",
+        cause,
+      });
+    }
+    throw new AppError({
+      code: "mixed_sources_failed",
+      message,
+      cause,
+    });
+  }
 }
 
 function toSourceResult(results: SafeFetchResult[]): MixedSourceFetchResult {
-	const mixedResult: MixedSourceCandidateResult = {};
+  const mixedResult: MixedSourceCandidateResult = {};
 
-	for (const result of results) {
-		mixedResult[result.source] = result.data;
-	}
+  for (const result of results) {
+    mixedResult[result.source] = result.data;
+  }
 
-	return {
-		candidates: mixedResult,
-		failedSources: results
-			.filter((result) => result.failed)
-			.map((result) => result.source),
-	};
+  return {
+    candidates: mixedResult,
+    failedSources: results.filter((result) => result.failed).map((result) => result.source),
+  };
 }
 
-function getSourceCandidateFromDraft(
-	adapter: RuntimeBoundSourceAdapter,
-	draft: GameMetadataDraft,
-): SourceCandidate {
-	const data = getCandidateSourceData(draft, adapter.key);
-	if (!data) {
-		throw new Error(`Missing ${adapter.key} data in ${adapter.key} candidate`);
-	}
 
-	return getSourceCandidateFromGame(
-		draft,
-		adapter,
-		adapter.toDisplayFields(data),
-	);
+function getSourceCandidateFromDraft(
+  adapter: RuntimeBoundSourceAdapter,
+  draft: GameMetadataDraft,
+): SourceCandidate {
+  const data = getCandidateSourceData(draft, adapter.key);
+  if (!data) {
+    throw new Error(`Missing ${adapter.key} data in ${adapter.key} candidate`);
+  }
+
+  return getSourceCandidateFromGame(draft, adapter, adapter.toDisplayFields(data));
 }
 
 function getProvidedSourceIds(
-	options: FetchMixedDataOptions,
-	adapters: RuntimeBoundSourceAdapter[],
+  options: FetchMixedDataOptions,
+  adapters: RuntimeBoundSourceAdapter[],
 ) {
-	return adapters
-		.map((adapter) => ({
-			adapter,
-			id: options.sourceIds?.[adapter.key]?.trim(),
-		}))
-		.filter(
-			(
-				entry,
-			): entry is {
-				adapter: RuntimeBoundSourceAdapter;
-				id: string;
-			} => Boolean(entry.id),
-		);
+  return adapters
+    .map((adapter) => ({
+      adapter,
+      id: options.sourceIds?.[adapter.key]?.trim(),
+    }))
+    .filter(
+      (
+        entry,
+      ): entry is {
+        adapter: RuntimeBoundSourceAdapter;
+        id: string;
+      } => Boolean(entry.id),
+    );
 }
 
 /**
@@ -166,51 +157,53 @@ function getProvidedSourceIds(
  * @returns 返回按 source 分组的候选列表
  */
 export async function fetchMixedData(options: FetchMixedDataOptions) {
-	const { name } = options;
-	const adapters = options.adapters.filter(
-		(adapter) => !isDeprecatedSource(adapter.key),
-	);
-	const providedSourceIds = getProvidedSourceIds(options, adapters);
+  const { name } = options;
+  const adapters = options.adapters.filter((adapter) => !isDeprecatedSource(adapter.key));
+  const providedSourceIds = getProvidedSourceIds(options, adapters);
+  
 
-	// ID 的数量不改变获取语义，只有用户明确填写的来源会进入请求。
-	if (providedSourceIds.length > 0) {
-		const results = await Promise.all(
-			providedSourceIds.map(({ adapter, id }) =>
-				fetchAdapterSafely(adapter, async () => [
-					getSourceCandidateFromDraft(adapter, await adapter.fetchById(id)),
-				]),
-			),
-		);
-		assertNotAllAttemptedSourcesFailed(
-			results,
-			"All mixed source requests failed for multi-id lookup",
-		);
+  
 
-		return toSourceResult(results);
-	}
+  
+  // ID 的数量不改变获取语义，只有用户明确填写的来源会进入请求。
+  if (providedSourceIds.length > 0) {
+    const results = await Promise.all(
+      providedSourceIds.map(({ adapter, id }) =>
+        fetchAdapterSafely(adapter, async () => [
+          getSourceCandidateFromDraft(adapter, await adapter.fetchById(id)),
+        ]),
+      ),
+    );
+    assertNotAllAttemptedSourcesFailed(
+      results,
+      "All mixed source requests failed for multi-id lookup",
+    );
 
-	// 名称搜索返回各源独立候选，由上层交给用户选择。
-	if (name?.trim()) {
-		const searchName = name.trim();
-		const results = await Promise.all(
-			adapters.map((adapter) => {
-				return fetchAdapterSafely(adapter, () =>
-					adapter.searchByName(searchName),
-				);
-			}),
-		);
+    return toSourceResult(results);
+  }
 
-		assertNotAllAttemptedSourcesFailed(
-			results,
-			`All mixed source requests failed for search: ${searchName}`,
-			toError(undefined, "Mixed search failed"),
-		);
+  
+  // 名称搜索返回各源独立候选，由上层交给用户选择。
+  if (name?.trim()) {
+    const searchName = name.trim();
+    const results = await Promise.all(
+      adapters.map((adapter) => {
+        return fetchAdapterSafely(adapter, () => adapter.searchByName(searchName));
+      }),
+    );
 
-		return toSourceResult(results);
-	}
+    assertNotAllAttemptedSourcesFailed(
+      results,
+      `All mixed source requests failed for search: ${searchName}`,
+      toError(undefined, "Mixed search failed"),
+    );
 
-	throw new AppError({
-		code: "invalid_game_id",
-		message: "Mixed fetch requires source ids or a name query",
-	});
+    return toSourceResult(results);
+  }
+
+  
+  throw new AppError({
+    code: "invalid_game_id",
+    message: "Mixed fetch requires source ids or a name query",
+  });
 }
