@@ -20,7 +20,9 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 [build-dependencies]
 tauri-build = { version = "~2.6.3", features = [] }
 dotenvy = "0.15.7"
-sevenz-rust2 = { version = "0.21.4", default-features = false, features = ["util"] }
+sevenz-rust2 = { version = "0.21.4", default-features = false, features = [
+    "util",
+] }
 sha2 = "0.11.0"
 tar = "0.4.46"
 ureq = { version = "3.4.0", default-features = false, features = ["rustls"] }
@@ -36,7 +38,9 @@ log = "0.4.33"
 # Tauri core and plugins
 tauri = { version = "~2.11.5", features = ["protocol-asset", "tray-icon"] }
 tauri-plugin-autostart = "~2.5.1"
-tauri-plugin-dialog = "~2.7.2"
+tauri-plugin-dialog = { version = "~2.7.2", features = [
+    "xdg-portal",
+], default-features = false }
 tauri-plugin-deep-link = "~2.4.9"
 tauri-plugin-http = { version = "~2.5.9", default-features = false, features = [
     "rustls-tls",
@@ -78,7 +82,14 @@ takanawa-reqwest = { package = "reqwest", version = "0.13.4", default-features =
 ] }
 
 # Async runtime / DB
-tokio = { version = "1.53.1", features = ["rt-multi-thread", "time", "sync", "fs", "io-util", "net"] }
+tokio = { version = "1.53.1", features = [
+    "rt-multi-thread",
+    "time",
+    "sync",
+    "fs",
+    "io-util",
+    "net",
+] }
 sea-orm = { version = "2.0.1", default-features = false, features = [
     "sqlx-sqlite",
     "runtime-tokio",
@@ -113,12 +124,12 @@ zbus_systemd = { version = "0.26100.0", features = ["systemd1"] }
 
 
 [profile.dev]
-incremental = true # 以较小的步骤编译您的二进制文件。
+incremental = true           # 以较小的步骤编译您的二进制文件。
 split-debuginfo = "unpacked"
 
 [profile.release]
-codegen-units = 1 # 允许 LLVM 执行更好的优化。
-lto = true        # 启用链接时优化。
-opt-level = "z"   # 优先考虑小的二进制文件大小。如果您更喜欢速度，请使用 `3`。
-panic = "abort"   # 通过禁用 panic 处理程序来提高性能。
+codegen-units = 1   # 允许 LLVM 执行更好的优化。
+lto = true          # 启用链接时优化。
+opt-level = "z"     # 优先考虑小的二进制文件大小。如果您更喜欢速度，请使用 `3`。
+panic = "abort"     # 通过禁用 panic 处理程序来提高性能。
 strip = "debuginfo" # 移除调试信息，但保留符号名以便排查错误。
