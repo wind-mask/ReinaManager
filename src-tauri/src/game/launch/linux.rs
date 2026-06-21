@@ -1,6 +1,7 @@
 use crate::database::repository::games_repository::GamesRepository;
 use crate::game::monitor::TimeTrackingMode;
-use crate::game::monitor::{get_connection, get_manager_proxy, monitor_game, stop_game_session};
+use crate::game::monitor::{get_connection, get_manager_proxy};
+use crate::game::monitor::{monitor_game, stop_game_session};
 use log::{debug, info};
 use sea_orm::DatabaseConnection;
 use serde::{Deserialize, Serialize};
