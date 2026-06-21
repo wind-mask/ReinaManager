@@ -1,6 +1,7 @@
 use super::{LaunchResult, StopResult, load_game, validate_and_open_steam, validate_local_launch};
 use crate::game::monitor::TimeTrackingMode;
-use crate::game::monitor::{get_connection, get_manager_proxy, monitor_game, stop_game_session};
+use crate::game::monitor::{get_connection, get_manager_proxy};
+use crate::game::monitor::{monitor_game, stop_game_session};
 use log::{debug, info};
 use sea_orm::DatabaseConnection;
 use tauri::{AppHandle, Manager, Runtime, State, command};
@@ -41,9 +42,8 @@ async fn launch_game_inner<R: Runtime>(
         )?;
 
         return Ok(LaunchResult::delegated(format!(
-            "已交由 Steam 启动游戏 ({})，工作目录: {})",
-            steam_launch.steam_launch_id,
-            steam_launch.game_dir
+            "已交由 Steam 启动游戏 ({}))",
+            steam_launch.steam_launch_id
         )));
     }
 
@@ -305,3 +305,4 @@ async fn check_unit_or_reset_failed(systemd_unit_name: &str) -> Result<bool, Str
         Err(_) => Ok(false),
     }
 }
+// weave: run 'weave explain src-tauri/src/game/launch/linux.rs' for per-hunk detail, 'weave check' to verify your resolution
