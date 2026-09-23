@@ -16,6 +16,7 @@ use serde_json::json;
 use std::collections::HashSet;
 use std::env::home_dir;
 use std::path::Path;
+use std::sync::{LazyLock, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter, Runtime};
 use tokio::sync::OnceCell;
@@ -348,23 +349,137 @@ fn select_best_from_candidates(candidate_pids: &[u32]) -> Option<u32> {
         None
     }
 }
+static XDG_SESSION_DESKTOP: LazyLock<String> = LazyLock::new(|| {
+    std::env::var("XDG_SESSION_DESKTOP").unwrap_or_else(|_| "unknown".to_string())
+});
+static XDG_SESSION_TYPE: LazyLock<String> =
+    LazyLock::new(|| std::env::var("XDG_SESSION_TYPE").unwrap_or_else(|_| "unknown".to_string()));
 
+fn check_any_foreground(candidate_pids: &[u32]) -> Option<u32> {
+    if XDG_SESSION_TYPE.as_str() == "x11" {
+        if let Some(p) = check_any_foreground_x11(candidate_pids) {
+            return Some(p);
+        }
+    } else if XDG_SESSION_TYPE.as_str() == "wayland" {
+        if let Some(p) = check_any_foreground_wayland(candidate_pids) {
+            return Some(p);
+        } else if X11_CONNECTION.is_some() {
+            // xwayland 场景下，尝试使用 X11 方式判断窗口
+            if let Some(p) = check_any_foreground_x11(candidate_pids) {
+                return Some(p);
+            }
+        }
+    }
+    #[cfg(debug_assertions)]
+    debug!(
+        "无法确定前台进程，XDG_SESSION_TYPE={}, XDG_CURRENT_DESKTOP={}",
+        XDG_SESSION_TYPE.as_str(),
+        XDG_SESSION_DESKTOP.as_str()
+    );
+    None
+}
+
+fn check_any_has_window(candidate_pids: &[u32]) -> Option<u32> {
+    if XDG_SESSION_TYPE.as_str() == "x11" {
+        if let Some(p) = check_any_has_window_x11(candidate_pids) {
+            return Some(p);
+        }
+    } else if XDG_SESSION_TYPE.as_str() == "wayland" {
+        if let Some(p) = check_any_has_window_wayland(candidate_pids) {
+            return Some(p);
+        } else if X11_CONNECTION.is_some() {
+            // xwayland 场景下，尝试使用 X11 方式判断窗口
+            if let Some(p) = check_any_has_window_x11(candidate_pids) {
+                return Some(p);
+            }
+        }
+    }
+    #[cfg(debug_assertions)]
+    debug!(
+        "无法确定有窗口的进程，XDG_SESSION_TYPE={}, XDG_CURRENT_DESKTOP={}",
+        XDG_SESSION_TYPE.as_str(),
+        XDG_SESSION_DESKTOP.as_str()
+    );
+    None
+}
 /// TODO: 未来可考虑集成其他 wayland 合成器特定功能实现。
-fn check_any_foreground(_candidate_pids: &[u32]) -> Option<u32> {
-    check_any_foreground_x11(_candidate_pids)
+/// 现在支持 KDE Plasma 和 Niri
+fn check_any_foreground_wayland(candidate_pids: &[u32]) -> Option<u32> {
+    match XDG_SESSION_DESKTOP.to_uppercase().as_str() {
+        "KDE" => {
+            if let Some(p) = check_any_foreground_kde(candidate_pids) {
+                return Some(p);
+            }
+        }
+        "NIRI" => {
+            if let Some(p) = check_any_foreground_niri(candidate_pids) {
+                return Some(p);
+            }
+        }
+        _ => {}
+    }
+    None
+}
+/// TODO: 未来可考虑集成其他 wayland 合成器特定功能实现。
+/// 现在支持 Niri
+fn check_any_has_window_wayland(_candidate_pids: &[u32]) -> Option<u32> {
+    match XDG_SESSION_DESKTOP.to_uppercase().as_str() {
+        "NIRI" => {
+            if let Some(p) = check_any_has_window_niri(_candidate_pids) {
+                return Some(p);
+            }
+        }
+        _ => {}
+    }
+    None
 }
 
-/// TODO: 未来可考虑集成 x11 或 wayland 合成器特定功能实现。
-fn check_any_has_window(_candidate_pids: &[u32]) -> Option<u32> {
-    check_any_has_window_x11(_candidate_pids)
+fn check_any_foreground_kde(_candidate_pids: &[u32]) -> Option<u32> {
+    let aw = kdotool::get_active_window_info().ok()?;
+    _candidate_pids.iter().find(|pid| **pid == aw.pid).copied()
+}
+static NIRI_CONNECTION: LazyLock<Mutex<Option<niri_ipc::socket::Socket>>> = LazyLock::new(|| {
+    let conn = niri_ipc::socket::Socket::connect().ok();
+    Mutex::new(conn)
+});
+fn check_any_has_window_niri(_candidate_pids: &[u32]) -> Option<u32> {
+    let mut conn_l = NIRI_CONNECTION.lock().ok()?;
+    let conn = conn_l.as_mut()?;
+    let res = conn.send(niri_ipc::Request::Windows).ok()?.ok()?;
+    if let niri_ipc::Response::Windows(ws) = res {
+        return _candidate_pids
+            .iter()
+            .find(|pid| ws.iter().any(|w| w.pid.map(|p| p as u32) == Some(**pid)))
+            .copied();
+    }
+    None
 }
 
+fn check_any_foreground_niri(_candidate_pids: &[u32]) -> Option<u32> {
+    let mut conn_l = NIRI_CONNECTION.lock().ok()?;
+    let conn = conn_l.as_mut()?;
+    let res = conn.send(niri_ipc::Request::FocusedWindow).ok()?.ok()?;
+    if let niri_ipc::Response::FocusedWindow(Some(w)) = res {
+        return _candidate_pids
+            .iter()
+            .find(|pid| w.pid.map(|p| p as u32) == Some(**pid))
+            .copied();
+    }
+    None
+}
+static X11_CONNECTION: LazyLock<Option<(xcb::Connection, i32)>> = LazyLock::new(|| {
+    if let Some((conn, sn)) = xcb::Connection::connect(None).ok() {
+        Some((conn, sn))
+    } else {
+        None
+    }
+});
 fn check_any_foreground_x11(candidate_pids: &[u32]) -> Option<u32> {
     // 1. 连接到 X Server
-    let (conn, screen_num) = xcb::Connection::connect(None).ok()?;
+    let (conn, screen_num) = X11_CONNECTION.as_ref()?;
     let setup = conn.get_setup();
     // 获取当前屏幕的根窗口 (Root Window)
-    let screen = setup.roots().nth(screen_num as usize)?;
+    let screen = setup.roots().nth(*screen_num as usize)?;
     let root_window = screen.root();
 
     // 2. 获取 Atom 标识符
@@ -436,9 +551,9 @@ fn check_any_foreground_x11(candidate_pids: &[u32]) -> Option<u32> {
 
 fn check_any_has_window_x11(candidate_pids: &[u32]) -> Option<u32> {
     // 1. 连接到 X Server
-    let (conn, screen_num) = xcb::Connection::connect(None).ok()?;
+    let (conn, screen_num) = X11_CONNECTION.as_ref()?;
     let setup = conn.get_setup();
-    let screen = setup.roots().nth(screen_num as usize)?;
+    let screen = setup.roots().nth(*screen_num as usize)?;
     let root_window = screen.root();
 
     // 2. 获取需要的 Atom 标识符
@@ -605,10 +720,7 @@ async fn run_game_monitor(
                     && accumulated_seconds.is_multiple_of(TIME_UPDATE_INTERVAL_SECS)
                 {
                     let minutes = accumulated_seconds / 60;
-                    // debug!(
-                    //     "发送时间更新事件: {} 分钟 ({} 秒)",
-                    //     minutes, accumulated_seconds
-                    // );
+
                     if let Err(error) = app_handle.emit(
                         "game-time-update",
                         json!({
