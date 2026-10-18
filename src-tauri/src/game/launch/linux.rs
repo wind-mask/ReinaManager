@@ -202,6 +202,8 @@ async fn spawn_in_scope(
 
     let mut command = tokio::process::Command::new(exec_path);
     command.args(exec_args).current_dir(game_dir);
+    // AppImage 注入的库路径不能带进游戏进程，否则子进程会加载到挂载点里的旧库
+    sanitize_appimage_env(&mut command);
 
     // 两个通道都由闭包以可变引用使用，exec 后 fd 会被 CLOEXEC 自动关闭
     let mut gate_child = gate_child;
@@ -278,6 +280,79 @@ async fn spawn_in_scope(
     }
 
     Ok(process_id)
+}
+
+/// AppImage 在启动时把自己的挂载点写进这些库与插件搜索路径（值形如 `<挂载点>/usr/lib:<原值>`）
+///
+/// 该环境会随 fork 传递给游戏子进程，导致子进程加载到 AppImage 内的库：
+const APPIMAGE_PATH_VARS: &[&str] = &[
+    "LD_LIBRARY_PATH",
+    "GST_PLUGIN_PATH",
+    "GST_PLUGIN_SYSTEM_PATH",
+    "GST_PLUGIN_SYSTEM_PATH_1_0",
+    "QT_PLUGIN_PATH",
+    "GI_TYPELIB_PATH",
+    "GTK_PATH",
+    "XDG_DATA_DIRS",
+    "PERLLIB",
+];
+
+/// 剔除 AppImage 泄漏给子进程的路径条目
+///
+/// 只在 AppImage 环境下（存在 `APPDIR`）生效；非 AppImage 运行时环境本身干净，无需处理。
+fn sanitize_appimage_env(command: &mut tokio::process::Command) {
+    let Ok(app_dir) = std::env::var("APPDIR") else {
+        return;
+    };
+    if app_dir.is_empty() {
+        return;
+    }
+
+    // LD_PRELOAD 以空格分隔，其余路径型变量以冒号分隔
+    sanitize_path_env(command, "LD_PRELOAD", &app_dir, ' ');
+    for name in APPIMAGE_PATH_VARS {
+        sanitize_path_env(command, name, &app_dir, ':');
+    }
+}
+
+/// 从单个环境变量中剔除指向 AppImage 挂载点的条目，只把变化的部分写回子进程环境
+///
+/// AppRun 始终把用户原本的取值追加在挂载点之后，所以用户自己设置的路径不受影响。
+fn sanitize_path_env(
+    command: &mut tokio::process::Command,
+    name: &str,
+    app_dir: &str,
+    separator: char,
+) {
+    let Some(value) = std::env::var_os(name) else {
+        return;
+    };
+    let Some(cleaned) = strip_appimage_entries(&value.to_string_lossy(), app_dir, separator) else {
+        return;
+    };
+
+    debug!("已从子进程环境中剔除 AppImage 路径: {name}={cleaned:?}");
+    if cleaned.is_empty() {
+        command.env_remove(name);
+    } else {
+        command.env(name, cleaned);
+    }
+}
+
+/// 计算剔除 AppImage 挂载点条目后的值，返回 `None` 表示该变量与 AppImage 无关
+fn strip_appimage_entries(value: &str, app_dir: &str, separator: char) -> Option<String> {
+    let entries: Vec<&str> = value.split(separator).collect();
+    let kept: Vec<&str> = entries
+        .iter()
+        .copied()
+        .filter(|entry| !entry.starts_with(app_dir))
+        .collect();
+
+    if kept.len() == entries.len() {
+        return None;
+    }
+
+    Some(kept.join(&separator.to_string()))
 }
 
 /// 读取子进程在阻塞 exec 前回报的 PID
